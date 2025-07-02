@@ -1,0 +1,158 @@
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  background-color: #2c5f2d;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.game-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.ui-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.hotbar {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+  pointer-events: auto;
+}
+
+.hotbar-slot {
+  width: 50px;
+  height: 50px;
+  background: rgba(139, 69, 19, 0.8);
+  border: 2px solid #8B4513;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.hotbar-slot:hover {
+  background: rgba(139, 69, 19, 1);
+  border-color: #D2B48C;
+}
+
+.hotbar-slot.active {
+  background: rgba(184, 134, 11, 0.9);
+  border-color: #F59E0B;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+}
+
+.inventory-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(139, 69, 19, 0.9);
+  border: 2px solid #8B4513;
+  border-radius: 8px;
+  padding: 10px 15px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all 0.2s;
+}
+
+.inventory-button:hover {
+  background: rgba(139, 69, 19, 1);
+  border-color: #D2B48C;
+}
+
+.inventory-modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(101, 67, 33, 0.95);
+  border: 3px solid #8B4513;
+  border-radius: 12px;
+  padding: 20px;
+  pointer-events: auto;
+  max-width: 400px;
+  width: 90%;
+}
+
+.inventory-header {
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.inventory-slot {
+  width: 50px;
+  height: 50px;
+  background: rgba(139, 69, 19, 0.6);
+  border: 2px solid #8B4513;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.inventory-slot:hover {
+  background: rgba(139, 69, 19, 0.8);
+  border-color: #D2B48C;
+}
+
+.close-button {
+  background: #DC2626;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  width: 100%;
+}
+
+.close-button:hover {
+  background: #EF4444;
+} 
