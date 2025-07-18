@@ -7,6 +7,11 @@ interface NPC {
   moveTimer: number
   isMoving: boolean
   targetDirection: string
+  speed: number
+  moveTimeMin: number
+  moveTimeMax: number
+  pauseTimeMin: number
+  pauseTimeMax: number
 }
 
 export default class MainScene extends Scene {
@@ -19,6 +24,9 @@ export default class MainScene extends Scene {
   private groundLayer!: Phaser.Tilemaps.TilemapLayer
   private levelLayer!: Phaser.Tilemaps.TilemapLayer
   private tilesets!: Phaser.Tilemaps.Tileset[]
+  
+  // NPC properties
+  private npcs: NPC[] = []
   
   // Input properties
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
@@ -56,7 +64,9 @@ export default class MainScene extends Scene {
 
   create() {
     this.createMap()
+    this.createAnimations() 
     this.createPlayer()
+    this.createNPCs()
     this.setupControls()
     this.setupCamera()
     
@@ -65,6 +75,7 @@ export default class MainScene extends Scene {
 
   update() {
     this.handlePlayerMovement()
+    this.updateNPCs()
   }
 
   // Map setup methods
@@ -90,6 +101,54 @@ export default class MainScene extends Scene {
     this.levelLayer = this.map.createLayer('item', this.tilesets, 0, 0)!
     
     this.levelLayer.setCollisionByProperty({ collides: true })
+
+    // Set the physics world bounds to match the map size
+    this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels)
+  }
+
+  private createAnimations() {
+    // Create all animations that will be shared between player and NPCs
+    this.anims.create({
+      key: 'walk-down',
+      frames: this.anims.generateFrameNumbers('playerWalk', { start: 0, end: 5 }),
+      frameRate: 10,
+      repeat: -1
+    })
+    
+    this.anims.create({
+      key: 'walk-up',
+      frames: this.anims.generateFrameNumbers('playerWalk', { start: 6, end: 11 }),
+      frameRate: 10,
+      repeat: -1
+    })
+    
+    this.anims.create({
+      key: 'walk-side',
+      frames: this.anims.generateFrameNumbers('playerWalk', { start: 12, end: 17 }),
+      frameRate: 10,
+      repeat: -1
+    })
+    
+    this.anims.create({
+      key: 'idle-down',
+      frames: this.anims.generateFrameNumbers('playerIdle', { start: 0, end: 0 }),
+      frameRate: 1,
+      repeat: 0
+    })
+    
+    this.anims.create({
+      key: 'idle-up',
+      frames: this.anims.generateFrameNumbers('playerIdle', { start: 6, end: 6 }),
+      frameRate: 1,
+      repeat: 0
+    })
+    
+    this.anims.create({
+      key: 'idle-side',
+      frames: this.anims.generateFrameNumbers('playerIdle', { start: 12, end: 12 }),
+      frameRate: 1,
+      repeat: 0
+    })
   }
 
   // Player setup methods
@@ -103,16 +162,25 @@ export default class MainScene extends Scene {
     this.player.setSize(16, 16)
     this.player.setOffset(8, 16)
     
-    this.createPlayerAnimations()
     this.player.play('idle-down')
     
     this.physics.add.collider(this.player, this.levelLayer)
+
+    // Log the bounds for debugging
+    console.log('Map size:', {
+      width: this.map.widthInPixels,
+      height: this.map.heightInPixels,
+      tileWidth: this.map.tileWidth,
+      tileHeight: this.map.tileHeight,
+      widthInTiles: this.map.width,
+      heightInTiles: this.map.height
+    })
   }
 
   private createNPCs() {
     // Define spawn positions for 6 NPCs around the map
-    const mapWidth = this.map.widthInPixels * 2
-    const mapHeight = this.map.heightInPixels * 2
+    const mapWidth = this.map.widthInPixels
+    const mapHeight = this.map.heightInPixels
     const margin = 200 // Keep NPCs away from edges
     
     const npcPositions = [
@@ -153,7 +221,12 @@ export default class MainScene extends Scene {
       lastDirection: 'down',
       moveTimer: 0,
       isMoving: false,
-      targetDirection: 'down'
+      targetDirection: 'down',
+      speed: 50, // Default speed
+      moveTimeMin: 1000, // Default move time
+      moveTimeMax: 2000, // Default move time
+      pauseTimeMin: 500, // Default pause time
+      pauseTimeMax: 1000 // Default pause time
     }
     
     // Add to NPCs array
@@ -167,52 +240,6 @@ export default class MainScene extends Scene {
       if (otherNpc !== npc) {
         this.physics.add.collider(sprite, otherNpc.sprite)
       }
-    })
-  }
-
-  private createPlayerAnimations() {
-    this.anims.create({
-      key: 'walk-down',
-      frames: this.anims.generateFrameNumbers('playerWalk', { start: 0, end: 5 }),
-      frameRate: 10,
-      repeat: -1
-    })
-    
-    this.anims.create({
-      key: 'walk-up',
-      frames: this.anims.generateFrameNumbers('playerWalk', { start: 6, end: 11 }),
-      frameRate: 10,
-      repeat: -1
-    })
-    
-    this.anims.create({
-      key: 'walk-side',
-      frames: this.anims.generateFrameNumbers('playerWalk', { start: 12, end: 17 }),
-      frameRate: 10,
-      repeat: -1
-    })
-    
-    this.anims.create({
-      key: 'idle-down',
-      frames: this.anims.generateFrameNumbers('playerIdle', { start: 0, end: 0 }),
-      frameRate: 1,
-      repeat: 0
-    })
-    
-    if (!this.anims.exists('idle-up')) {
-      this.anims.create({
-        key: 'idle-up',
-        frames: this.anims.generateFrameNumbers('playerIdle', { start: 6, end: 6 }),
-        frameRate: 1,
-        repeat: 0
-      })
-    }
-    
-    this.anims.create({
-      key: 'idle-side',
-      frames: this.anims.generateFrameNumbers('playerIdle', { start: 12, end: 12 }),
-      frameRate: 1,
-      repeat: 0
     })
   }
 
@@ -283,12 +310,92 @@ export default class MainScene extends Scene {
     }
   }
 
+  private updateNPCs() {
+    const time = this.time.now
+    
+    this.npcs.forEach(npc => {
+      // Update movement timer
+      if (time > npc.moveTimer) {
+        if (npc.isMoving) {
+          // Stop moving and set pause timer
+          npc.isMoving = false
+          npc.sprite.setVelocity(0)
+          npc.moveTimer = time + Phaser.Math.Between(npc.pauseTimeMin, npc.pauseTimeMax)
+          
+          // Set the correct idle frame based on direction
+          switch (npc.lastDirection) {
+            case 'up':
+              npc.sprite.setTexture('playerIdle', 6)
+              break
+            case 'down':
+              npc.sprite.setTexture('playerIdle', 0)
+              break
+            case 'side':
+              npc.sprite.setTexture('playerIdle', 12)
+              break
+          }
+        } else {
+          // Start moving in a random direction
+          npc.isMoving = true
+          const directions = ['up', 'down', 'left', 'right']
+          npc.targetDirection = directions[Phaser.Math.Between(0, 3)]
+          npc.moveTimer = time + Phaser.Math.Between(npc.moveTimeMin, npc.moveTimeMax)
+          
+          // Set velocity and animation based on direction
+          switch (npc.targetDirection) {
+            case 'up':
+              npc.sprite.setVelocity(0, -npc.speed)
+              if (this.anims.exists('walk-up')) {
+                npc.sprite.play('walk-up', true)
+              } else {
+                npc.sprite.setTexture('playerWalk', 6)
+              }
+              npc.lastDirection = 'up'
+              break
+            case 'down':
+              npc.sprite.setVelocity(0, npc.speed)
+              if (this.anims.exists('walk-down')) {
+                npc.sprite.play('walk-down', true)
+              } else {
+                npc.sprite.setTexture('playerWalk', 0)
+              }
+              npc.lastDirection = 'down'
+              break
+            case 'left':
+              npc.sprite.setVelocity(-npc.speed, 0)
+              npc.sprite.setFlipX(true)
+              if (this.anims.exists('walk-side')) {
+                npc.sprite.play('walk-side', true)
+              } else {
+                npc.sprite.setTexture('playerWalk', 12)
+              }
+              npc.lastDirection = 'side'
+              break
+            case 'right':
+              npc.sprite.setVelocity(npc.speed, 0)
+              npc.sprite.setFlipX(false)
+              if (this.anims.exists('walk-side')) {
+                npc.sprite.play('walk-side', true)
+              } else {
+                npc.sprite.setTexture('playerWalk', 12)
+              }
+              npc.lastDirection = 'side'
+              break
+          }
+        }
+      }
+    })
+  }
+
   // Camera and utility methods
   private setupCamera() {
     this.cameras.main.startFollow(this.player)
     this.cameras.main.setZoom(2)
     this.cameras.main.roundPixels = true
-    this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels)
+    
+    // Set camera bounds to match the physics world
+    const bounds = this.physics.world.bounds
+    this.cameras.main.setBounds(bounds.x, bounds.y, bounds.width, bounds.height)
   }
   
   private handleResize() {
