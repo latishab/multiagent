@@ -194,7 +194,7 @@
         {
          "columns":24,
          "firstgid":1,
-         "image":"Multiple agents\/Map\/R2005071\/CyberPop Vexed RPG Maker MV\/Low-TownA5.png",
+         "image":"public/assets/tilesets/Low-TownA5.png",
          "imageheight":768,
          "imagewidth":384,
          "margin":0,
@@ -6477,7 +6477,7 @@
         {
          "columns":24,
          "firstgid":1153,
-         "image":"Multiple agents\/Map\/R2005071\/CyberPop Vexed RPG Maker MV\/Mid-TownA5.png",
+         "image":"public/assets/tilesets/Mid-TownA5.png",
          "imageheight":768,
          "imagewidth":384,
          "margin":0,
@@ -12877,7 +12877,7 @@
         {
          "columns":48,
          "firstgid":2305,
-         "image":"Multiple agents\/Map\/R2005071\/CyberPop Vexed RPG Maker MV\/Low-TownD.png",
+         "image":"public/assets/tilesets/Low-TownD.png",
          "imageheight":768,
          "imagewidth":768,
          "margin":0,
@@ -16494,7 +16494,7 @@
         {
          "columns":48,
          "firstgid":4609,
-         "image":"Multiple agents\/Map\/R2005071\/CyberPop Vexed RPG Maker MV\/Low-TownC.png",
+         "image":"public/assets/tilesets/Low-TownC.png",
          "imageheight":768,
          "imagewidth":768,
          "margin":0,
@@ -29795,7 +29795,7 @@
         {
          "columns":24,
          "firstgid":6913,
-         "image":"Multiple agents\/Map\/apartmentTILESdemo (1)\/upsized png\/apartmentA5demo.png",
+         "image":"public/assets/tilesets/apartmentA5demo.png",
          "imageheight":768,
          "imagewidth":384,
          "margin":0,
@@ -34132,7 +34132,7 @@
         {
          "columns":32,
          "firstgid":8065,
-         "image":"Multiple agents\/Map\/Modern_Interiors_Free_v2.2\/Modern tiles_Free\/Interiors_free\/32x32\/Interiors_free_32x32.png",
+         "image":"public/assets/tilesets/Interiors_free_32x32.png",
          "imageheight":2848,
          "imagewidth":512,
          "margin":0,
@@ -85457,7 +85457,7 @@
         {
          "columns":48,
          "firstgid":13761,
-         "image":"Multiple agents\/Map\/R2005071\/CyberPop Vexed RPG Maker MV\/Mid-TownD.png",
+         "image":"public/assets/tilesets/Mid-TownD.png",
          "imageheight":768,
          "imagewidth":768,
          "margin":0,
@@ -85470,7 +85470,7 @@
         {
          "columns":48,
          "firstgid":16065,
-         "image":"Multiple agents\/Map\/R2005071\/CyberPop Vexed RPG Maker MV\/Mid-TownC.png",
+         "image":"public/assets/tilesets/Mid-TownC.png",
          "imageheight":768,
          "imagewidth":768,
          "margin":0,
