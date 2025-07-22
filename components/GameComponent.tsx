@@ -1,37 +1,42 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { Game } from 'phaser'
 import { gameConfig } from '../game/gameConfig'
-import UIOverlay from './UIOverlay'
 
 export default function GameComponent() {
-  const gameRef = useRef<HTMLDivElement>(null)
-  const phaserGameRef = useRef<Game | null>(null)
-  const [gameInstance, setGameInstance] = useState<Game | null>(null)
+  const gameRef = useRef<Game | null>(null)
 
   useEffect(() => {
-    if (gameRef.current && !phaserGameRef.current) {
+    if (!gameRef.current) {
       const config = {
         ...gameConfig,
-        parent: gameRef.current,
+        parent: 'game-container',
+        dom: {
+          createContainer: true
+        }
       }
-      
+
       const game = new Game(config)
-      phaserGameRef.current = game
-      setGameInstance(game)
+      gameRef.current = game
+      ;(window as any).game = game
     }
 
     return () => {
-      if (phaserGameRef.current) {
-        phaserGameRef.current.destroy(true)
-        phaserGameRef.current = null
+      if (gameRef.current) {
+        gameRef.current.destroy(true)
+        gameRef.current = null
+        delete (window as any).game
       }
     }
   }, [])
 
   return (
-    <div className="game-container">
-      <div ref={gameRef} />
-      {gameInstance && <UIOverlay gameInstance={gameInstance} />}
-    </div>
+    <div 
+      id="game-container" 
+      className="w-full h-full"
+      style={{
+        position: 'relative',
+        zIndex: 0
+      }}
+    />
   )
 } 
