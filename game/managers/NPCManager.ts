@@ -9,6 +9,39 @@ export class NPCManager {
   private chatCallback?: (npcId: number, personality: string) => void
   private currentInteractableNPC: NPC | null = null
   private interactionText: Phaser.GameObjects.Text | null = null
+  
+  private readonly npcConfigs = [
+    {
+      id: 1,
+      personality: "A retired ecologist with a deep understanding of natural systems",
+      name: "Mrs. Aria"
+    },
+    {
+      id: 2,
+      personality: "A pragmatic infrastructure engineer focused on system stability",
+      name: "Chief Oskar"
+    },
+    {
+      id: 3,
+      personality: "A forward-thinking fuel supplier interested in sustainable options",
+      name: "Mr. Moss"
+    },
+    {
+      id: 4,
+      personality: "A passionate teacher advocating for community-focused development",
+      name: "Miss Dai"
+    },
+    {
+      id: 5,
+      personality: "A determined water justice activist fighting for equal access",
+      name: "Ms. Kira"
+    },
+    {
+      id: 6,
+      personality: "An innovative builder exploring eco-friendly construction methods",
+      name: "Mr. Han"
+    }
+  ];
 
   constructor(scene: Scene) {
     this.scene = scene
@@ -180,8 +213,10 @@ export class NPCManager {
         6: "An innovative builder exploring eco-friendly construction methods. Balances modern technology with environmental consciousness."
       }
 
+      const npcConfig = this.npcConfigs[this.currentInteractableNPC.id - 1];
       console.log('Found interactable NPC:', {
         id: this.currentInteractableNPC.id,
+        name: npcConfig.name,
         personality: npcData[this.currentInteractableNPC.id as keyof typeof npcData] || this.currentInteractableNPC.personality
       })
       
@@ -189,7 +224,10 @@ export class NPCManager {
       this.currentInteractableNPC.sprite.setVelocity(0)
 
       if (this.chatCallback) {
-        console.log('Calling chat callback...')
+        console.log('Calling chat callback with NPC:', {
+          id: this.currentInteractableNPC.id,
+          name: npcConfig.name
+        })
         this.chatCallback(
           this.currentInteractableNPC.id,
           npcData[this.currentInteractableNPC.id as keyof typeof npcData] || this.currentInteractableNPC.personality
@@ -331,39 +369,6 @@ export class NPCManager {
 
   spawnNPCsInCircle(mapWidth: number, mapHeight: number, levelLayer: Phaser.Tilemaps.TilemapLayer, player: Phaser.Physics.Arcade.Sprite) {
     const margin = 200
-    const npcConfigs = [
-      {
-        id: 1,
-        personality: "A retired ecologist with a deep understanding of natural systems",
-        name: "Mrs. Aria"
-      },
-      {
-        id: 2,
-        personality: "A pragmatic infrastructure engineer focused on system stability",
-        name: "Chief Oskar"
-      },
-      {
-        id: 3,
-        personality: "A forward-thinking fuel supplier interested in sustainable options",
-        name: "Mr. Moss"
-      },
-      {
-        id: 4,
-        personality: "A passionate teacher advocating for community-focused development",
-        name: "Miss Dai"
-      },
-      {
-        id: 5,
-        personality: "A determined water justice activist fighting for equal access",
-        name: "Ms. Kira"
-      },
-      {
-        id: 6,
-        personality: "An innovative builder exploring eco-friendly construction methods",
-        name: "Mr. Han"
-      }
-    ]
-    
     const positions = [
       { x: margin, y: margin },
       { x: mapWidth - margin, y: margin },
@@ -374,7 +379,7 @@ export class NPCManager {
     ]
     
     positions.forEach((pos, index) => {
-      const npcConfig = npcConfigs[index]
+      const npcConfig = this.npcConfigs[index]
       this.createNPC({
         id: npcConfig.id,
         x: pos.x,
