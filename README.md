@@ -15,9 +15,10 @@ cd multiagent
 npm install
 ```
 
-3. Create a `.env` file in the root directory and add your OpenRouter API key:
+3. Create a `.env` file in the root directory and add your API keys:
 ```
 OPENROUTER_API_KEY=your-api-key-here
+PINECONE_API_KEY=your-pinecone-api-key-here
 ```
 
 4. Start the development server:
@@ -99,6 +100,7 @@ multiagent/
 │   └── api/           # Backend API routes
 ├── public/            # Static assets
 │   └── assets/        # Game assets
+├── utils/             # Utility functions
 └── styles/            # CSS styles
 ```
 
@@ -106,6 +108,7 @@ multiagent/
 - Next.js for the web framework
 - Phaser for game engine
 - OpenRouter API for NPC conversations
+- Pinecone for vector embeddings
 - TypeScript for type safety
 - Tailwind CSS for styling
 
