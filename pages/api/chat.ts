@@ -1,7 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next'
+import { vectorStore } from '../../utils/vectorStore'
 
 if (!process.env.OPENROUTER_API_KEY) {
   throw new Error('Missing OPENROUTER_API_KEY environment variable')
+}
+
+if (!process.env.PINECONE_API_KEY) {
+  throw new Error('Missing PINECONE_API_KEY environment variable')
 }
 
 interface NPCOptions {
@@ -21,6 +26,22 @@ interface NPCInfo {
 
 type NPCDatabase = {
   [key: number]: NPCInfo;
+}
+
+interface Message {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+interface PineconeMatch {
+  id: string;
+  score: number;
+  text: string;
+  metadata: {
+    npcId: number;
+    round: number;
+    type: 'user_message' | 'assistant_response';
+  };
 }
 
 // NPC personality and system data
@@ -130,12 +151,62 @@ export default async function handler(
       })
     }
 
+    // Get conversation history
+    const history = vectorStore.getConversationHistory(npcId, round);
+
+    // Add system prompt to history if it's empty
+    if (history.length === 0) {
+      const systemPrompt = getRoundPrompt(round, npc, isSustainable);
+      vectorStore.addToConversationHistory(npcId, round, {
+        role: 'system',
+        content: systemPrompt
+      });
+    }
+
+    // Add user message to history
+    vectorStore.addToConversationHistory(npcId, round, {
+      role: 'user',
+      content: message
+    });
+
+    // Get updated history
+    const updatedHistory = vectorStore.getConversationHistory(npcId, round);
+
+    // Store the message in Pinecone
+    const messageId = `${npcId}_${round}_${Date.now()}`;
+    await vectorStore.storeMemory(messageId, message, {
+      npcId,
+      round,
+      type: 'user_message'
+    });
+
+    // Find similar past conversations for this specific NPC
+    const similarMessages = await vectorStore.querySimilar(message, npcId, 3) as PineconeMatch[];
+    
+    // relevant context from similar conversations if available
+    let contextPrompt = '';
+    if (similarMessages && similarMessages.length > 0) {
+      contextPrompt = `\nRelevant context from your previous conversations:\n${
+        similarMessages
+          .map((match: PineconeMatch) => match.text)
+          .join('\n')
+      }`;
+    }
+
+    // context to the last system message if it exists
+    const systemMessages = updatedHistory.filter((msg: Message) => msg.role === 'system');
+    const lastSystemMessage = systemMessages[systemMessages.length - 1];
+    if (lastSystemMessage && contextPrompt) {
+      lastSystemMessage.content += contextPrompt;
+    }
+
     console.log('Sending request to OpenRouter:', {
       model: 'qwen/qwen3-235b-a22b-07-25:free',
       npcId,
       npcName: npc.name,
       round,
-      message: message.slice(0, 50) + '...'
+      message: message.slice(0, 50) + '...',
+      hasContext: contextPrompt.length > 0
     })
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -148,16 +219,7 @@ export default async function handler(
       },
       body: JSON.stringify({
         model: 'qwen/qwen3-235b-a22b-07-25:free',
-        messages: [
-          {
-            role: 'system',
-            content: getRoundPrompt(round, npc, isSustainable)
-          },
-          {
-            role: 'user',
-            content: message
-          }
-        ],
+        messages: updatedHistory,
         temperature: 0.7,
         max_tokens: 80,
         top_p: 1,
@@ -178,6 +240,20 @@ export default async function handler(
       console.error('Invalid API response format:', data)
       throw new Error('Invalid response format from API')
     }
+
+    // Store the AI response in Pinecone
+    const responseId = `${npcId}_${round}_${Date.now()}_response`;
+    await vectorStore.storeMemory(responseId, aiResponse, {
+      npcId,
+      round,
+      type: 'assistant_response'
+    });
+
+    // Add assistant response to history
+    vectorStore.addToConversationHistory(npcId, round, {
+      role: 'assistant',
+      content: aiResponse
+    });
 
     // Set CORS headers for the response
     res.setHeader('Access-Control-Allow-Origin', '*')
