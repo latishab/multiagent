@@ -18,10 +18,14 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     isOpen: boolean
     npcId: number
     personality: string
+    round: number
+    isSustainable: boolean
   }>({
     isOpen: false,
     npcId: -1,
-    personality: ''
+    personality: '',
+    round: 1,
+    isSustainable: true
   })
 
   // Function to be called from the game to open chat
@@ -29,7 +33,9 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     setChatState({
       isOpen: true,
       npcId,
-      personality
+      personality,
+      round: chatState.round,
+      isSustainable: chatState.isSustainable
     })
   }
 
@@ -41,6 +47,26 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     }))
     // Notify the game that chat is closed
     window.dispatchEvent(new CustomEvent('chatClosed', { detail: { npcId: chatState.npcId } }))
+  }
+
+  // Handle round changes
+  const handleRoundChange = (round: number) => {
+    setChatState(prev => ({
+      ...prev,
+      round,
+      // Reset messages when changing rounds
+      messages: []
+    }))
+  }
+
+  // Handle stance changes
+  const handleStanceChange = (isProSustainable: boolean) => {
+    setChatState(prev => ({
+      ...prev,
+      isSustainable: isProSustainable,
+      // Reset messages when changing stance
+      messages: []
+    }))
   }
 
   // Handle keyboard input for hotbar selection
@@ -154,7 +180,11 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         isOpen={chatState.isOpen}
         npcId={chatState.npcId}
         personality={chatState.personality}
+        round={chatState.round}
+        isSustainable={chatState.isSustainable}
         onClose={closeChat}
+        onRoundChange={handleRoundChange}
+        onStanceChange={handleStanceChange}
       />
 
       <style jsx>{`

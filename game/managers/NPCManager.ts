@@ -171,9 +171,18 @@ export class NPCManager {
 
     console.log('E key pressed, checking for NPC interactions...')
     if (this.currentInteractableNPC) {
+      const npcData = {
+        1: "A retired ecologist who prioritizes ecological restoration and believes in working with nature. Speaks slowly and gently, often referring to natural laws and past experiences.",
+        2: "A pragmatic infrastructure engineer who prioritizes system stability and efficiency. Speaks in technical terms and focuses on data-driven solutions.",
+        3: "A forward-thinking fuel supplier balancing sustainability with practicality. Interested in innovative solutions while acknowledging economic realities.",
+        4: "A passionate teacher advocating for community-focused development. Emphasizes education and sustainable urban planning.",
+        5: "A determined water justice activist fighting for equal access. Focuses on fair distribution and community empowerment.",
+        6: "An innovative builder exploring eco-friendly construction methods. Balances modern technology with environmental consciousness."
+      }
+
       console.log('Found interactable NPC:', {
         id: this.currentInteractableNPC.id,
-        personality: this.currentInteractableNPC.personality
+        personality: npcData[this.currentInteractableNPC.id as keyof typeof npcData] || this.currentInteractableNPC.personality
       })
       
       this.currentInteractableNPC.isInteracting = true
@@ -183,7 +192,7 @@ export class NPCManager {
         console.log('Calling chat callback...')
         this.chatCallback(
           this.currentInteractableNPC.id,
-          this.currentInteractableNPC.personality
+          npcData[this.currentInteractableNPC.id as keyof typeof npcData] || this.currentInteractableNPC.personality
         )
       } else {
         console.warn('No chat callback registered!')
@@ -322,13 +331,37 @@ export class NPCManager {
 
   spawnNPCsInCircle(mapWidth: number, mapHeight: number, levelLayer: Phaser.Tilemaps.TilemapLayer, player: Phaser.Physics.Arcade.Sprite) {
     const margin = 200
-    const personalities = [
-      "A friendly shopkeeper who loves to chat about local gossip",
-      "A mysterious wanderer with cryptic knowledge of ancient artifacts",
-      "A cheerful street musician who shares stories through songs",
-      "A grumpy old wizard who reluctantly helps adventurers",
-      "A young apprentice blacksmith eager to prove their skills",
-      "A retired adventurer with tales of epic quests"
+    const npcConfigs = [
+      {
+        id: 1,
+        personality: "A retired ecologist with a deep understanding of natural systems",
+        name: "Mrs. Aria"
+      },
+      {
+        id: 2,
+        personality: "A pragmatic infrastructure engineer focused on system stability",
+        name: "Chief Oskar"
+      },
+      {
+        id: 3,
+        personality: "A forward-thinking fuel supplier interested in sustainable options",
+        name: "Mr. Moss"
+      },
+      {
+        id: 4,
+        personality: "A passionate teacher advocating for community-focused development",
+        name: "Miss Dai"
+      },
+      {
+        id: 5,
+        personality: "A determined water justice activist fighting for equal access",
+        name: "Ms. Kira"
+      },
+      {
+        id: 6,
+        personality: "An innovative builder exploring eco-friendly construction methods",
+        name: "Mr. Han"
+      }
     ]
     
     const positions = [
@@ -341,11 +374,12 @@ export class NPCManager {
     ]
     
     positions.forEach((pos, index) => {
+      const npcConfig = npcConfigs[index]
       this.createNPC({
-        id: index,
+        id: npcConfig.id,
         x: pos.x,
         y: pos.y,
-        personality: personalities[index]
+        personality: npcConfig.personality
       })
     })
   }

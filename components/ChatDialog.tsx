@@ -1,13 +1,35 @@
 import React, { useState, useRef, useEffect } from 'react'
 
 interface ChatDialogProps {
-  isOpen: boolean
-  npcId: number
-  personality: string
-  onClose: () => void
+  isOpen: boolean;
+  npcId: number;
+  personality: string;
+  round: number;
+  isSustainable?: boolean;
+  onClose: () => void;
+  onRoundChange: (round: number) => void;
+  onStanceChange: (isProSustainable: boolean) => void;
 }
 
-export default function ChatDialog({ isOpen, npcId, personality, onClose }: ChatDialogProps) {
+const NPCNames: { [key: number]: string } = {
+  1: 'Mrs. Aria',
+  2: 'Chief Oskar',
+  3: 'Mr. Moss',
+  4: 'Miss Dai',
+  5: 'Ms. Kira',
+  6: 'Mr. Han'
+}
+
+export default function ChatDialog({ 
+  isOpen, 
+  npcId, 
+  personality, 
+  round, 
+  isSustainable = true,
+  onClose,
+  onRoundChange,
+  onStanceChange
+}: ChatDialogProps) {
   const [messages, setMessages] = useState<Array<{ text: string, sender: 'player' | 'npc' }>>([])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -44,31 +66,56 @@ export default function ChatDialog({ isOpen, npcId, personality, onClose }: Chat
     setMessages(prev => [...prev, { text: userMessage, sender: 'player' }])
     setIsLoading(true)
 
+    const requestData = {
+      message: userMessage,
+      npcId,
+      round,
+      isSustainable
+    }
+
+    console.log('Sending chat request:', requestData)
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          message: userMessage,
-          npcId,
-          npcPersonality: personality,
-        }),
+        body: JSON.stringify(requestData),
       })
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to get response from NPC')
+        console.error('API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: errorData
+        })
+        throw new Error(errorData.error || errorData.message || 'Failed to get response from NPC')
       }
 
       const data = await response.json()
+      console.log('API Success Response:', data)
+
       if (data.response) {
-        setMessages(prev => [...prev, { text: data.response, sender: 'npc' }])
+        // Split response into sentences and add delay between each
+        const sentences = data.response
+          .split(/(?<=[.!?])\s+/)
+          .filter((s: string) => s.trim().length > 0)
+        
+        // Add each sentence as a separate message with a small delay
+        for (let i = 0; i < sentences.length; i++) {
+          await new Promise(resolve => setTimeout(resolve, 500 * (i + 1)))
+          setMessages(prev => [...prev, { 
+            text: sentences[i].trim(), 
+            sender: 'npc' 
+          }])
+        }
       } else {
         throw new Error('Invalid response format from API')
       }
     } catch (error: any) {
+      console.error('Full error details:', error)
       setMessages(prev => [...prev, { 
         text: "I apologize, but I'm having trouble responding right now. Perhaps we could continue our conversation later?", 
         sender: 'npc' 
@@ -76,7 +123,6 @@ export default function ChatDialog({ isOpen, npcId, personality, onClose }: Chat
       console.error('Chat error:', error.message)
     } finally {
       setIsLoading(false)
-      // Refocus input after sending message
       if (inputRef.current) {
         inputRef.current.focus()
       }
@@ -104,6 +150,13 @@ export default function ChatDialog({ isOpen, npcId, personality, onClose }: Chat
     }
   }, [isOpen])
 
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages])
+
   if (!isOpen) {
     return null
   }
@@ -113,22 +166,75 @@ export default function ChatDialog({ isOpen, npcId, personality, onClose }: Chat
       {/* Chat Dialog */}
       <div className="chat-dialog" onKeyDown={handleKeyDown}>
         <div className="chat-container">
+          {/* Round Selector */}
+          <div className="round-selector">
+            <div className="round-tabs">
+              <button 
+                className={`round-tab ${round === 1 ? 'active' : ''}`}
+                onClick={() => onRoundChange(1)}
+              >
+                Round 1
+                <span className="round-desc">Introduction</span>
+              </button>
+              <button 
+                className={`round-tab ${round === 2 ? 'active' : ''}`}
+                onClick={() => onRoundChange(2)}
+              >
+                Round 2
+                <span className="round-desc">Options</span>
+              </button>
+              <button 
+                className={`round-tab ${round === 3 ? 'active' : ''}`}
+                onClick={() => onRoundChange(3)}
+              >
+                Round 3
+                <span className="round-desc">
+                  {isSustainable ? 'Pro-Sustainable' : 'Anti-Sustainable'}
+                </span>
+              </button>
+              {round === 3 && (
+                <button 
+                  className="stance-toggle"
+                  onClick={() => onStanceChange(!isSustainable)}
+                >
+                  {isSustainable ? '🌱' : '💰'}
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Header */}
           <div className="chat-header">
-            <h2>Chat with NPC</h2>
+            <h2>Chat with {npcId ? NPCNames[npcId] || 'NPC' : 'NPC'}</h2>
             <button onClick={onClose} className="close-button">✕</button>
           </div>
 
           {/* Messages */}
           <div className="messages-container">
             {messages.map((message, index) => (
-              <div key={index} className={`message ${message.sender}`}>
+              <div
+                key={index}
+                className={`message ${message.sender}`}
+                style={{ 
+                  animationDelay: `${index * 0.1}s`,
+                  opacity: isLoading && index === messages.length - 1 ? 0.5 : 1
+                }}
+              >
                 <div className="message-content">
                   {message.text}
                 </div>
               </div>
             ))}
             <div ref={messagesEndRef} />
+            {isLoading && (
+              <div className="message npc">
+                <div className="message-content typing-indicator">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Input */}
@@ -217,7 +323,7 @@ export default function ChatDialog({ isOpen, npcId, personality, onClose }: Chat
           padding: 20px;
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 8px;
           scrollbar-width: thin;
           scrollbar-color: #4b5563 #1f2937;
           min-height: 0;
@@ -238,7 +344,14 @@ export default function ChatDialog({ isOpen, npcId, personality, onClose }: Chat
 
         .message {
           display: flex;
-          margin-bottom: 12px;
+          margin-bottom: 4px;
+          animation: fadeIn 0.3s ease-out forwards;
+          opacity: 0;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
 
         .message.player {
@@ -251,8 +364,8 @@ export default function ChatDialog({ isOpen, npcId, personality, onClose }: Chat
 
         .message-content {
           max-width: 80%;
-          padding: 12px 20px;
-          border-radius: 20px;
+          padding: 8px 16px;
+          border-radius: 16px;
           color: #ffffff;
           word-break: break-word;
           font-size: 16px;
@@ -267,6 +380,32 @@ export default function ChatDialog({ isOpen, npcId, personality, onClose }: Chat
         .npc .message-content {
           background-color: #4b5563;
           border-bottom-left-radius: 4px;
+        }
+
+        .typing-indicator {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 12px 16px;
+          min-width: 60px;
+        }
+
+        .typing-indicator span {
+          width: 8px;
+          height: 8px;
+          background: #ffffff;
+          border-radius: 50%;
+          animation: bounce 1.4s infinite ease-in-out;
+          opacity: 0.6;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: 0s; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+          0%, 80%, 100% { transform: translateY(0); }
+          40% { transform: translateY(-6px); }
         }
 
         .chat-input {
@@ -332,6 +471,65 @@ export default function ChatDialog({ isOpen, npcId, personality, onClose }: Chat
 
         .input-container button.loading {
           background-color: #4b5563;
+        }
+
+        .round-selector {
+          background-color: rgba(17, 24, 39, 0.95);
+          border-bottom: 2px solid #374151;
+          padding: 10px 20px;
+          flex-shrink: 0;
+        }
+
+        .round-tabs {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+        }
+
+        .round-tab {
+          background: rgba(55, 65, 81, 0.5);
+          border: 1px solid #4B5563;
+          border-radius: 8px;
+          color: #9CA3AF;
+          padding: 8px 16px;
+          font-size: 14px;
+          cursor: pointer;
+          transition: all 0.2s;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .round-tab:hover {
+          background: rgba(55, 65, 81, 0.8);
+          border-color: #6B7280;
+        }
+
+        .round-tab.active {
+          background: #2563EB;
+          border-color: #3B82F6;
+          color: white;
+        }
+
+        .round-desc {
+          font-size: 12px;
+          opacity: 0.8;
+        }
+
+        .stance-toggle {
+          background: transparent;
+          border: none;
+          font-size: 24px;
+          cursor: pointer;
+          padding: 8px;
+          border-radius: 8px;
+          transition: all 0.2s;
+          margin-left: auto;
+        }
+
+        .stance-toggle:hover {
+          background: rgba(55, 65, 81, 0.5);
         }
       `}</style>
     </>
