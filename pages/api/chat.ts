@@ -99,6 +99,102 @@ const NPCData: NPCDatabase = {
   }
 }
 
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    return res.status(200).end()
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' })
+  }
+
+  try {
+    const { message, npcId, round, isSustainable = true } = req.body
+
+    if (!message || !npcId || !round) {
+      return res.status(400).json({ message: 'Missing required fields' })
+    }
+
+    const npc = NPCData[npcId]
+    if (!npc) {
+      return res.status(400).json({ 
+        message: 'Invalid NPC ID', 
+        details: `NPC ID ${npcId} not found. Available NPCs: ${Object.keys(NPCData).join(', ')}`
+      })
+    }
+
+    console.log('Sending request to OpenRouter:', {
+      model: 'qwen/qwen3-235b-a22b-07-25:free',
+      npcId,
+      npcName: npc.name,
+      round,
+      message: message.slice(0, 50) + '...'
+    })
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'HTTP-Referer': process.env.VERCEL_URL || 'http://localhost:3000',
+        'X-Title': 'Game NPC Chat'
+      },
+      body: JSON.stringify({
+        model: 'qwen/qwen3-235b-a22b-07-25:free',
+        messages: [
+          {
+            role: 'system',
+            content: getRoundPrompt(round, npc, isSustainable)
+          },
+          {
+            role: 'user',
+            content: message
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 80,
+        top_p: 1,
+        frequency_penalty: 0.5,
+        presence_penalty: 0.5
+      })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error?.message || 'Failed to get response from OpenRouter')
+    }
+
+    const data = await response.json()
+    const aiResponse = data.choices?.[0]?.message?.content
+    
+    if (!aiResponse) {
+      console.error('Invalid API response format:', data)
+      throw new Error('Invalid response format from API')
+    }
+
+    // Set CORS headers for the response
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+
+    return res.status(200).json({ response: aiResponse })
+  } catch (error: any) {
+    console.error('Error in chat API:', error)
+    return res.status(500).json({ 
+      message: 'Internal server error',
+      error: error.message || 'Unknown error',
+      details: error.toString()
+    })
+  }
+}
+
 const getRoundPrompt = (round: number, npc: NPCInfo, isSustainable: boolean = true) => {
   const basePrompt = `You are ${npc.name}, a ${npc.career} in charge of the city's ${npc.system} system.
 
@@ -143,87 +239,4 @@ ROUND 3 RULES:
   }
 
   return roundPrompts[round as keyof typeof roundPrompts]
-}
-
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' })
-  }
-
-  try {
-    const { message, npcId, round, isSustainable = true } = req.body
-
-    if (!message || !npcId || !round) {
-      return res.status(400).json({ message: 'Missing required fields' })
-    }
-
-    const npc = NPCData[npcId]
-    if (!npc) {
-      return res.status(400).json({ 
-        message: 'Invalid NPC ID', 
-        details: `NPC ID ${npcId} not found. Available NPCs: ${Object.keys(NPCData).join(', ')}`
-      })
-    }
-
-    console.log('Sending request to OpenRouter:', {
-      model: 'qwen/qwen3-235b-a22b-07-25:free',
-      npcId,
-      npcName: npc.name,
-      round,
-      message: message.slice(0, 50) + '...'
-    })
-
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'HTTP-Referer': 'http://localhost:3000',
-        'X-Title': 'Game NPC Chat'
-      },
-      body: JSON.stringify({
-        model: 'qwen/qwen3-235b-a22b-07-25:free',
-        messages: [
-          {
-            role: 'system',
-            content: getRoundPrompt(round, npc, isSustainable)
-          },
-          {
-            role: 'user',
-            content: message
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 80,
-        top_p: 1,
-        frequency_penalty: 0.5,
-        presence_penalty: 0.5
-      })
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error?.message || 'Failed to get response from OpenRouter')
-    }
-
-    const data = await response.json()
-    const aiResponse = data.choices?.[0]?.message?.content
-    
-    if (!aiResponse) {
-      console.error('Invalid API response format:', data)
-      throw new Error('Invalid response format from API')
-    }
-
-    return res.status(200).json({ response: aiResponse })
-  } catch (error: any) {
-    console.error('Error in chat API:', error)
-    return res.status(500).json({ 
-      message: 'Internal server error',
-      error: error.message || 'Unknown error',
-      details: error.toString()
-    })
-  }
 } 
