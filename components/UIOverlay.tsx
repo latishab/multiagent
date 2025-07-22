@@ -3,10 +3,11 @@ import { Game } from 'phaser'
 import ChatDialog from './ChatDialog'
 
 interface UIOverlayProps {
-  gameInstance: Game
+  gameInstance: Game | null
 }
 
-export default function UIOverlay({ gameInstance }: UIOverlayProps) {
+export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverlayProps) {
+  const [gameInstance, setGameInstance] = useState<Game | null>(initialGameInstance)
   const [selectedSlot, setSelectedSlot] = useState(0)
   const [inventoryOpen, setInventoryOpen] = useState(false)
   const [inventory, setInventory] = useState<Array<string | null>>(
@@ -64,8 +65,9 @@ export default function UIOverlay({ gameInstance }: UIOverlayProps) {
 
   // Communicate selected slot to game
   useEffect(() => {
-    if (gameInstance?.scene?.scenes?.[0]) {
-      const scene = gameInstance.scene.scenes[0] as any
+    const game = gameInstance || (window as any).game
+    if (game?.scene?.scenes?.[0]) {
+      const scene = game.scene.scenes[0] as any
       if (scene.setSelectedSlot) {
         scene.setSelectedSlot(selectedSlot)
       }
@@ -74,57 +76,78 @@ export default function UIOverlay({ gameInstance }: UIOverlayProps) {
 
   // Expose functions to the window object
   useEffect(() => {
-    (window as any).openChat = openChat
-
+    ;(window as any).openChat = openChat
     return () => {
       delete (window as any).openChat
     }
   }, [])
 
+  // Ensure openChat is always available
+  useEffect(() => {
+    const checkInterval = setInterval(() => {
+      if (typeof (window as any).openChat !== 'function') {
+        ;(window as any).openChat = openChat
+      }
+    }, 1000)
+    return () => clearInterval(checkInterval)
+  }, [])
+
+  // Handle game instance updates
+  useEffect(() => {
+    if (!gameInstance) {
+      console.log('Looking for game instance in window...')
+      const game = (window as any).game
+      if (game) {
+        console.log('Found game instance, updating state')
+        setGameInstance(game)
+      } else {
+        console.log('No game instance found in window')
+      }
+    }
+  }, [gameInstance])
+
   return (
     <>
-      <div className="ui-overlay">
-        {/* Hotbar */}
-        <div className="hotbar">
-          {[0, 1, 2, 3, 4].map((index) => (
-            <div
-              key={index}
-              className={`hotbar-slot ${selectedSlot === index ? 'active' : ''}`}
-              onClick={() => setSelectedSlot(index)}
-            >
-              {index + 1}
-            </div>
-          ))}
-        </div>
-
-        {/* Inventory Button */}
-        <button
-          className="inventory-button"
-          onClick={() => setInventoryOpen(!inventoryOpen)}
-        >
-          Inventory (I)
-        </button>
-
-        {/* Inventory Modal */}
-        {inventoryOpen && (
-          <div className="inventory-modal">
-            <div className="inventory-header">Inventory</div>
-            <div className="inventory-grid">
-              {inventory.map((item, index) => (
-                <div key={index} className="inventory-slot">
-                  {item || ''}
-                </div>
-              ))}
-            </div>
-            <button
-              className="close-button"
-              onClick={() => setInventoryOpen(false)}
-            >
-              Close
-            </button>
+      {/* Hotbar */}
+      <div className="hotbar">
+        {[0, 1, 2, 3, 4].map((index) => (
+          <div
+            key={index}
+            className={`hotbar-slot ${selectedSlot === index ? 'active' : ''}`}
+            onClick={() => setSelectedSlot(index)}
+          >
+            {index + 1}
           </div>
-        )}
+        ))}
       </div>
+
+      {/* Inventory Button */}
+      <button
+        className="inventory-button"
+        onClick={() => setInventoryOpen(!inventoryOpen)}
+      >
+        Inventory (I)
+      </button>
+
+      {/* Inventory Modal */}
+      {inventoryOpen && (
+        <div className="inventory-modal">
+          <div className="inventory-header">Inventory</div>
+          <div className="inventory-grid">
+            {inventory.map((item, index) => (
+              <div key={index} className="inventory-slot">
+                {item || ''}
+              </div>
+            ))}
+          </div>
+          <button
+            className="close-button"
+            onClick={() => setInventoryOpen(false)}
+          >
+            Close
+          </button>
+        </div>
+      )}
 
       {/* Chat Dialog */}
       <ChatDialog
@@ -135,16 +158,6 @@ export default function UIOverlay({ gameInstance }: UIOverlayProps) {
       />
 
       <style jsx>{`
-        .ui-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          pointer-events: none;
-          z-index: 1000;
-        }
-
         .hotbar {
           position: fixed;
           bottom: 20px;
@@ -153,49 +166,50 @@ export default function UIOverlay({ gameInstance }: UIOverlayProps) {
           display: flex;
           gap: 8px;
           pointer-events: auto;
-          z-index: 1001;
+          z-index: 200;
         }
 
         .hotbar-slot {
-          width: 64px;
-          height: 64px;
-          background: rgba(0, 0, 0, 0.8);
+          width: 50px;
+          height: 50px;
+          background-color: rgba(0, 0, 0, 0.7);
           border: 2px solid #666;
-          border-radius: 8px;
           display: flex;
           align-items: center;
           justify-content: center;
           color: white;
-          font-weight: bold;
+          font-size: 18px;
           cursor: pointer;
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+          transition: all 0.2s;
         }
 
         .hotbar-slot:hover {
-          background: rgba(64, 64, 64, 0.9);
+          border-color: #999;
+          background-color: rgba(0, 0, 0, 0.8);
         }
 
         .hotbar-slot.active {
           border-color: #ffd700;
-          background: rgba(255, 215, 0, 0.3);
+          background-color: rgba(0, 0, 0, 0.9);
         }
 
         .inventory-button {
           position: fixed;
           top: 20px;
           right: 20px;
-          padding: 12px 16px;
-          background: rgba(0, 0, 0, 0.8);
+          padding: 8px 16px;
+          background-color: rgba(0, 0, 0, 0.7);
+          border: 2px solid #666;
           color: white;
-          border: none;
-          border-radius: 8px;
           cursor: pointer;
+          transition: all 0.2s;
           pointer-events: auto;
-          z-index: 1001;
+          z-index: 200;
         }
 
         .inventory-button:hover {
-          background: rgba(64, 64, 64, 0.9);
+          border-color: #999;
+          background-color: rgba(0, 0, 0, 0.8);
         }
 
         .inventory-modal {
@@ -203,57 +217,56 @@ export default function UIOverlay({ gameInstance }: UIOverlayProps) {
           top: 50%;
           left: 50%;
           transform: translate(-50%, -50%);
-          background: rgba(0, 0, 0, 0.9);
-          padding: 20px;
-          border-radius: 12px;
+          width: 600px;
+          background-color: rgba(0, 0, 0, 0.9);
           border: 2px solid #666;
+          padding: 20px;
           pointer-events: auto;
-          z-index: 1002;
+          z-index: 300;
         }
 
         .inventory-header {
           color: white;
-          font-size: 18px;
-          margin-bottom: 16px;
+          font-size: 24px;
+          margin-bottom: 20px;
           text-align: center;
         }
 
         .inventory-grid {
           display: grid;
           grid-template-columns: repeat(5, 1fr);
-          gap: 8px;
-          margin-bottom: 16px;
+          gap: 10px;
+          margin-bottom: 20px;
         }
 
         .inventory-slot {
-          width: 64px;
-          height: 64px;
-          background: rgba(64, 64, 64, 0.8);
-          border: 2px solid #666;
-          border-radius: 4px;
+          aspect-ratio: 1;
+          background-color: rgba(255, 255, 255, 0.1);
+          border: 1px solid #666;
           display: flex;
           align-items: center;
           justify-content: center;
           color: white;
-          cursor: pointer;
+          font-size: 14px;
         }
 
         .inventory-slot:hover {
-          background: rgba(96, 96, 96, 0.8);
+          background-color: rgba(255, 255, 255, 0.2);
         }
 
         .close-button {
+          display: block;
           width: 100%;
-          padding: 12px;
-          background: rgba(64, 64, 64, 0.8);
-          color: white;
+          padding: 10px;
+          background-color: #666;
           border: none;
-          border-radius: 8px;
+          color: white;
           cursor: pointer;
+          transition: background-color 0.2s;
         }
 
         .close-button:hover {
-          background: rgba(96, 96, 96, 0.8);
+          background-color: #999;
         }
       `}</style>
     </>

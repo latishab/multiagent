@@ -38,21 +38,21 @@ export class PlayerManager {
     
     this.scene.anims.create({
       key: 'idle-down',
-      frames: this.scene.anims.generateFrameNumbers('playerIdle', { start: 0, end: 0 }),
+      frames: [{ key: 'playerIdle', frame: 0 }],
       frameRate: 1,
       repeat: 0
     })
     
     this.scene.anims.create({
       key: 'idle-up',
-      frames: this.scene.anims.generateFrameNumbers('playerIdle', { start: 6, end: 6 }),
+      frames: [{ key: 'playerIdle', frame: 3 }],
       frameRate: 1,
       repeat: 0
     })
     
     this.scene.anims.create({
       key: 'idle-side',
-      frames: this.scene.anims.generateFrameNumbers('playerIdle', { start: 12, end: 12 }),
+      frames: [{ key: 'playerIdle', frame: 6 }],
       frameRate: 1,
       repeat: 0
     })
@@ -126,9 +126,14 @@ export class PlayerManager {
     
     try {
       if (this.scene.anims.exists(currentAnimation)) {
-        this.player.play(currentAnimation, true)
+        if (this.player.anims.currentAnim?.key !== currentAnimation) {
+          this.player.play(currentAnimation, true)
+        }
       } else {
-        this.player.play('idle-down', true)
+        console.warn(`Animation ${currentAnimation} does not exist, using fallback`)
+        if (this.player.anims.currentAnim?.key !== 'idle-down') {
+          this.player.play('idle-down', true)
+        }
       }
     } catch (error) {
       console.error('Error playing animation:', error)

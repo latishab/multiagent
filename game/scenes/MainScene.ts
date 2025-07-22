@@ -69,7 +69,7 @@ export default class MainScene extends Scene {
     // Setup NPC chat interaction
     this.npcManager.setInteractionCallback((npcId: number, personality: string) => {
       if (typeof window !== 'undefined' && (window as any).openChat) {
-        (window as any).openChat(npcId, personality)
+        ;(window as any).openChat(npcId, personality)
       }
     })
 
