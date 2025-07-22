@@ -30,23 +30,24 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
 
   // Function to be called from the game to open chat
   const openChat = (npcId: number, personality: string) => {
+    console.log('Opening chat with NPC:', { npcId, personality });
     setChatState({
       isOpen: true,
       npcId,
       personality,
       round: chatState.round,
       isSustainable: chatState.isSustainable
-    })
+    });
   }
 
   // Function to close chat
   const closeChat = () => {
+    console.log('Closing chat with NPC:', chatState.npcId);
     setChatState(prev => ({
       ...prev,
       isOpen: false
-    }))
-    // Notify the game that chat is closed
-    window.dispatchEvent(new CustomEvent('chatClosed', { detail: { npcId: chatState.npcId } }))
+    }));
+    window.dispatchEvent(new CustomEvent('chatClosed', { detail: { npcId: chatState.npcId } }));
   }
 
   // Handle round changes

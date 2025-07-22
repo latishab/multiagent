@@ -11,6 +11,15 @@ interface ChatDialogProps {
   onStanceChange: (isProSustainable: boolean) => void;
 }
 
+interface Message {
+  text: string;
+  sender: 'player' | 'npc';
+}
+
+interface MessageHistory {
+  [key: string]: Message[];
+}
+
 const NPCNames: { [key: number]: string } = {
   1: 'Mrs. Aria',
   2: 'Chief Oskar',
@@ -18,6 +27,27 @@ const NPCNames: { [key: number]: string } = {
   4: 'Miss Dai',
   5: 'Ms. Kira',
   6: 'Mr. Han'
+}
+
+// List of common titles that shouldn't be split
+const titles = ['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Prof.'];
+
+// Helper function to split text into sentences while preserving titles
+function splitIntoSentences(text: string): string[] {
+  // 1. temporarily replace periods in titles with a placeholder
+  let processedText = text;
+  titles.forEach(title => {
+    processedText = processedText.replace(new RegExp(title, 'g'), title.replace('.', '@@'));
+  });
+
+  // 2. split on sentence boundaries
+  const sentences = processedText
+    .split(/(?<=[.!?])\s+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0)
+    .map(s => s.replace(/@@/g, '.'));
+
+  return sentences;
 }
 
 export default function ChatDialog({ 
@@ -30,50 +60,91 @@ export default function ChatDialog({
   onRoundChange,
   onStanceChange
 }: ChatDialogProps) {
-  const [messages, setMessages] = useState<Array<{ text: string, sender: 'player' | 'npc' }>>([])
-  const [inputValue, setInputValue] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  // Keep message history per NPC and round
+  const [messageHistories, setMessageHistories] = useState<MessageHistory>({});
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Get current conversation key
+  const getConversationKey = (npcId: number, round: number) => `npc_${npcId}_round_${round}`;
+
+  // Load messages when NPC or round changes
+  useEffect(() => {
+    const key = getConversationKey(npcId, round);
+    const savedMessages = messageHistories[key] || [];
+    console.log('Loading messages for:', {
+      npcId,
+      npcName: NPCNames[npcId],
+      round,
+      messageCount: savedMessages.length
+    });
+    setMessages(savedMessages);
+  }, [npcId, round, messageHistories]);
+
+  // Log NPC info when props change
+  useEffect(() => {
+    console.log('ChatDialog props updated:', {
+      npcId,
+      npcName: NPCNames[npcId],
+      personality,
+      round,
+      isSustainable
+    });
+  }, [npcId, personality, round, isSustainable]);
 
   // Update global chat state
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      (window as any).isChatOpen = isOpen
+      (window as any).isChatOpen = isOpen;
     }
-  }, [isOpen])
+  }, [isOpen]);
 
   // Focus input when chat opens
   useEffect(() => {
     if (isOpen && inputRef.current) {
-      inputRef.current.focus()
+      inputRef.current.focus();
     }
-  }, [isOpen])
+  }, [isOpen]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages])
+  }, [messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!inputValue.trim() || isLoading) return
+    e.preventDefault();
+    if (!inputValue.trim() || isLoading) return;
 
-    const userMessage = inputValue.trim()
-    setInputValue('')
-    setMessages(prev => [...prev, { text: userMessage, sender: 'player' }])
-    setIsLoading(true)
+    const userMessage = inputValue.trim();
+    setInputValue('');
+    
+    // Add user message to current conversation
+    const newMessages: Message[] = [...messages, { text: userMessage, sender: 'player' }];
+    setMessages(newMessages);
+    
+    // Save to history
+    const key = getConversationKey(npcId, round);
+    setMessageHistories(prev => ({
+      ...prev,
+      [key]: newMessages
+    }));
+
+    setIsLoading(true);
 
     const requestData = {
       message: userMessage,
       npcId,
       round,
       isSustainable
-    }
+    };
 
-    console.log('Sending chat request:', requestData)
+    console.log('Sending chat request:', requestData);
 
     try {
       const response = await fetch('/api/chat', {
@@ -82,52 +153,67 @@ export default function ChatDialog({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestData),
-      })
+      });
 
       if (!response.ok) {
-        const errorData = await response.json()
+        const errorData = await response.json();
         console.error('API Error Response:', {
           status: response.status,
           statusText: response.statusText,
           data: errorData
-        })
-        throw new Error(errorData.error || errorData.message || 'Failed to get response from NPC')
+        });
+        throw new Error(errorData.error || errorData.message || 'Failed to get response from NPC');
       }
 
-      const data = await response.json()
-      console.log('API Success Response:', data)
+      const data = await response.json();
+      console.log('API Success Response:', data);
 
       if (data.response) {
         // Split response into sentences and add delay between each
-        const sentences = data.response
-          .split(/(?<=[.!?])\s+/)
-          .filter((s: string) => s.trim().length > 0)
+        const sentences = splitIntoSentences(data.response);
+        let currentMessages = newMessages;
         
         // Add each sentence as a separate message with a small delay
         for (let i = 0; i < sentences.length; i++) {
-          await new Promise(resolve => setTimeout(resolve, 500 * (i + 1)))
-          setMessages(prev => [...prev, { 
-            text: sentences[i].trim(), 
+          await new Promise(resolve => setTimeout(resolve, 500 * (i + 1)));
+          currentMessages = [...currentMessages, { 
+            text: sentences[i], 
             sender: 'npc' 
-          }])
+          }];
+          setMessages(currentMessages);
+          
+          // Save to history
+          setMessageHistories(prev => ({
+            ...prev,
+            [key]: currentMessages
+          }));
         }
       } else {
-        throw new Error('Invalid response format from API')
+        throw new Error('Invalid response format from API');
       }
-    } catch (error: any) {
-      console.error('Full error details:', error)
-      setMessages(prev => [...prev, { 
+    } catch (error) {
+      console.error('Full error details:', error);
+      setError(error instanceof Error ? error.message : String(error));
+      
+      // Add error message to conversation
+      const errorMessages: Message[] = [...newMessages, { 
         text: "I apologize, but I'm having trouble responding right now. Perhaps we could continue our conversation later?", 
         sender: 'npc' 
-      }])
-      console.error('Chat error:', error.message)
+      }];
+      setMessages(errorMessages);
+      
+      // Save to history
+      setMessageHistories(prev => ({
+        ...prev,
+        [key]: errorMessages
+      }));
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
       if (inputRef.current) {
-        inputRef.current.focus()
+        inputRef.current.focus();
       }
     }
-  }
+  };
 
   // Handle Escape key to close chat
   const handleKeyDown = (e: React.KeyboardEvent) => {
