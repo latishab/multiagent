@@ -62,7 +62,7 @@ export class PlayerManager {
     this.player = this.scene.physics.add.sprite(x, y, 'playerIdle', 0)
     this.player.setName('player')
     this.player.setCollideWorldBounds(true)
-    this.player.setScale(1)
+    this.player.setScale(1.5) // Match NPC scale
     this.player.setSize(16, 16)
     this.player.setOffset(8, 16)
     

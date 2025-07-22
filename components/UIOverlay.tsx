@@ -23,16 +23,6 @@ export default function UIOverlay({ gameInstance }: UIOverlayProps) {
     personality: ''
   })
 
-  const [interactionHint, setInteractionHint] = useState<{
-    show: boolean
-    npcId: number
-    position: { x: number, y: number }
-  }>({
-    show: false,
-    npcId: -1,
-    position: { x: 0, y: 0 }
-  })
-
   // Function to be called from the game to open chat
   const openChat = (npcId: number, personality: string) => {
     setChatState({
@@ -84,18 +74,10 @@ export default function UIOverlay({ gameInstance }: UIOverlayProps) {
 
   // Expose functions to the window object
   useEffect(() => {
-    (window as any).openChat = openChat;
-    (window as any).showInteractionHint = (npcId: number, x: number, y: number) => {
-      setInteractionHint({ show: true, npcId, position: { x, y } })
-    };
-    (window as any).hideInteractionHint = () => {
-      setInteractionHint(prev => ({ ...prev, show: false }))
-    }
+    (window as any).openChat = openChat
 
     return () => {
       delete (window as any).openChat
-      delete (window as any).showInteractionHint
-      delete (window as any).hideInteractionHint
     }
   }, [])
 
@@ -140,20 +122,6 @@ export default function UIOverlay({ gameInstance }: UIOverlayProps) {
             >
               Close
             </button>
-          </div>
-        )}
-
-        {/* NPC Interaction Hint */}
-        {interactionHint.show && (
-          <div
-            className="interaction-hint"
-            style={{
-              left: interactionHint.position.x,
-              top: interactionHint.position.y - 40,
-              transform: 'translate(-50%, -50%)',
-            }}
-          >
-            Press E to talk
           </div>
         )}
       </div>
@@ -286,17 +254,6 @@ export default function UIOverlay({ gameInstance }: UIOverlayProps) {
 
         .close-button:hover {
           background: rgba(96, 96, 96, 0.8);
-        }
-
-        .interaction-hint {
-          position: fixed;
-          background: rgba(0, 0, 0, 0.8);
-          color: white;
-          padding: 8px 12px;
-          border-radius: 4px;
-          pointer-events: none;
-          z-index: 1001;
-          white-space: nowrap;
         }
       `}</style>
     </>

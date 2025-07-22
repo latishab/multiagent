@@ -4,10 +4,11 @@ import { NPC, NPCConfig } from '../types/NPC'
 export class NPCManager {
   private scene: Scene
   private npcs: Array<NPC> = []
-  private interactionDistance: number = 50
+  private interactionDistance: number = 100 // Increased from 50 to make it easier to interact
   private interactionKey: Phaser.Input.Keyboard.Key
   private chatCallback?: (npcId: number, personality: string) => void
   private currentInteractableNPC: NPC | null = null
+  private interactionText: Phaser.GameObjects.Text | null = null
 
   constructor(scene: Scene) {
     this.scene = scene
@@ -15,6 +16,18 @@ export class NPCManager {
       throw new Error('Keyboard input not available')
     }
     this.interactionKey = scene.input.keyboard.addKey('E')
+
+    // Create the interaction text object with smaller font
+    this.interactionText = this.scene.add.text(0, 0, 'Press E to talk', {
+      fontSize: '10px',
+      backgroundColor: '#000000',
+      padding: { x: 3, y: 1 },
+      fixedWidth: 0,
+      color: '#ffffff'
+    })
+    this.interactionText.setOrigin(0.5, 1)
+    this.interactionText.setDepth(1000)
+    this.interactionText.setVisible(false)
   }
 
   createNPC(config: NPCConfig): NPC {
@@ -35,7 +48,7 @@ export class NPCManager {
     
     // Set NPC properties
     sprite.setCollideWorldBounds(true)
-    sprite.setScale(1)
+    sprite.setScale(1.5) 
     sprite.setSize(16, 16)
     sprite.setOffset(8, 16)
     
@@ -62,19 +75,17 @@ export class NPCManager {
     // Start with idle animation
     sprite.play('idle-down')
     
-    // Add collision with level layer if it exists
+    // Add collisions
     const levelLayer = this.scene.children.getByName('levelLayer') as Phaser.Tilemaps.TilemapLayer
     if (levelLayer) {
       this.scene.physics.add.collider(sprite, levelLayer)
     }
     
-    // Add collision with player
     const player = this.scene.children.getByName('player') as Phaser.Physics.Arcade.Sprite
     if (player) {
       this.scene.physics.add.collider(sprite, player)
     }
     
-    // Add collision between NPCs
     this.npcs.forEach(otherNpc => {
       if (otherNpc.sprite !== sprite) {
         this.scene.physics.add.collider(sprite, otherNpc.sprite)
@@ -114,6 +125,14 @@ export class NPCManager {
     })
   }
 
+  private worldToScreen(worldX: number, worldY: number) {
+    const camera = this.scene.cameras.main
+    return {
+      x: (worldX - camera.scrollX) * camera.zoom,
+      y: (worldY - camera.scrollY) * camera.zoom
+    }
+  }
+
   update(time: number) {
     // Update NPC movements
     this.npcs.forEach(npc => {
@@ -129,6 +148,8 @@ export class NPCManager {
       let closestDistance = Infinity
 
       for (const npc of this.npcs) {
+        if (npc.isInteracting) continue // Skip NPCs that are already in conversation
+
         const distance = Phaser.Math.Distance.Between(
           player.x,
           player.y,
@@ -144,13 +165,18 @@ export class NPCManager {
 
       // Show or hide interaction hint
       if (closestNPC !== this.currentInteractableNPC) {
-        if (this.currentInteractableNPC) {
-          this.hideInteractionHint()
-        }
         if (closestNPC) {
           this.showInteractionHint(closestNPC)
+        } else {
+          this.hideInteractionHint()
         }
         this.currentInteractableNPC = closestNPC
+      }
+
+      // Update hint position if we have a current interactable NPC
+      if (this.currentInteractableNPC && this.interactionText) {
+        const npc = this.currentInteractableNPC
+        this.interactionText.setPosition(npc.sprite.x, npc.sprite.y - 20)
       }
     }
 
@@ -247,18 +273,23 @@ export class NPCManager {
   }
 
   private showInteractionHint(npc: NPC) {
+    if (this.interactionText) {
+      this.interactionText.setVisible(true)
+      this.interactionText.setPosition(npc.sprite.x, npc.sprite.y - 20)
+    }
+  }
+
+  private updateInteractionHintPosition(npcId: number, screenX: number, screenY: number) {
     if (typeof window !== 'undefined' && (window as any).showInteractionHint) {
-      const camera = this.scene.cameras.main
-      const screenX = (npc.sprite.x - camera.scrollX) * camera.zoom
-      const screenY = (npc.sprite.y - camera.scrollY) * camera.zoom
-      ;(window as any).showInteractionHint(npc.id, screenX, screenY)
+      (window as any).showInteractionHint(npcId, screenX, screenY)
     }
   }
 
   private hideInteractionHint() {
-    if (typeof window !== 'undefined' && (window as any).hideInteractionHint) {
-      (window as any).hideInteractionHint()
+    if (this.interactionText) {
+      this.interactionText.setVisible(false)
     }
+    this.currentInteractableNPC = null
   }
 
   setInteractionCallback(callback: (npcId: number, personality: string) => void) {
