@@ -17,8 +17,9 @@ npm install
 
 3. Create a `.env` file in the root directory and add your API keys:
 ```
-OPENROUTER_API_KEY=your-api-key-here
-PINECONE_API_KEY=your-pinecone-api-key-here
+DEEPINFRA_API_KEY=
+VERCEL_URL=
+PINECONE_API_KEY=
 ```
 
 4. Start the development server:
