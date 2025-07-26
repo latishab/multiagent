@@ -34,17 +34,20 @@ class VectorStore {
     return VectorStore.instance;
   }
 
-  public getConversationKey(npcId: number, round: number): string {
+  public getConversationKey(npcId: number, round: number, sessionId?: string): string {
+    if (sessionId) {
+      return `npc_${npcId}_round_${round}_session_${sessionId}`;
+    }
     return `npc_${npcId}_round_${round}`;
   }
 
-  public getConversationHistory(npcId: number, round: number): Message[] {
-    const key = this.getConversationKey(npcId, round);
+  public getConversationHistory(npcId: number, round: number, sessionId?: string): Message[] {
+    const key = this.getConversationKey(npcId, round, sessionId);
     return this.conversations.get(key)?.messages || [];
   }
 
-  public addToConversationHistory(npcId: number, round: number, message: Message) {
-    const key = this.getConversationKey(npcId, round);
+  public addToConversationHistory(npcId: number, round: number, message: Message, sessionId?: string) {
+    const key = this.getConversationKey(npcId, round, sessionId);
     const history = this.conversations.get(key) || { messages: [], lastUpdated: Date.now() };
     
     history.messages.push(message);
@@ -67,8 +70,8 @@ class VectorStore {
     });
   }
 
-  public clearConversationHistory(npcId: number, round: number) {
-    const key = this.getConversationKey(npcId, round);
+  public clearConversationHistory(npcId: number, round: number, sessionId?: string) {
+    const key = this.getConversationKey(npcId, round, sessionId);
     this.conversations.delete(key);
   }
 
@@ -79,19 +82,26 @@ class VectorStore {
       text,
       npcId: metadata.npcId.toString(),
       round: metadata.round.toString(),
-      type: metadata.type
+      type: metadata.type,
+      sessionId: metadata.sessionId || 'default'
     }]);
   }
 
-  // Query similar memories for a specific NPC
-  public async querySimilar(text: string, npcId: number, topK: number = 5) {
+  // Query similar memories for a specific NPC and session
+  public async querySimilar(text: string, npcId: number, topK: number = 5, sessionId?: string) {
+    const filter: any = {
+      npcId: npcId.toString()
+    };
+    
+    if (sessionId) {
+      filter.sessionId = sessionId;
+    }
+    
     const results = await this.index.searchRecords({
       query: {
         topK,
         inputs: { text },
-        filter: {
-          npcId: npcId.toString()
-        }
+        filter
       }
     });
     return results.matches;

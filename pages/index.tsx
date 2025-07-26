@@ -1,6 +1,15 @@
 import { useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
 
+// Import test utility for development
+if (process.env.NODE_ENV === 'development') {
+  import('../utils/testSession').then(({ testSessionManagement }) => {
+    if (typeof window !== 'undefined') {
+      (window as any).testSessionManagement = testSessionManagement;
+    }
+  });
+}
+
 const GameComponent = dynamic(() => import('../components/GameComponent'), {
   ssr: false
 })

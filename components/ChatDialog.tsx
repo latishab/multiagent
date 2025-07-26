@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { sessionManager } from '../utils/sessionManager'
 
 interface ChatDialogProps {
   isOpen: boolean;
@@ -66,23 +67,36 @@ export default function ChatDialog({
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Get current conversation key
-  const getConversationKey = (npcId: number, round: number) => `npc_${npcId}_round_${round}`;
+  const getConversationKey = (npcId: number, round: number, sessionId?: string) => {
+    if (sessionId) {
+      return `npc_${npcId}_round_${round}_session_${sessionId}`;
+    }
+    return `npc_${npcId}_round_${round}`;
+  };
 
   // Load messages when NPC or round changes
   useEffect(() => {
-    const key = getConversationKey(npcId, round);
-    const savedMessages = messageHistories[key] || [];
-    console.log('Loading messages for:', {
-      npcId,
-      npcName: NPCNames[npcId],
-      round,
-      messageCount: savedMessages.length
-    });
-    setMessages(savedMessages);
+    const loadMessages = async () => {
+      const currentSessionId = await sessionManager.getSessionId();
+      setSessionId(currentSessionId);
+      const key = getConversationKey(npcId, round, currentSessionId);
+      const savedMessages = messageHistories[key] || [];
+      console.log('Loading messages for:', {
+        npcId,
+        npcName: NPCNames[npcId],
+        round,
+        sessionId: currentSessionId,
+        messageCount: savedMessages.length
+      });
+      setMessages(savedMessages);
+    };
+    
+    loadMessages();
   }, [npcId, round, messageHistories]);
 
   // Log NPC info when props change
@@ -124,12 +138,15 @@ export default function ChatDialog({
     const userMessage = inputValue.trim();
     setInputValue('');
     
+    // Get session ID
+    const currentSessionId = await sessionManager.getSessionId();
+    
     // Add user message to current conversation
     const newMessages: Message[] = [...messages, { text: userMessage, sender: 'player' }];
     setMessages(newMessages);
     
     // Save to history
-    const key = getConversationKey(npcId, round);
+    const key = getConversationKey(npcId, round, currentSessionId);
     setMessageHistories(prev => ({
       ...prev,
       [key]: newMessages
@@ -141,7 +158,8 @@ export default function ChatDialog({
       message: userMessage,
       npcId,
       round,
-      isSustainable
+      isSustainable,
+      sessionId: currentSessionId
     };
 
     console.log('Sending chat request:', requestData);
@@ -295,6 +313,13 @@ export default function ChatDialog({
             <button onClick={onClose} className="close-button">✕</button>
           </div>
 
+          {/* Debug Session Info */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="debug-session">
+              <small>Session: {sessionId.slice(0, 8)}...</small>
+            </div>
+          )}
+
           {/* Messages */}
           <div className="messages-container">
             {messages.map((message, index) => (
@@ -401,6 +426,19 @@ export default function ChatDialog({
         .chat-header .close-button:hover {
           color: #e5e7eb;
           background-color: rgba(55, 65, 81, 0.5);
+        }
+
+        .debug-session {
+          background-color: rgba(17, 24, 39, 0.8);
+          padding: 4px 20px;
+          border-bottom: 1px solid #374151;
+          text-align: center;
+        }
+
+        .debug-session small {
+          color: #9ca3af;
+          font-size: 12px;
+          font-family: monospace;
         }
 
         .messages-container {

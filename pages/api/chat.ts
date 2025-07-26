@@ -2,8 +2,8 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { vectorStore } from '../../utils/vectorStore';
 import { NPCData, getSystemPrompt } from '../../utils/prompts';
 
-if (!process.env.OPENROUTER_API_KEY) {
-  throw new Error('Missing OPENROUTER_API_KEY environment variable');
+if (!process.env.DEEPINFRA_API_KEY) {
+  throw new Error('Missing DEEPINFRA_API_KEY environment variable');
 }
 
 if (!process.env.PINECONE_API_KEY) {
@@ -62,7 +62,7 @@ export default async function handler(
   }
 
   try {
-    const { message, npcId, round, isSustainable = true } = req.body;
+    const { message, npcId, round, isSustainable = true, sessionId } = req.body;
 
     if (!message || !npcId || !round) {
       return res.status(400).json({ message: 'Missing required fields' });
@@ -77,7 +77,7 @@ export default async function handler(
     }
 
     // Get conversation history
-    const history = vectorStore.getConversationHistory(npcId, round);
+    const history = vectorStore.getConversationHistory(npcId, round, sessionId);
 
     // Add system prompt to history if it's empty
     if (history.length === 0) {
@@ -85,28 +85,29 @@ export default async function handler(
       vectorStore.addToConversationHistory(npcId, round, {
         role: 'system',
         content: systemPrompt
-      });
+      }, sessionId);
     }
 
     // Add user message to history
     vectorStore.addToConversationHistory(npcId, round, {
       role: 'user',
       content: message
-    });
+    }, sessionId);
 
     // Get updated history
-    const updatedHistory = vectorStore.getConversationHistory(npcId, round);
+    const updatedHistory = vectorStore.getConversationHistory(npcId, round, sessionId);
 
     // Store the message in Pinecone
     const messageId = `${npcId}_${round}_${Date.now()}`;
     await vectorStore.storeMemory(messageId, message, {
       npcId: npcId.toString(),
       round: round.toString(),
-      type: 'user_message'
+      type: 'user_message',
+      sessionId: sessionId || 'default'
     });
 
-    // Find similar past conversations for this specific NPC
-    const similarMessages = await vectorStore.querySimilar(message, npcId, 3) as PineconeMatch[];
+    // Find similar past conversations for this specific NPC and session
+    const similarMessages = await vectorStore.querySimilar(message, npcId, 3, sessionId) as PineconeMatch[];
     
     // relevant context from similar conversations if available
     let contextPrompt = '';
@@ -125,25 +126,24 @@ export default async function handler(
       lastSystemMessage.content += contextPrompt;
     }
 
-    console.log('Sending request to OpenRouter:', {
-      model: 'qwen/qwen3-235b-a22b-07-25:free',
+    console.log('Sending request to DeepInfra:', {
+      model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
       npcId,
       npcName: npc.name,
       round,
+      sessionId: sessionId || 'default',
       message: message.slice(0, 50) + '...',
       hasContext: contextPrompt.length > 0
     });
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const response = await fetch('https://api.deepinfra.com/v1/openai/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'HTTP-Referer': process.env.VERCEL_URL || 'http://localhost:3000',
-        'X-Title': 'Game NPC Chat'
+        'Authorization': `Bearer ${process.env.DEEPINFRA_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'qwen/qwen3-235b-a22b-07-25:free',
+        model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
         messages: updatedHistory,
         temperature: 0.7,
         max_tokens: 80,
@@ -155,7 +155,7 @@ export default async function handler(
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error?.message || 'Failed to get response from OpenRouter');
+      throw new Error(errorData.error?.message || 'Failed to get response from DeepInfra');
     }
 
     const data = await response.json();
@@ -171,14 +171,15 @@ export default async function handler(
     await vectorStore.storeMemory(responseId, aiResponse, {
       npcId: npcId.toString(),
       round: round.toString(),
-      type: 'assistant_response'
+      type: 'assistant_response',
+      sessionId: sessionId || 'default'
     });
 
     // Add assistant response to history
     vectorStore.addToConversationHistory(npcId, round, {
       role: 'assistant',
       content: aiResponse
-    });
+    }, sessionId);
 
     // Set CORS headers for the response
     res.setHeader('Access-Control-Allow-Origin', '*');
