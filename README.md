@@ -107,10 +107,44 @@ multiagent/
 ### Key Technologies
 - Next.js for the web framework
 - Phaser for game engine
-- OpenRouter API for NPC conversations
+- DeepInfra API for NPC conversations
 - Pinecone for vector embeddings
 - TypeScript for type safety
 - Tailwind CSS for styling
+
+### Session Management
+
+The game implements a sophisticated session management system that creates unique conversation histories for each player without requiring login/signup:
+
+#### How It Works
+- **Device Fingerprinting**: Creates a unique session ID based on browser characteristics
+- **Canvas Fingerprinting**: Uses HTML5 canvas to generate unique device signatures
+- **WebGL Fingerprinting**: Leverages WebGL capabilities for additional uniqueness
+- **Local Storage**: Persists session IDs across browser sessions
+
+#### Features
+- **No Login Required**: Players can start playing immediately
+- **Persistent Conversations**: Chat history is maintained per session
+- **Multi-Device Support**: Different devices get different session IDs
+- **Privacy-Friendly**: No personal data is collected or stored
+
+#### Technical Implementation
+- Session IDs are included in all conversation tracking
+- Pinecone vector store filters memories by session ID
+- Conversation histories are isolated per session
+- Debug panel shows session ID in development mode
+
+#### Testing
+In development mode, you can test session management by running:
+```javascript
+// In browser console
+await testSessionManagement()
+```
+
+This will verify that:
+- Session IDs are generated correctly
+- Sessions persist across page reloads
+- Different sessions are created when cleared
 
 ## Contributing
 
