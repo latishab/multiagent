@@ -313,13 +313,6 @@ export default function ChatDialog({
             <button onClick={onClose} className="close-button">✕</button>
           </div>
 
-          {/* Debug Session Info */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="debug-session">
-              <small>Session: {sessionId.slice(0, 8)}...</small>
-            </div>
-          )}
-
           {/* Messages */}
           <div className="messages-container">
             {messages.map((message, index) => (
@@ -426,19 +419,6 @@ export default function ChatDialog({
         .chat-header .close-button:hover {
           color: #e5e7eb;
           background-color: rgba(55, 65, 81, 0.5);
-        }
-
-        .debug-session {
-          background-color: rgba(17, 24, 39, 0.8);
-          padding: 4px 20px;
-          border-bottom: 1px solid #374151;
-          text-align: center;
-        }
-
-        .debug-session small {
-          color: #9ca3af;
-          font-size: 12px;
-          font-family: monospace;
         }
 
         .messages-container {

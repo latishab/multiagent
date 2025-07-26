@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Game } from 'phaser'
 import ChatDialog from './ChatDialog'
+import GameMenu from './GameMenu'
+import styles from '../styles/UIOverlay.module.css'
 
 interface UIOverlayProps {
   gameInstance: Game | null
@@ -13,6 +15,8 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   const [inventory, setInventory] = useState<Array<string | null>>(
     new Array(25).fill(null)
   )
+  const [showWelcome, setShowWelcome] = useState(true)
+  const [showGameMenu, setShowGameMenu] = useState(false)
   
   const [chatState, setChatState] = useState<{
     isOpen: boolean
@@ -81,66 +85,103 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         setInventoryOpen(!inventoryOpen)
       }
       if (event.key === 'Escape') {
-        setInventoryOpen(false)
-        closeChat()
+        if (showGameMenu) {
+          setShowGameMenu(false)
+        } else if (chatState.isOpen) {
+          closeChat()
+        } else if (inventoryOpen) {
+          setInventoryOpen(false)
+        } else {
+          setShowGameMenu(true)
+        }
+        setShowWelcome(false)
       }
     }
 
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [inventoryOpen])
+  }, [inventoryOpen, showGameMenu, chatState.isOpen])
 
-  // Communicate selected slot to game
+  // Expose the openChat function to the window object for the game to use
   useEffect(() => {
-    const game = gameInstance || (window as any).game
-    if (game?.scene?.scenes?.[0]) {
-      const scene = game.scene.scenes[0] as any
-      if (scene.setSelectedSlot) {
-        scene.setSelectedSlot(selectedSlot)
-      }
-    }
-  }, [selectedSlot, gameInstance])
-
-  // Expose functions to the window object
-  useEffect(() => {
-    ;(window as any).openChat = openChat
+    (window as any).openChat = openChat
     return () => {
       delete (window as any).openChat
     }
   }, [])
 
-  // Ensure openChat is always available
-  useEffect(() => {
-    const checkInterval = setInterval(() => {
-      if (typeof (window as any).openChat !== 'function') {
-        ;(window as any).openChat = openChat
-      }
-    }, 1000)
-    return () => clearInterval(checkInterval)
-  }, [])
+  const handleRestartGame = () => {
+    // Reload the page to restart the game
+    window.location.reload()
+  }
 
-  // Handle game instance updates
-  useEffect(() => {
-    if (!gameInstance) {
-      console.log('Looking for game instance in window...')
-      const game = (window as any).game
-      if (game) {
-        console.log('Found game instance, updating state')
-        setGameInstance(game)
-      } else {
-        console.log('No game instance found in window')
-      }
-    }
-  }, [gameInstance])
+  const handleNewGame = () => {
+    // Reload the page to start a new game
+    window.location.reload()
+  }
 
   return (
     <>
+      {/* Welcome Overlay */}
+      {showWelcome && (
+        <div className={styles.welcomeOverlay}>
+          <div className={styles.welcomeContent}>
+            <h1 className={styles.welcomeTitle}>Welcome to City Reconstruction!</h1>
+            <p className={styles.welcomeSubtitle}>Navigate the city and interact with NPCs to make decisions about reconstruction.</p>
+            
+            <div className={styles.controlsSection}>
+              <h2>Controls</h2>
+              <div className={styles.controlsGrid}>
+                <div className={styles.controlItem}>
+                  <span className={styles.key}>WASD</span>
+                  <span className={styles.description}>Move around</span>
+                </div>
+                <div className={styles.controlItem}>
+                  <span className={styles.key}>E</span>
+                  <span className={styles.description}>Interact with NPCs</span>
+                </div>
+                <div className={styles.controlItem}>
+                  <span className={styles.key}>I</span>
+                  <span className={styles.description}>Open inventory</span>
+                </div>
+                <div className={styles.controlItem}>
+                  <span className={styles.key}>1-5</span>
+                  <span className={styles.description}>Select hotbar slots</span>
+                </div>
+                <div className={styles.controlItem}>
+                  <span className={styles.key}>ESC</span>
+                  <span className={styles.description}>Close dialogs</span>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.gameInfo}>
+              <h3>How to Play</h3>
+              <ul>
+                <li>Walk around the city and find NPCs (marked with icons)</li>
+                <li>Press <strong>E</strong> near an NPC to start a conversation</li>
+                <li>Each NPC represents a different city system</li>
+                <li>Make choices between sustainable and economic options</li>
+                <li>Your decisions will affect the city's future!</li>
+              </ul>
+            </div>
+
+            <button 
+              className={styles.startButton}
+              onClick={() => setShowWelcome(false)}
+            >
+              Start Playing
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Hotbar */}
-      <div className="hotbar">
+      <div className={styles.hotbar}>
         {[0, 1, 2, 3, 4].map((index) => (
           <div
             key={index}
-            className={`hotbar-slot ${selectedSlot === index ? 'active' : ''}`}
+            className={`${styles.hotbarSlot} ${selectedSlot === index ? styles.active : ''}`}
             onClick={() => setSelectedSlot(index)}
           >
             {index + 1}
@@ -148,9 +189,17 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         ))}
       </div>
 
+      {/* Menu Button */}
+      <button
+        className={styles.menuButton}
+        onClick={() => setShowGameMenu(true)}
+      >
+        Menu (ESC)
+      </button>
+
       {/* Inventory Button */}
       <button
-        className="inventory-button"
+        className={styles.inventoryButton}
         onClick={() => setInventoryOpen(!inventoryOpen)}
       >
         Inventory (I)
@@ -158,21 +207,23 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
 
       {/* Inventory Modal */}
       {inventoryOpen && (
-        <div className="inventory-modal">
-          <div className="inventory-header">Inventory</div>
-          <div className="inventory-grid">
-            {inventory.map((item, index) => (
-              <div key={index} className="inventory-slot">
-                {item || ''}
-              </div>
-            ))}
+        <div className={styles.inventoryModal}>
+          <div className={styles.inventoryContent}>
+            <div className={styles.inventoryHeader}>Inventory</div>
+            <div className={styles.inventoryGrid}>
+              {inventory.map((item, index) => (
+                <div key={index} className={styles.inventorySlot}>
+                  {item || ''}
+                </div>
+              ))}
+            </div>
+            <button
+              className={styles.closeButton}
+              onClick={() => setInventoryOpen(false)}
+            >
+              Close
+            </button>
           </div>
-          <button
-            className="close-button"
-            onClick={() => setInventoryOpen(false)}
-          >
-            Close
-          </button>
         </div>
       )}
 
@@ -188,118 +239,13 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         onStanceChange={handleStanceChange}
       />
 
-      <style jsx>{`
-        .hotbar {
-          position: fixed;
-          bottom: 20px;
-          left: 50%;
-          transform: translateX(-50%);
-          display: flex;
-          gap: 8px;
-          pointer-events: auto;
-          z-index: 200;
-        }
-
-        .hotbar-slot {
-          width: 50px;
-          height: 50px;
-          background-color: rgba(0, 0, 0, 0.7);
-          border: 2px solid #666;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-size: 18px;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .hotbar-slot:hover {
-          border-color: #999;
-          background-color: rgba(0, 0, 0, 0.8);
-        }
-
-        .hotbar-slot.active {
-          border-color: #ffd700;
-          background-color: rgba(0, 0, 0, 0.9);
-        }
-
-        .inventory-button {
-          position: fixed;
-          top: 20px;
-          right: 20px;
-          padding: 8px 16px;
-          background-color: rgba(0, 0, 0, 0.7);
-          border: 2px solid #666;
-          color: white;
-          cursor: pointer;
-          transition: all 0.2s;
-          pointer-events: auto;
-          z-index: 200;
-        }
-
-        .inventory-button:hover {
-          border-color: #999;
-          background-color: rgba(0, 0, 0, 0.8);
-        }
-
-        .inventory-modal {
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 600px;
-          background-color: rgba(0, 0, 0, 0.9);
-          border: 2px solid #666;
-          padding: 20px;
-          pointer-events: auto;
-          z-index: 300;
-        }
-
-        .inventory-header {
-          color: white;
-          font-size: 24px;
-          margin-bottom: 20px;
-          text-align: center;
-        }
-
-        .inventory-grid {
-          display: grid;
-          grid-template-columns: repeat(5, 1fr);
-          gap: 10px;
-          margin-bottom: 20px;
-        }
-
-        .inventory-slot {
-          aspect-ratio: 1;
-          background-color: rgba(255, 255, 255, 0.1);
-          border: 1px solid #666;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-size: 14px;
-        }
-
-        .inventory-slot:hover {
-          background-color: rgba(255, 255, 255, 0.2);
-        }
-
-        .close-button {
-          display: block;
-          width: 100%;
-          padding: 10px;
-          background-color: #666;
-          border: none;
-          color: white;
-          cursor: pointer;
-          transition: background-color 0.2s;
-        }
-
-        .close-button:hover {
-          background-color: #999;
-        }
-      `}</style>
+      {/* Game Menu */}
+      <GameMenu
+        isOpen={showGameMenu}
+        onClose={() => setShowGameMenu(false)}
+        onRestartGame={handleRestartGame}
+        onNewGame={handleNewGame}
+      />
     </>
   )
 } 
