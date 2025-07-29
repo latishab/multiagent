@@ -2,14 +2,6 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { vectorStore } from '../../utils/vectorStore';
 import { NPCData, getSystemPrompt } from '../../utils/prompts';
 
-if (!process.env.DEEPINFRA_API_KEY) {
-  throw new Error('Missing DEEPINFRA_API_KEY environment variable');
-}
-
-if (!process.env.PINECONE_API_KEY) {
-  throw new Error('Missing PINECONE_API_KEY environment variable');
-}
-
 interface NPCOptions {
   sustainable: string;
   unsustainable: string;
@@ -49,6 +41,13 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  console.log('Chat API called:', {
+    method: req.method,
+    url: req.url,
+    headers: req.headers,
+    body: req.body
+  });
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -58,7 +57,25 @@ export default async function handler(
   }
 
   if (req.method !== 'POST') {
+    console.log('Method not allowed:', req.method);
     return res.status(405).json({ message: 'Method not allowed' });
+  }
+
+  // Check for required environment variables
+  if (!process.env.DEEPINFRA_API_KEY) {
+    console.error('Missing DEEPINFRA_API_KEY environment variable');
+    return res.status(500).json({ 
+      message: 'Server configuration error: Missing API key',
+      error: 'DEEPINFRA_API_KEY not configured'
+    });
+  }
+
+  if (!process.env.PINECONE_API_KEY) {
+    console.error('Missing PINECONE_API_KEY environment variable');
+    return res.status(500).json({ 
+      message: 'Server configuration error: Missing API key',
+      error: 'PINECONE_API_KEY not configured'
+    });
   }
 
   try {
