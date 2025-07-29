@@ -51,13 +51,43 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   const [spokenNPCs, setSpokenNPCs] = useState<{
     round1: Set<number>
     round2: Set<number>
-  }>({
-    round1: new Set(),
-    round2: new Set()
-  })
+  }>(() => {
+    // Load from localStorage on initialization
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('multiagent-spoken-npcs');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          return {
+            round1: new Set(parsed.round1 || []),
+            round2: new Set(parsed.round2 || [])
+          };
+        } catch (error) {
+          console.error('Error loading spoken NPCs from localStorage:', error);
+        }
+      }
+    }
+    return {
+      round1: new Set(),
+      round2: new Set()
+    };
+  });
 
   // Ballot entries to track NPC opinions
-  const [ballotEntries, setBallotEntries] = useState<BallotEntry[]>([])
+  const [ballotEntries, setBallotEntries] = useState<BallotEntry[]>(() => {
+    // Load from localStorage on initialization
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('multiagent-ballot-entries');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (error) {
+          console.error('Error loading ballot entries from localStorage:', error);
+        }
+      }
+    }
+    return [];
+  });
 
   // Add ballot to inventory on first load
   useEffect(() => {
@@ -71,6 +101,24 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       })
     }
   }, [showWelcome])
+
+  // Save spoken NPCs to localStorage whenever they change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const dataToSave = {
+        round1: Array.from(spokenNPCs.round1),
+        round2: Array.from(spokenNPCs.round2)
+      };
+      localStorage.setItem('multiagent-spoken-npcs', JSON.stringify(dataToSave));
+    }
+  }, [spokenNPCs]);
+
+  // Save ballot entries to localStorage whenever they change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('multiagent-ballot-entries', JSON.stringify(ballotEntries));
+    }
+  }, [ballotEntries]);
 
   // Function to be called from the game to open chat
   const openChat = (npcId: string, personality: string) => {
@@ -100,7 +148,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   }
 
   // Function to mark NPC as actually spoken to (called when conversation has content)
-  const markNPCAsSpoken = (npcId: number, round: number, detectedOpinion?: { opinion: string; reasoning: string }) => {
+  const markNPCAsSpoken = (npcId: number, round: number, detectedOpinion?: { opinion: string; reasoning: string }, conversationAnalysis?: { isComplete: boolean; reason: string }) => {
     const roundKey = round === 1 ? 'round1' : 'round2';
     setSpokenNPCs(prev => ({
       ...prev,
@@ -144,12 +192,26 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       unsustainableOption: npcOptions[npcId].unsustainable,
       npcOpinion: round === 1 ? 'Introduction phase - no opinion yet' : 
         (detectedOpinion ? detectedOpinion.opinion : 'Opinion not yet revealed'),
-      npcReasoning: round === 1 ? 'NPC introduced their system and options' : 
+      npcReasoning: round === 1 ? 
+        (conversationAnalysis?.isComplete ? 'Introduction complete' : 'Introduction in progress') :
         (detectedOpinion ? detectedOpinion.reasoning : 'Waiting for NPC to express their opinion'),
       timestamp: Date.now()
     }
 
-    setBallotEntries(prev => [...prev, newEntry]);
+    setBallotEntries(prev => {
+      // Check if there's already an entry for this NPC and round
+      const existingIndex = prev.findIndex(entry => entry.npcId === npcId && entry.round === round);
+      
+      if (existingIndex !== -1) {
+        // Update existing entry
+        const updated = [...prev];
+        updated[existingIndex] = newEntry;
+        return updated;
+      } else {
+        // Add new entry
+        return [...prev, newEntry];
+      }
+    });
 
     // Check if all NPCs have been spoken to in the current round
     const currentSpokenNPCs = spokenNPCs[roundKey as keyof typeof spokenNPCs];
@@ -245,11 +307,21 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   }, [])
 
   const handleRestartGame = () => {
+    // Clear saved data before restarting
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('multiagent-spoken-npcs');
+      localStorage.removeItem('multiagent-ballot-entries');
+    }
     // Reload the page to restart the game
     window.location.reload()
   }
 
   const handleNewGame = () => {
+    // Clear saved data before starting new game
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('multiagent-spoken-npcs');
+      localStorage.removeItem('multiagent-ballot-entries');
+    }
     // Reload the page to start a new game
     window.location.reload()
   }
@@ -398,7 +470,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         onClose={closeChat}
         onRoundChange={handleRoundChange}
         onStanceChange={handleStanceChange}
-        onConversationComplete={(npcId, round, detectedOpinion) => markNPCAsSpoken(npcId, round, detectedOpinion)}
+        onConversationComplete={(npcId, round, detectedOpinion, conversationAnalysis) => markNPCAsSpoken(npcId, round, detectedOpinion, conversationAnalysis)}
       />
 
       {/* Ballot */}

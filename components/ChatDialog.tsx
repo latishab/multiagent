@@ -10,7 +10,7 @@ interface ChatDialogProps {
   onClose: () => void;
   onRoundChange: (round: number) => void;
   onStanceChange: (isProSustainable: boolean) => void;
-  onConversationComplete?: (npcId: number, round: number, detectedOpinion?: { opinion: string; reasoning: string }) => void;
+  onConversationComplete?: (npcId: number, round: number, detectedOpinion?: { opinion: string; reasoning: string }, conversationAnalysis?: { isComplete: boolean; reason: string }) => void;
 }
 
 interface Message {
@@ -244,8 +244,15 @@ export default function ChatDialog({
           console.log('Opinion detected:', data.detectedOpinion);
           // Update ballot with detected opinion
           if (onConversationComplete) {
-            onConversationComplete(npcId, round, data.detectedOpinion);
+            onConversationComplete(npcId, round, data.detectedOpinion, data.conversationAnalysis);
           }
+        }
+
+        // Log conversation analysis
+        if (data.conversationAnalysis) {
+          console.log('Conversation analysis:', data.conversationAnalysis);
+          console.log('Analysis result - isComplete:', data.conversationAnalysis.isComplete);
+          console.log('Analysis result - reason:', data.conversationAnalysis.reason);
         }
         // Split response into sentences and add delay between each
         const sentences = splitIntoSentences(data.response);
