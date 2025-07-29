@@ -71,6 +71,8 @@ const NPCOptions: { [key: number]: { sustainable: string; unsustainable: string;
 }
 
 export default function ProgressIndicator({ currentRound, spokenNPCs, ballotEntries = [] }: ProgressIndicatorProps) {
+  console.log('ProgressIndicator re-rendering with:', { currentRound, spokenNPCs, ballotEntries });
+  
   const round1Spoken = Array.from(spokenNPCs.round1);
   const round2Spoken = Array.from(spokenNPCs.round2);
   
@@ -188,6 +190,13 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, ballotEntr
           
           // Get ballot entry for this NPC and round
           const ballotEntry = ballotEntries.find(entry => entry.npcId === npcId && entry.round === currentRound);
+          
+          // Debug logging for Ms. Kira (NPC 5)
+          if (npcId === 5) {
+            console.log('ProgressIndicator - NPC 5 ballot entry:', ballotEntry);
+            console.log('ProgressIndicator - All ballot entries:', ballotEntries);
+            console.log('ProgressIndicator - Current round:', currentRound);
+          }
           
           // Get mission text for current round
           const getMissionText = (npcId: number, round: number) => {

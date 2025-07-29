@@ -98,7 +98,6 @@ export default function ChatDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
-  const [hasMeaningfulConversation, setHasMeaningfulConversation] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -127,18 +126,14 @@ export default function ChatDialog({
           });
           
           setMessages(data.messages);
-          // If there are existing messages, mark as having meaningful conversation
-          setHasMeaningfulConversation(data.messages.length > 0);
         } else {
           console.log('No conversation history found, starting fresh');
           setMessages([]);
-          setHasMeaningfulConversation(false);
         }
       } catch (error) {
         console.error('Error loading conversation history:', error);
         // Don't let conversation history errors break the chat
         setMessages([]);
-        setHasMeaningfulConversation(false);
       }
     };
     
@@ -190,12 +185,6 @@ export default function ChatDialog({
     // Add user message to current conversation
     const newMessages: Message[] = [...messages, { text: userMessage, sender: 'player' }];
     setMessages(newMessages);
-
-    // Mark that meaningful conversation has occurred
-    if (!hasMeaningfulConversation) {
-      setHasMeaningfulConversation(true);
-    }
-
     setIsLoading(true);
 
     const requestData = {
@@ -268,9 +257,14 @@ export default function ChatDialog({
           setMessages(currentMessages);
         }
 
-        // Call the conversation complete callback if this is the first meaningful exchange
-        if (hasMeaningfulConversation && onConversationComplete) {
-          onConversationComplete(npcId, round);
+        // Call the conversation complete callback based on conversation analysis
+        if (onConversationComplete && data.conversationAnalysis) {
+          // For Round 1: Call when introduction is complete
+          // For Round 2: Call when opinion is detected (handled above)
+          if (round === 1 && data.conversationAnalysis.isComplete) {
+            console.log('Round 1 conversation complete, calling onConversationComplete');
+            onConversationComplete(npcId, round, undefined, data.conversationAnalysis);
+          }
         }
       } else {
         throw new Error('Invalid response format from API');

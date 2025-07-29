@@ -202,13 +202,20 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       // Check if there's already an entry for this NPC and round
       const existingIndex = prev.findIndex(entry => entry.npcId === npcId && entry.round === round);
       
+      console.log('Updating ballot entries for NPC', npcId, 'Round', round);
+      console.log('Existing entry found:', existingIndex !== -1);
+      console.log('New entry reasoning:', newEntry.npcReasoning);
+      console.log('Conversation analysis:', conversationAnalysis);
+      
       if (existingIndex !== -1) {
         // Update existing entry
         const updated = [...prev];
         updated[existingIndex] = newEntry;
+        console.log('Updated existing ballot entry');
         return updated;
       } else {
         // Add new entry
+        console.log('Added new ballot entry');
         return [...prev, newEntry];
       }
     });
