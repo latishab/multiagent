@@ -1,6 +1,8 @@
 import { Scene } from 'phaser'
 import { PlayerManager } from '../managers/PlayerManager'
 import { NPCManager } from '../managers/NPCManager'
+import { PlayerManager } from '../managers/PlayerManager'
+import { NPCManager } from '../managers/NPCManager'
 
 export default class MainScene extends Scene {
   // Map properties
@@ -29,6 +31,41 @@ export default class MainScene extends Scene {
     this.load.spritesheet('playerWalk', '/assets/characters/Walk.png', { 
       frameWidth: 32, 
       frameHeight: 32 
+    })
+
+    // Spritesheet Slicing Guide for update.png (144x96 with 6 characters)
+    // The spritesheet layout is:
+    // - Total size: 144x96 pixels
+    // - Each character block is 48x48 pixels (a perfect 3x3 grid of frames)
+    // - Each individual frame is 16x16 pixels
+    // - Characters are arranged in 2 rows, 3 characters per row
+    // 
+    // Dimensions breakdown:
+    // Width: 3 character blocks × 48 pixels = 144 pixels total width
+    // Height: 2 character blocks × 48 pixels = 96 pixels total height
+    // Each character block: 48x48 pixels (3 frames wide × 3 frames high)
+    // Each frame: 16x16 pixels
+    // 
+    // Character positions in spritesheet:
+    // Row 1 (0-48px): [White 48px][Brown 48px][Blue 48px]
+    // Row 2 (48-96px): [Teal 48px][Dark 48px][Military 48px]
+    // 
+    // Frame layout within each 48x48 character block:
+    // [0][1][2] - Down animations
+    // [3][4][5] - Side animations
+    // [6][7][8] - Up animations
+    // 
+    // To calculate frame index:
+    // - Each row is 144/16 = 9 frames wide
+    // - For character at position (row, col):
+    //   startFrame = (row * 9 * 3) + (col * 3)
+    //   where row is 0 or 1, col is 0, 1, or 2
+
+    this.load.spritesheet('npcs', '/assets/characters/update.png', {
+      frameWidth: 16,
+      frameHeight: 16,
+      margin: 0,
+      spacing: 0
     })
     
     // Load map and separate tilesets
@@ -127,9 +164,5 @@ export default class MainScene extends Scene {
   private handleResize() {
     this.cameras.main.setZoom(2)
     this.cameras.main.roundPixels = true
-  }
-
-  public setSelectedSlot(slot: number) {
-    this.selectedSlot = slot
   }
 } 
