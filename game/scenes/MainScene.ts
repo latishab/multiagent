@@ -1,8 +1,6 @@
 import { Scene } from 'phaser'
 import { PlayerManager } from '../managers/PlayerManager'
 import { NPCManager } from '../managers/NPCManager'
-import { PlayerManager } from '../managers/PlayerManager'
-import { NPCManager } from '../managers/NPCManager'
 
 export default class MainScene extends Scene {
   // Map properties
@@ -104,7 +102,7 @@ export default class MainScene extends Scene {
     )
     
     // Setup NPC chat interaction
-    this.npcManager.setInteractionCallback((npcId: number, personality: string) => {
+    this.npcManager.setInteractionCallback((npcId: string, personality: string) => {
       if (typeof window !== 'undefined' && (window as any).openChat) {
         ;(window as any).openChat(npcId, personality)
       }

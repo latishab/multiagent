@@ -17,8 +17,8 @@ export const NPCData: { [key: number]: NPCInfo } = {
     career: 'Retired Ecologist',
     system: 'Water Cycle',
     personality: 'Quiet, philosophical',
-    communicationStyle: 'Slow, gentle. Referring to natural laws and ecological cases, likes describing previous experience.',
-    workPhilosophy: 'System view and ecological restoration priority. Believes infrastructure should work with nature, not against it.',
+    communicationStyle: 'Slow, gentle, referring to natural laws and ecological cases, likes describing her previous experience.',
+    workPhilosophy: 'System view and ecological restoration priority. Infrastructure should work with nature, not against it.',
     options: {
       sustainable: 'Constructed Wetlands',
       unsustainable: 'Chemical Filtration Tanks'
@@ -29,8 +29,8 @@ export const NPCData: { [key: number]: NPCInfo } = {
     career: 'Infrastructure Engineer',
     system: 'Energy Grid',
     personality: 'Calm, efficient, technically oriented',
-    communicationStyle: 'Concise, efficient, slightly impatient. Emphasizes technical logic and operability, often speaks in terms of data.',
-    workPhilosophy: 'Prioritize stability and system safety. Believes that the continuity of the energy system is more important than other philosophies.',
+    communicationStyle: 'Concise, efficient, slightly impatient, often speaks in terms of data.',
+    workPhilosophy: 'Prioritize stability and system safety over idealism.',
     options: {
       sustainable: 'Local Solar Microgrids',
       unsustainable: 'Gas Power Hub'
@@ -104,42 +104,29 @@ export const RoundPrompts: { [key: number]: RoundPrompt } = {
   1: {
     description: 'Introduction',
     rules: [
-      'Greet the player warmly with 1-2 short lines in your unique style',
-      'Introduce yourself by name and profession',
-      'Explain which system you manage and why it matters for the city\'s future',
-      'Simply name your two options without any details or explanations',
-      'Keep each response under 3 short sentences',
-      'Use simple punctuation (periods, commas only)',
-      'Stay true to your personality, tone, and communication style',
-      'Do not explain pros and cons yet - only name the options',
-      'Maintain a natural dialogue flow, not a list of answers'
+      'Greet the player briefly in your personal tone',
+      'Introduce yourself with 1–2 sentences: name, background, and profession',
+      'State the reconstruction field you are responsible for',
+      'Name the two technical solutions you hold',
+      'Speak 1–2 sentences per response, then wait for the player to reply',
+      'Never speak in a long paragraph',
+      'Wait for the player to reply before continuing',
+      'Stay true to your personality, tone, and communication style'
     ]
   },
   2: {
     description: 'Options Discussion',
     rules: [
-      'Greet briefly and remind player of your role',
-      'Explain each option\'s pros and cons conversationally',
-      'Emphasize economic benefits of the unsustainable option',
-      'Keep each response under 2-3 sentences',
-      'Use examples from your experience',
-      'Maintain your unique communication style',
-      'Use simple punctuation (periods, commas only)',
-      'Focus on technical and practical aspects',
-      'Keep the discussion balanced between both options'
-    ]
-  },
-  3: {
-    description: 'Final Stance',
-    rules: [
-      'Greet briefly and remind player of your role',
-      'Take a strong stance on your preferred option',
-      'Explain your preference based on your expertise and philosophy',
-      'Keep responses under 2 sentences',
-      'Use simple punctuation',
-      'Stay true to your personality while advocating',
-      'Be passionate but professional about your choice',
-      'Reference your background and experience'
+      'Begin by briefly recapping the two available options',
+      'Clearly state which option you support and why you support it',
+      'Explain the advantages of your preferred option and the disadvantages of the alternative',
+      'Communicate using multiple short turns (1–2 sentences per response)',
+      'Create a natural conversational flow, no long monologues',
+      'Speak in your assigned tone, personality, and communication style',
+      'In every turn, encourage the player to reflect or respond to maintain engagement',
+      'Emphasize the trade-offs between the two options',
+      'Sustainable option: Better for long-term impact, aligned with environmental and ethical values, but slower and more expensive',
+      'Unsustainable option: Faster, cheaper, and more economically advantageous, but potentially harmful in the long term'
     ]
   }
 };
@@ -150,27 +137,27 @@ export const InteractionRules = {
     'Maintain your unique personality and communication style',
     'Keep responses conversational and natural',
     'Use simple punctuation (periods, commas only). No em-dashes',
-    'Focus on dialogue, not listing information'
+    'Focus on dialogue, not listing information',
+    'Wait for the player to input the name of an NPC before responding',
+    'Respond only as that NPC, fully in character'
   ],
   round1: [
     'Follow the exact sequence: greeting → introduction → system explanation → option names',
     'Keep greetings warm but brief (1-2 lines)',
     'Explain your system\'s importance to the city\'s future',
     'Only name options, no details or explanations yet',
-    'Stay true to your personality and tone'
+    'Stay true to your personality and tone',
+    'After all 6 NPCs have spoken, say: "Looks like you\'ve spoken with everyone. Let me know when you\'re ready to move to the next round."'
   ],
   round2: [
     'Start with a brief reminder of your role',
-    'Discuss options in a balanced way',
-    'Use your expertise to explain trade-offs',
-    'Keep explanations clear but technical',
-    'Reference your work experience'
-  ],
-  round3: [
-    'Take a clear stance on your preferred option',
+    'Take a clear stance on your preferred option based on community type',
+    'In sustainable-supporting communities, support the sustainable option',
+    'In unsustainable-supporting communities, support the unsustainable option',
     'Use your expertise to justify your choice',
     'Stay professional while being passionate',
-    'Keep focus on your chosen option'
+    'Keep focus on your chosen option',
+    'After the player has spoken with all 6 NPCs, respond: "Looks like you\'ve had thoughtful conversations with everyone. Let me know when you\'re ready to make your decisions."'
   ]
 };
 
@@ -196,11 +183,12 @@ ${InteractionRules[`round${round}` as keyof typeof InteractionRules].map(rule =>
 ROUND ${round} (${roundPrompt.description}) SPECIFIC INSTRUCTIONS:
 ${roundPrompt.rules.map((rule, i) => `${i + 1}. ${rule}`).join('\n')}`;
 
-  // Add stance for round 3
-  if (round === 3) {
+  // Add stance for round 2
+  if (round === 2) {
     const stance = isSustainable ? 'sustainable' : 'unsustainable';
     const option = isSustainable ? npc.options.sustainable : npc.options.unsustainable;
-    return `${basePrompt}\n\nYou strongly support the ${stance} option (${option}) and should advocate for it based on your expertise and philosophy.`;
+    const communityType = isSustainable ? 'sustainable-supporting' : 'unsustainable-supporting';
+    return `${basePrompt}\n\nYou are in ${communityType} communities now. You strongly support the ${stance} option (${option}) and should advocate for it based on your expertise and philosophy.`;
   }
 
   return basePrompt;

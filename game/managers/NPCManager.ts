@@ -1,12 +1,76 @@
-import { Scene, Physics, GameObjects } from 'phaser'
-import { NPC, NPCType, NPC_TYPES, getDownFrames, getSideFrames, getUpFrames } from '../types/NPC'
+import { Scene, Physics } from 'phaser'
+import { NPC, NPCType, NPC_TYPES, NPCConfig, getDownFrames, getSideFrames, getUpFrames } from '../types/NPC'
 
 export class NPCManager {
   private scene: Scene
   private npcs: NPC[] = []
+  private interactionDistance: number = 100
+  private interactionKey: Phaser.Input.Keyboard.Key
+  private chatCallback?: (npcId: string, personality: string) => void
+  private currentInteractableNPC: NPC | null = null
+  private interactionText: Phaser.GameObjects.Text | null = null
+  
+  private readonly npcConfigs = [
+    {
+      id: "1",
+      personality: "A retired ecologist with a deep understanding of natural systems",
+      name: "Mrs. Aria"
+    },
+    {
+      id: "2",
+      personality: "A pragmatic infrastructure engineer focused on system stability",
+      name: "Chief Oskar"
+    },
+    {
+      id: "3",
+      personality: "A forward-thinking fuel supplier interested in sustainable options",
+      name: "Mr. Moss"
+    },
+    {
+      id: "4",
+      personality: "A passionate teacher advocating for community-focused development",
+      name: "Miss Dai"
+    },
+    {
+      id: "5",
+      personality: "A determined water justice activist fighting for equal access",
+      name: "Ms. Kira"
+    },
+    {
+      id: "6",
+      personality: "An innovative builder exploring eco-friendly construction methods",
+      name: "Mr. Han"
+    }
+  ];
 
   constructor(scene: Scene) {
     this.scene = scene
+    if (!scene.input.keyboard) {
+      throw new Error('Keyboard input not available')
+    }
+    this.interactionKey = scene.input.keyboard.addKey('E')
+
+    // Create the interaction text object
+    this.interactionText = this.scene.add.text(0, 0, 'Press E to talk', {
+      fontSize: '10px',
+      backgroundColor: '#000000',
+      padding: { x: 3, y: 1 },
+      fixedWidth: 0,
+      color: '#ffffff'
+    })
+    this.interactionText.setOrigin(0.5, 1)
+    this.interactionText.setDepth(1000)
+    this.interactionText.setVisible(false)
+
+    // Listen for chat closed event
+    if (typeof window !== 'undefined') {
+      window.addEventListener('chatClosed', ((event: CustomEvent) => {
+        const npc = this.npcs.find(n => n.id === event.detail.npcId)
+        if (npc) {
+          npc.isInteracting = false
+        }
+      }) as EventListener)
+    }
   }
 
   createNPCAnimations(npc: NPC) {
@@ -96,7 +160,9 @@ export class NPCManager {
     // Add collision between NPC and player
     this.scene.physics.add.collider(sprite, player)
 
-    const id = this.npcs.length.toString()
+    // Find the index of this NPC type to get the correct config
+    const npcTypeIndex = NPC_TYPES.findIndex(type => type.name === npcType.name)
+    const id = (npcTypeIndex + 1).toString()
     
     // Create NPC object with type-specific animations
     const npc: NPC = {
@@ -113,7 +179,9 @@ export class NPCManager {
       startFrame: npcType.startFrame,
       type: npcType.name,
       id: id,
-      animationId: `${npcType.name}-${id}`
+      animationId: `${npcType.name}-${id}`,
+      personality: this.npcConfigs[npcTypeIndex]?.personality || "A mysterious character",
+      isInteracting: false
     }
     
     // Create animations for this specific NPC and get its unique animation ID
@@ -134,190 +202,6 @@ export class NPCManager {
     })
 
     return npc
-  }
-
-  update(time: number) {
-    this.npcs.forEach(npc => {
-      if (time > npc.moveTimer) {
-        if (npc.isMoving) {
-          npc.isMoving = false
-          npc.sprite.setVelocity(0)
-          npc.moveTimer = time + Phaser.Math.Between(npc.pauseTimeMin, npc.pauseTimeMax)
-          npc.sprite.play(`npc-${npc.animationId}-idle-${npc.lastDirection}`)
-        } else {
-          npc.isMoving = true
-          const directions = ['up', 'down', 'left', 'right']
-          npc.targetDirection = directions[Phaser.Math.Between(0, 3)]
-          npc.moveTimer = time + Phaser.Math.Between(npc.moveTimeMin, npc.moveTimeMax)
-          
-          switch (npc.targetDirection) {
-            case 'up':
-              npc.sprite.setVelocity(0, -npc.speed)
-              npc.sprite.play(`npc-${npc.animationId}-walk-up`, true)
-              npc.lastDirection = 'up'
-              break
-            case 'down':
-              npc.sprite.setVelocity(0, npc.speed)
-              npc.sprite.play(`npc-${npc.animationId}-walk-down`, true)
-              npc.lastDirection = 'down'
-              break
-            case 'left':
-              npc.sprite.setVelocity(-npc.speed, 0)
-              npc.sprite.setFlipX(true)
-              npc.sprite.play(`npc-${npc.animationId}-walk-side`, true)
-              npc.lastDirection = 'side'
-              break
-            case 'right':
-              npc.sprite.setVelocity(npc.speed, 0)
-              npc.sprite.setFlipX(false)
-              npc.sprite.play(`npc-${npc.animationId}-walk-side`, true)
-              npc.lastDirection = 'side'
-              break
-          }
-        }
-      }
-    })
-  }
-
-  private getNPCName(startFrame: number): string {
-    return NPC_TYPES.find(type => type.startFrame === startFrame)?.name || 'unknown'
-  }
-
-  spawnNPCsInCircle(mapWidth: number, mapHeight: number, levelLayer: Phaser.Tilemaps.TilemapLayer, player: Physics.Arcade.Sprite) {
-    const centerX = mapWidth / 2
-    const centerY = mapHeight / 2
-    const radius = Math.min(mapWidth, mapHeight) / 4
-
-    NPC_TYPES.forEach((npcType, index) => {
-      const angle = (index / NPC_TYPES.length) * Math.PI * 2
-      const x = centerX + Math.cos(angle) * radius
-      const y = centerY + Math.sin(angle) * radius
-      
-      this.createNPC(x, y, npcType, levelLayer, player)
-    })
-  }
-} import { Scene } from 'phaser'
-import { NPC, NPCConfig } from '../types/NPC'
-
-export class NPCManager {
-  private scene: Scene
-  private npcs: Array<NPC> = []
-  private interactionDistance: number = 100
-  private interactionKey: Phaser.Input.Keyboard.Key
-  private chatCallback?: (npcId: number, personality: string) => void
-  private currentInteractableNPC: NPC | null = null
-  private interactionText: Phaser.GameObjects.Text | null = null
-  
-  private readonly npcConfigs = [
-    {
-      id: 1,
-      personality: "A retired ecologist with a deep understanding of natural systems",
-      name: "Mrs. Aria"
-    },
-    {
-      id: 2,
-      personality: "A pragmatic infrastructure engineer focused on system stability",
-      name: "Chief Oskar"
-    },
-    {
-      id: 3,
-      personality: "A forward-thinking fuel supplier interested in sustainable options",
-      name: "Mr. Moss"
-    },
-    {
-      id: 4,
-      personality: "A passionate teacher advocating for community-focused development",
-      name: "Miss Dai"
-    },
-    {
-      id: 5,
-      personality: "A determined water justice activist fighting for equal access",
-      name: "Ms. Kira"
-    },
-    {
-      id: 6,
-      personality: "An innovative builder exploring eco-friendly construction methods",
-      name: "Mr. Han"
-    }
-  ];
-
-  constructor(scene: Scene) {
-    this.scene = scene
-    if (!scene.input.keyboard) {
-      throw new Error('Keyboard input not available')
-    }
-    this.interactionKey = scene.input.keyboard.addKey('E')
-
-    // Create the interaction text object
-    this.interactionText = this.scene.add.text(0, 0, 'Press E to talk', {
-      fontSize: '10px',
-      backgroundColor: '#000000',
-      padding: { x: 3, y: 1 },
-      fixedWidth: 0,
-      color: '#ffffff'
-    })
-    this.interactionText.setOrigin(0.5, 1)
-    this.interactionText.setDepth(1000)
-    this.interactionText.setVisible(false)
-
-    // Create NPC animations
-    this.createNPCAnimations()
-
-    // Listen for chat closed event
-    if (typeof window !== 'undefined') {
-      window.addEventListener('chatClosed', ((event: CustomEvent) => {
-        const npc = this.npcs.find(n => n.id === event.detail.npcId)
-        if (npc) {
-          npc.isInteracting = false
-        }
-      }) as EventListener)
-    }
-  }
-
-  private createNPCAnimations() {
-    // Create walk animations
-    this.scene.anims.create({
-      key: 'walk-down',
-      frames: this.scene.anims.generateFrameNumbers('playerWalk', { start: 0, end: 5 }),
-      frameRate: 10,
-      repeat: -1
-    })
-    
-    this.scene.anims.create({
-      key: 'walk-up',
-      frames: this.scene.anims.generateFrameNumbers('playerWalk', { start: 6, end: 11 }),
-      frameRate: 10,
-      repeat: -1
-    })
-    
-    this.scene.anims.create({
-      key: 'walk-side',
-      frames: this.scene.anims.generateFrameNumbers('playerWalk', { start: 12, end: 17 }),
-      frameRate: 10,
-      repeat: -1
-    })
-    
-    // Create idle animations using single frames
-    this.scene.anims.create({
-      key: 'idle-down',
-      frames: [{ key: 'playerIdle', frame: 0 }],
-      frameRate: 1,
-      repeat: 0
-    })
-    
-    this.scene.anims.create({
-      key: 'idle-up',
-      frames: [{ key: 'playerIdle', frame: 3 }],
-      frameRate: 1,
-      repeat: 0
-    })
-    
-    this.scene.anims.create({
-      key: 'idle-side',
-      frames: [{ key: 'playerIdle', frame: 6 }],
-      frameRate: 1,
-      repeat: 0
-    })
   }
 
   update(time: number) {
@@ -403,18 +287,19 @@ export class NPCManager {
     console.log('E key pressed, checking for NPC interactions...')
     if (this.currentInteractableNPC) {
       const npcData = {
-        1: "A retired ecologist who prioritizes ecological restoration and believes in working with nature. Speaks slowly and gently, often referring to natural laws and past experiences.",
-        2: "A pragmatic infrastructure engineer who prioritizes system stability and efficiency. Speaks in technical terms and focuses on data-driven solutions.",
-        3: "A forward-thinking fuel supplier balancing sustainability with practicality. Interested in innovative solutions while acknowledging economic realities.",
-        4: "A passionate teacher advocating for community-focused development. Emphasizes education and sustainable urban planning.",
-        5: "A determined water justice activist fighting for equal access. Focuses on fair distribution and community empowerment.",
-        6: "An innovative builder exploring eco-friendly construction methods. Balances modern technology with environmental consciousness."
+        "1": "A retired ecologist who prioritizes ecological restoration and believes in working with nature. Speaks slowly and gently, often referring to natural laws and past experiences.",
+        "2": "A pragmatic infrastructure engineer who prioritizes system stability and efficiency. Speaks in technical terms and focuses on data-driven solutions.",
+        "3": "A forward-thinking fuel supplier balancing sustainability with practicality. Interested in innovative solutions while acknowledging economic realities.",
+        "4": "A passionate teacher advocating for community-focused development. Emphasizes education and sustainable urban planning.",
+        "5": "A determined water justice activist fighting for equal access. Focuses on fair distribution and community empowerment.",
+        "6": "An innovative builder exploring eco-friendly construction methods. Balances modern technology with environmental consciousness."
       }
 
-      const npcConfig = this.npcConfigs[this.currentInteractableNPC.id - 1];
+      const npcIndex = parseInt(this.currentInteractableNPC.id) - 1;
+      const npcConfig = this.npcConfigs[npcIndex];
       console.log('Found interactable NPC:', {
         id: this.currentInteractableNPC.id,
-        name: npcConfig.name,
+        name: npcConfig?.name,
         personality: npcData[this.currentInteractableNPC.id as keyof typeof npcData] || this.currentInteractableNPC.personality
       })
       
@@ -424,7 +309,7 @@ export class NPCManager {
       if (this.chatCallback) {
         console.log('Calling chat callback with NPC:', {
           id: this.currentInteractableNPC.id,
-          name: npcConfig.name
+          name: npcConfig?.name
         })
         this.chatCallback(
           this.currentInteractableNPC.id,
@@ -440,11 +325,11 @@ export class NPCManager {
     }
   }
 
-  setInteractionCallback(callback: (npcId: number, personality: string) => void) {
+  setInteractionCallback(callback: (npcId: string, personality: string) => void) {
     this.chatCallback = callback
   }
 
-  endInteraction(npcId: number) {
+  endInteraction(npcId: string) {
     const npc = this.npcs.find(n => n.id === npcId)
     if (npc) {
       npc.isInteracting = false
@@ -464,7 +349,7 @@ export class NPCManager {
       npc.moveTimer = time + Phaser.Math.Between(npc.pauseTimeMin, npc.pauseTimeMax)
 
       // Set idle animation based on last direction
-      npc.sprite.play(`idle-${npc.lastDirection}`, true)
+      npc.sprite.play(`npc-${npc.animationId}-idle-${npc.lastDirection}`, true)
     } else if (!npc.isMoving && time >= npc.moveTimer) {
       // Start moving in a random direction
       npc.isMoving = true
@@ -476,114 +361,45 @@ export class NPCManager {
       switch (npc.targetDirection) {
         case 'up':
           npc.sprite.setVelocity(0, -npc.speed)
-          npc.sprite.play('walk-up', true)
+          npc.sprite.play(`npc-${npc.animationId}-walk-up`, true)
           npc.lastDirection = 'up'
           break
         case 'down':
           npc.sprite.setVelocity(0, npc.speed)
-          npc.sprite.play('walk-down', true)
+          npc.sprite.play(`npc-${npc.animationId}-walk-down`, true)
           npc.lastDirection = 'down'
           break
         case 'left':
           npc.sprite.setVelocity(-npc.speed, 0)
           npc.sprite.setFlipX(true)
-          npc.sprite.play('walk-side', true)
+          npc.sprite.play(`npc-${npc.animationId}-walk-side`, true)
           npc.lastDirection = 'side'
           break
         case 'right':
           npc.sprite.setVelocity(npc.speed, 0)
           npc.sprite.setFlipX(false)
-          npc.sprite.play('walk-side', true)
+          npc.sprite.play(`npc-${npc.animationId}-walk-side`, true)
           npc.lastDirection = 'side'
           break
       }
     }
   }
 
-  createNPC(config: NPCConfig): NPC {
-    const {
-      id,
-      x,
-      y,
-      personality,
-      speed = 50,
-      moveTimeMin = 1000,
-      moveTimeMax = 2000,
-      pauseTimeMin = 500,
-      pauseTimeMax = 1000
-    } = config
-
-    // Create NPC sprite
-    const sprite = this.scene.physics.add.sprite(x, y, 'playerIdle', 0)
-    
-    // Set NPC properties
-    sprite.setCollideWorldBounds(true)
-    sprite.setScale(1.5)
-    sprite.setSize(16, 16)
-    sprite.setOffset(8, 16)
-    
-    // Create NPC object
-    const npc: NPC = {
-      id,
-      sprite,
-      lastDirection: 'down',
-      moveTimer: 0,
-      isMoving: false,
-      targetDirection: 'down',
-      speed,
-      moveTimeMin,
-      moveTimeMax,
-      pauseTimeMin,
-      pauseTimeMax,
-      personality,
-      isInteracting: false
-    }
-    
-    // Add to NPCs array
-    this.npcs.push(npc)
-    
-    // Start with idle animation
-    sprite.play('idle-down')
-    
-    // Add collisions
-    const levelLayer = this.scene.children.getByName('levelLayer') as Phaser.Tilemaps.TilemapLayer
-    if (levelLayer) {
-      this.scene.physics.add.collider(sprite, levelLayer)
-    }
-    
-    const player = this.scene.children.getByName('player') as Phaser.Physics.Arcade.Sprite
-    if (player) {
-      this.scene.physics.add.collider(sprite, player)
-    }
-    
-    this.npcs.forEach(otherNpc => {
-      if (otherNpc.sprite !== sprite) {
-        this.scene.physics.add.collider(sprite, otherNpc.sprite)
-      }
-    })
-
-    return npc
+  private getNPCName(startFrame: number): string {
+    return NPC_TYPES.find(type => type.startFrame === startFrame)?.name || 'unknown'
   }
 
-  spawnNPCsInCircle(mapWidth: number, mapHeight: number, levelLayer: Phaser.Tilemaps.TilemapLayer, player: Phaser.Physics.Arcade.Sprite) {
-    const margin = 200
-    const positions = [
-      { x: margin, y: margin },
-      { x: mapWidth - margin, y: margin },
-      { x: margin, y: mapHeight - margin },
-      { x: mapWidth - margin, y: mapHeight - margin },
-      { x: mapWidth / 3, y: mapHeight / 2 },
-      { x: (mapWidth * 2) / 3, y: mapHeight / 2 }
-    ]
-    
-    positions.forEach((pos, index) => {
-      const npcConfig = this.npcConfigs[index]
-      this.createNPC({
-        id: npcConfig.id,
-        x: pos.x,
-        y: pos.y,
-        personality: npcConfig.personality
-      })
+  spawnNPCsInCircle(mapWidth: number, mapHeight: number, levelLayer: Phaser.Tilemaps.TilemapLayer, player: Physics.Arcade.Sprite) {
+    const centerX = mapWidth / 2
+    const centerY = mapHeight / 2
+    const radius = Math.min(mapWidth, mapHeight) / 4
+
+    NPC_TYPES.forEach((npcType, index) => {
+      const angle = (index / NPC_TYPES.length) * Math.PI * 2
+      const x = centerX + Math.cos(angle) * radius
+      const y = centerY + Math.sin(angle) * radius
+      
+      this.createNPC(x, y, npcType, levelLayer, player)
     })
   }
 } 

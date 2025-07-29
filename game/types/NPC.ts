@@ -15,11 +15,27 @@ export interface NPC {
   type: string
   id: string
   animationId: string
+  personality: string
+  isInteracting: boolean
 }
 
 export interface NPCType {
   name: string
   startFrame: number
+}
+
+export interface NPCConfig {
+  id: string
+  x: number
+  y: number
+  personality: string
+  startFrame: number
+  type: string
+  speed?: number
+  moveTimeMin?: number
+  moveTimeMax?: number
+  pauseTimeMin?: number
+  pauseTimeMax?: number
 }
 
 /*
@@ -106,30 +122,4 @@ export function getUpFrames(startFrame: number): number[] {
     startFrame + rowOffset + 1,
     startFrame + rowOffset + 2
   ]
-} export interface NPC {
-  id: number
-  sprite: Phaser.Physics.Arcade.Sprite
-  lastDirection: string
-  moveTimer: number
-  isMoving: boolean
-  targetDirection: string
-  speed: number
-  moveTimeMin: number
-  moveTimeMax: number
-  pauseTimeMin: number
-  pauseTimeMax: number
-  personality: string
-  isInteracting: boolean
-}
-
-export interface NPCConfig {
-  id: number
-  x: number
-  y: number
-  personality: string
-  speed?: number
-  moveTimeMin?: number
-  moveTimeMax?: number
-  pauseTimeMin?: number
-  pauseTimeMax?: number
 } 

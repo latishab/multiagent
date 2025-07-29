@@ -68,24 +68,24 @@ The game features 6 NPCs, each managing a different city system:
 
 ### Conversation Rounds
 
-The game features three distinct conversation rounds with each NPC:
+The game features two distinct conversation rounds with each NPC:
 
 #### Round 1: Introduction
-- NPCs introduce themselves
-- Explain their role in city reconstruction
-- Brief mention of available options
+- NPCs greet the player briefly in their personal tone
+- Introduce themselves with name, background, and profession
+- State the reconstruction field they are responsible for
+- Name the two technical solutions they hold
+- Speak 1–2 sentences per response, then wait for the player to reply
 
-#### Round 2: Options Exploration
-- Detailed explanation of each option
-- Discussion of pros and cons
-- Economic vs. environmental trade-offs
+#### Round 2: Options Discussion
+- NPCs begin by briefly recapping the two available options
+- Clearly state which option they support and why they support it
+- Explain the advantages of their preferred option and the disadvantages of the alternative
+- Communicate using multiple short turns (1–2 sentences per response)
+- Emphasize the trade-offs between sustainable and unsustainable options
+- After all 6 NPCs have spoken, the conversation is complete
 
-#### Round 3: Advocacy
-- NPCs take a stance (pro/anti sustainable)
-- Present arguments for their preferred option
-- Engage in deeper discussion about choices
-
-Use the round selector in the chat interface to switch between different conversation phases.
+The rounds progress automatically as you speak with all NPCs. You cannot manually select rounds - the system manages the flow automatically.
 
 ## Development
 
