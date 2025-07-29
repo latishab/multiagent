@@ -20,6 +20,19 @@ export const gameConfig: Types.Core.GameConfig = {
   render: {
     pixelArt: true,
     antialias: false,
-    roundPixels: true
+    roundPixels: true,
+    powerPreference: 'default',
+    failIfMajorPerformanceCaveat: false
+  },
+  callbacks: {
+    preBoot: (game) => {
+      // Handle WebGL context creation issues
+      if (game.renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer) {
+        const gl = game.renderer.gl;
+        if (gl) {
+          gl.getExtension('WEBGL_debug_renderer_info');
+        }
+      }
+    }
   }
 } 

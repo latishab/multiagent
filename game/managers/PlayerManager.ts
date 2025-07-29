@@ -62,7 +62,7 @@ export class PlayerManager {
     this.player = this.scene.physics.add.sprite(x, y, 'playerIdle', 0)
     this.player.setName('player')
     this.player.setCollideWorldBounds(true)
-    this.player.setScale(1.5) // Match NPC scale
+    this.player.setScale(2.0) // Match NPC scale
     this.player.setSize(16, 16)
     this.player.setOffset(8, 16)
     
@@ -84,7 +84,7 @@ export class PlayerManager {
   update() {
     if (!this.player) return
 
-    const speed = 100
+    const speed = 150
     this.player.setVelocity(0)
     
     let isMoving = false
