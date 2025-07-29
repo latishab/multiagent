@@ -17,10 +17,6 @@ interface Message {
   sender: 'player' | 'npc';
 }
 
-interface MessageHistory {
-  [key: string]: Message[];
-}
-
 const NPCNames: { [key: number]: string } = {
   1: 'Mrs. Aria',
   2: 'Chief Oskar',
@@ -62,7 +58,6 @@ export default function ChatDialog({
   onStanceChange
 }: ChatDialogProps) {
   // Keep message history per NPC and round
-  const [messageHistories, setMessageHistories] = useState<MessageHistory>({});
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -71,33 +66,40 @@ export default function ChatDialog({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Get current conversation key
-  const getConversationKey = (npcId: number, round: number, sessionId?: string) => {
-    if (sessionId) {
-      return `npc_${npcId}_round_${round}_session_${sessionId}`;
-    }
-    return `npc_${npcId}_round_${round}`;
-  };
-
   // Load messages when NPC or round changes
   useEffect(() => {
     const loadMessages = async () => {
       const currentSessionId = await sessionManager.getSessionId();
       setSessionId(currentSessionId);
-      const key = getConversationKey(npcId, round, currentSessionId);
-      const savedMessages = messageHistories[key] || [];
-      console.log('Loading messages for:', {
-        npcId,
-        npcName: NPCNames[npcId],
-        round,
-        sessionId: currentSessionId,
-        messageCount: savedMessages.length
-      });
-      setMessages(savedMessages);
+      
+      try {
+        // Load conversation history from API
+        const response = await fetch(`/api/conversation-history?npcId=${npcId}&round=${round}&sessionId=${currentSessionId}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Loading messages for:', {
+            npcId,
+            npcName: NPCNames[npcId],
+            round,
+            sessionId: currentSessionId,
+            messageCount: data.messages.length,
+            historyLength: data.historyLength
+          });
+          
+          setMessages(data.messages);
+        } else {
+          console.log('No conversation history found, starting fresh');
+          setMessages([]);
+        }
+      } catch (error) {
+        console.error('Error loading conversation history:', error);
+        setMessages([]);
+      }
     };
     
     loadMessages();
-  }, [npcId, round, messageHistories]);
+  }, [npcId, round]);
 
   // Log NPC info when props change
   useEffect(() => {
@@ -144,13 +146,6 @@ export default function ChatDialog({
     // Add user message to current conversation
     const newMessages: Message[] = [...messages, { text: userMessage, sender: 'player' }];
     setMessages(newMessages);
-    
-    // Save to history
-    const key = getConversationKey(npcId, round, currentSessionId);
-    setMessageHistories(prev => ({
-      ...prev,
-      [key]: newMessages
-    }));
 
     setIsLoading(true);
 
@@ -199,12 +194,6 @@ export default function ChatDialog({
             sender: 'npc' 
           }];
           setMessages(currentMessages);
-          
-          // Save to history
-          setMessageHistories(prev => ({
-            ...prev,
-            [key]: currentMessages
-          }));
         }
       } else {
         throw new Error('Invalid response format from API');
@@ -219,12 +208,6 @@ export default function ChatDialog({
         sender: 'npc' 
       }];
       setMessages(errorMessages);
-      
-      // Save to history
-      setMessageHistories(prev => ({
-        ...prev,
-        [key]: errorMessages
-      }));
     } finally {
       setIsLoading(false);
       if (inputRef.current) {
@@ -270,40 +253,13 @@ export default function ChatDialog({
       {/* Chat Dialog */}
       <div className="chat-dialog" onKeyDown={handleKeyDown}>
         <div className="chat-container">
-          {/* Round Selector */}
-          <div className="round-selector">
-            <div className="round-tabs">
-              <button 
-                className={`round-tab ${round === 1 ? 'active' : ''}`}
-                onClick={() => onRoundChange(1)}
-              >
-                Round 1
-                <span className="round-desc">Introduction</span>
-              </button>
-              <button 
-                className={`round-tab ${round === 2 ? 'active' : ''}`}
-                onClick={() => onRoundChange(2)}
-              >
-                Round 2
-                <span className="round-desc">Options</span>
-              </button>
-              <button 
-                className={`round-tab ${round === 3 ? 'active' : ''}`}
-                onClick={() => onRoundChange(3)}
-              >
-                Round 3
-                <span className="round-desc">
-                  {isSustainable ? 'Pro-Sustainable' : 'Anti-Sustainable'}
-                </span>
-              </button>
-              {round === 3 && (
-                <button 
-                  className="stance-toggle"
-                  onClick={() => onStanceChange(!isSustainable)}
-                >
-                  {isSustainable ? '🌱' : '💰'}
-                </button>
-              )}
+          {/* Round Indicator */}
+          <div className="round-indicator">
+            <div className="round-info">
+              <span className="round-number">Round {round}</span>
+              <span className="round-desc">
+                {round === 1 ? 'Introduction' : 'Options Discussion'}
+              </span>
             </div>
           </div>
 
@@ -382,6 +338,31 @@ export default function ChatDialog({
           height: 100%;
           display: flex;
           flex-direction: column;
+        }
+
+        .round-indicator {
+          background-color: rgba(17, 24, 39, 0.95);
+          border-bottom: 2px solid #374151;
+          padding: 10px 20px;
+          flex-shrink: 0;
+        }
+
+        .round-info {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+        }
+
+        .round-number {
+          color: #e5e7eb;
+          font-size: 16px;
+          font-weight: bold;
+        }
+
+        .round-desc {
+          color: #9ca3af;
+          font-size: 12px;
         }
 
         .chat-header {
@@ -575,65 +556,6 @@ export default function ChatDialog({
 
         .input-container button.loading {
           background-color: #4b5563;
-        }
-
-        .round-selector {
-          background-color: rgba(17, 24, 39, 0.95);
-          border-bottom: 2px solid #374151;
-          padding: 10px 20px;
-          flex-shrink: 0;
-        }
-
-        .round-tabs {
-          display: flex;
-          gap: 10px;
-          align-items: center;
-        }
-
-        .round-tab {
-          background: rgba(55, 65, 81, 0.5);
-          border: 1px solid #4B5563;
-          border-radius: 8px;
-          color: #9CA3AF;
-          padding: 8px 16px;
-          font-size: 14px;
-          cursor: pointer;
-          transition: all 0.2s;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 4px;
-        }
-
-        .round-tab:hover {
-          background: rgba(55, 65, 81, 0.8);
-          border-color: #6B7280;
-        }
-
-        .round-tab.active {
-          background: #2563EB;
-          border-color: #3B82F6;
-          color: white;
-        }
-
-        .round-desc {
-          font-size: 12px;
-          opacity: 0.8;
-        }
-
-        .stance-toggle {
-          background: transparent;
-          border: none;
-          font-size: 24px;
-          cursor: pointer;
-          padding: 8px;
-          border-radius: 8px;
-          transition: all 0.2s;
-          margin-left: auto;
-        }
-
-        .stance-toggle:hover {
-          background: rgba(55, 65, 81, 0.5);
         }
       `}</style>
     </>

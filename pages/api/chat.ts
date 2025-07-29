@@ -68,11 +68,13 @@ export default async function handler(
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    const npc = NPCData[npcId];
+    // Convert string npcId to number for NPCData lookup
+    const npcIdNumber = parseInt(npcId as string);
+    const npc = NPCData[npcIdNumber];
     if (!npc) {
       return res.status(400).json({ 
         message: 'Invalid NPC ID', 
-        details: `NPC ID ${npcId} not found. Available NPCs: ${Object.keys(NPCData).join(', ')}`
+        details: `NPC ID ${npcId} (${npcIdNumber}) not found. Available NPCs: ${Object.keys(NPCData).join(', ')}`
       });
     }
 
