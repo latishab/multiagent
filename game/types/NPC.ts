@@ -22,6 +22,37 @@ export interface NPCType {
   startFrame: number
 }
 
+/*
+ * SPRITESHEET LAYOUT STANDARDIZATION GUIDE
+ * 
+ * For the update.png spritesheet (144x96 pixels), each character must follow this exact layout:
+ * 
+ * CHARACTER BLOCK STRUCTURE (48x48 pixels per character):
+ * Each character occupies a 3x3 grid of 16x16 frames (48x48 total)
+ * 
+ * Frame layout within each character block:
+ * [0][1][2] - Down animations (walking down)
+ * [3][4][5] - Side animations (walking left/right) 
+ * [6][7][8] - Up animations (walking up)
+ * 
+ * SPRITESHEET LAYOUT (2 rows, 3 characters per row):
+ * Row 1: [Character 0][Character 1][Character 2] - 48px each
+ * Row 2: [Character 3][Character 4][Character 5] - 48px each
+ * 
+ * REQUIRED STANDARDIZATION:
+ * - Each character MUST have exactly 3 frames for each direction
+ * - Down frames MUST be in the top row of their 3x3 block
+ * - Side frames MUST be in the middle row of their 3x3 block  
+ * - Up frames MUST be in the bottom row of their 3x3 block
+ * - All frames must be 16x16 pixels
+ * - No gaps or spacing between frames
+ * - Characters must be arranged in 2 rows of 3 characters each
+ * 
+ * Frame calculation formula:
+ * startFrame = (row * 9 * 3) + (col * 3)
+ * where row is 0 or 1, col is 0, 1, or 2
+ */
+
 // Spritesheet layout constants (144x96 spritesheet)
 const FRAMES_PER_ROW = 9        // Each row is 144/16 = 9 frames wide
 const FRAMES_PER_CHAR = 3       // Each character takes 3 frames horizontally
