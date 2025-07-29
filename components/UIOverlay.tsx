@@ -265,7 +265,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
 
   return (
     <>
-      {/* Welcome Overlay */}
+      {/* Welcome Overlay UI */}
       {showWelcome && (
         <div className={styles.welcomeOverlay}>
           <div className={styles.welcomeContent}>
