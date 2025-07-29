@@ -10,7 +10,7 @@ interface ChatDialogProps {
   onClose: () => void;
   onRoundChange: (round: number) => void;
   onStanceChange: (isProSustainable: boolean) => void;
-  onConversationComplete?: (npcId: number, round: number) => void;
+  onConversationComplete?: (npcId: number, round: number, detectedOpinion?: { opinion: string; reasoning: string }) => void;
 }
 
 interface Message {
@@ -25,6 +25,39 @@ const NPCNames: { [key: number]: string } = {
   4: 'Miss Dai',
   5: 'Ms. Kira',
   6: 'Mr. Han'
+}
+
+const NPCOptions: { [key: number]: { sustainable: string; unsustainable: string; system: string } } = {
+  1: { 
+    sustainable: 'Constructed Wetlands', 
+    unsustainable: 'Chemical Filtration Tanks',
+    system: 'Water Cycle'
+  },
+  2: { 
+    sustainable: 'Local Solar Microgrids', 
+    unsustainable: 'Gas Power Hub',
+    system: 'Energy Grid'
+  },
+  3: { 
+    sustainable: 'Biofuel Cooperative', 
+    unsustainable: 'Diesel Supply Contracts',
+    system: 'Fuel Acquisition'
+  },
+  4: { 
+    sustainable: 'Urban Agriculture Zones', 
+    unsustainable: 'Industrial Expansion',
+    system: 'Land Use'
+  },
+  5: { 
+    sustainable: 'Public Shared Reservoir', 
+    unsustainable: 'Tiered Access Contracts',
+    system: 'Water Distribution'
+  },
+  6: { 
+    sustainable: 'Modular Eco-Pods', 
+    unsustainable: 'Smart Concrete Complex',
+    system: 'Housing & Shelter'
+  }
 }
 
 // List of common titles that shouldn't be split
@@ -206,6 +239,14 @@ export default function ChatDialog({
       console.log('API Success Response:', data);
 
       if (data.response) {
+        // Check if opinion was detected
+        if (data.detectedOpinion && round === 2) {
+          console.log('Opinion detected:', data.detectedOpinion);
+          // Update ballot with detected opinion
+          if (onConversationComplete) {
+            onConversationComplete(npcId, round, data.detectedOpinion);
+          }
+        }
         // Split response into sentences and add delay between each
         const sentences = splitIntoSentences(data.response);
         let currentMessages = newMessages;
@@ -291,6 +332,28 @@ export default function ChatDialog({
               </span>
             </div>
           </div>
+
+          {/* Purpose Statement */}
+          {messages.length === 0 && (
+            <div className="purpose-statement">
+              <div className="purpose-content">
+                <h3>Your Mission</h3>
+                <p>
+                  {round === 1 ? 
+                    `Find out about ${NPCNames[npcId]}'s role in the ${NPCOptions[npcId]?.system} system and learn about the pros and cons of building ${NPCOptions[npcId]?.sustainable} vs ${NPCOptions[npcId]?.unsustainable}.` :
+                    `Discover ${NPCNames[npcId]}'s opinion on whether to choose ${NPCOptions[npcId]?.sustainable} (sustainable) or ${NPCOptions[npcId]?.unsustainable} (economic) for the ${NPCOptions[npcId]?.system}.`
+                  }
+                </p>
+                <div className="purpose-details">
+                  {round === 1 ? (
+                    <span>Round 1: Introduction - Learn about their system and the available options</span>
+                  ) : (
+                    <span>Round 2: Decision - Find out which option they support and why</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Header */}
           <div className="chat-header">
@@ -392,6 +455,37 @@ export default function ChatDialog({
         .round-desc {
           color: #9ca3af;
           font-size: 12px;
+        }
+
+        .purpose-statement {
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.15));
+          border-bottom: 2px solid #374151;
+          padding: 16px 20px;
+          flex-shrink: 0;
+        }
+
+        .purpose-content {
+          text-align: center;
+        }
+
+        .purpose-content h3 {
+          color: #3b82f6;
+          font-size: 18px;
+          font-weight: bold;
+          margin: 0 0 8px 0;
+        }
+
+        .purpose-content p {
+          color: #e5e7eb;
+          font-size: 14px;
+          line-height: 1.5;
+          margin: 0 0 8px 0;
+        }
+
+        .purpose-details {
+          color: #9ca3af;
+          font-size: 12px;
+          font-style: italic;
         }
 
         .chat-header {

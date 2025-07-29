@@ -2,6 +2,64 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { vectorStore } from '../../utils/vectorStore';
 import { NPCData, getSystemPrompt } from '../../utils/prompts';
 
+// Function to detect NPC opinion from AI response
+function detectNPCOpinion(response: string, npc: NPCInfo): { opinion: string; reasoning: string } | null {
+  const responseLower = response.toLowerCase();
+  const sustainableOption = npc.options.sustainable.toLowerCase();
+  const unsustainableOption = npc.options.unsustainable.toLowerCase();
+  
+  // Check for clear opinion indicators
+  const opinionIndicators = [
+    'i support',
+    'i prefer',
+    'i recommend',
+    'i believe',
+    'i think we should',
+    'i would choose',
+    'i favor',
+    'i advocate for',
+    'i suggest',
+    'i recommend we',
+    'we should go with',
+    'the better option is',
+    'the best choice is',
+    'i would go with',
+    'i lean toward',
+    'i\'m in favor of',
+    'i\'m for',
+    'i\'m supporting',
+    'i\'m choosing',
+    'i\'m recommending'
+  ];
+  
+  // Check if response contains opinion indicators
+  const hasOpinionIndicator = opinionIndicators.some(indicator => 
+    responseLower.includes(indicator)
+  );
+  
+  if (!hasOpinionIndicator) {
+    return null;
+  }
+  
+  // Determine which option they support
+  const supportsSustainable = responseLower.includes(sustainableOption);
+  const supportsUnsustainable = responseLower.includes(unsustainableOption);
+  
+  if (supportsSustainable && !supportsUnsustainable) {
+    return {
+      opinion: npc.options.sustainable,
+      reasoning: response
+    };
+  } else if (supportsUnsustainable && !supportsSustainable) {
+    return {
+      opinion: npc.options.unsustainable,
+      reasoning: response
+    };
+  }
+  
+  return null;
+}
+
 interface NPCOptions {
   sustainable: string;
   unsustainable: string;
@@ -185,6 +243,12 @@ export default async function handler(
       throw new Error('Invalid response format from API');
     }
 
+    // Detect if NPC revealed their opinion (only in round 2)
+    let detectedOpinion = null;
+    if (round === 2) {
+      detectedOpinion = detectNPCOpinion(aiResponse, npc);
+    }
+
     // Store the AI response in Pinecone
     const responseId = `${npcId}_${round}_${Date.now()}_response`;
     await vectorStore.storeMemory(responseId, aiResponse, {
@@ -205,7 +269,10 @@ export default async function handler(
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-    return res.status(200).json({ response: aiResponse });
+    return res.status(200).json({ 
+      response: aiResponse,
+      detectedOpinion: detectedOpinion
+    });
   } catch (error: any) {
     console.error('Error in chat API:', error);
     return res.status(500).json({ 

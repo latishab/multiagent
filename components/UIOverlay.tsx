@@ -100,7 +100,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   }
 
   // Function to mark NPC as actually spoken to (called when conversation has content)
-  const markNPCAsSpoken = (npcId: number, round: number) => {
+  const markNPCAsSpoken = (npcId: number, round: number, detectedOpinion?: { opinion: string; reasoning: string }) => {
     const roundKey = round === 1 ? 'round1' : 'round2';
     setSpokenNPCs(prev => ({
       ...prev,
@@ -143,9 +143,9 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       sustainableOption: npcOptions[npcId].sustainable,
       unsustainableOption: npcOptions[npcId].unsustainable,
       npcOpinion: round === 1 ? 'Introduction phase - no opinion yet' : 
-        (chatState.isSustainable ? npcOptions[npcId].sustainable : npcOptions[npcId].unsustainable),
+        (detectedOpinion ? detectedOpinion.opinion : 'Opinion not yet revealed'),
       npcReasoning: round === 1 ? 'NPC introduced their system and options' : 
-        `NPC supports the ${chatState.isSustainable ? 'sustainable' : 'unsustainable'} option based on community conditions`,
+        (detectedOpinion ? detectedOpinion.reasoning : 'Waiting for NPC to express their opinion'),
       timestamp: Date.now()
     }
 
@@ -329,6 +329,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         <ProgressIndicator
           currentRound={chatState.round}
           spokenNPCs={spokenNPCs}
+          ballotEntries={ballotEntries}
         />
       )}
 
@@ -397,7 +398,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         onClose={closeChat}
         onRoundChange={handleRoundChange}
         onStanceChange={handleStanceChange}
-        onConversationComplete={markNPCAsSpoken}
+        onConversationComplete={(npcId, round, detectedOpinion) => markNPCAsSpoken(npcId, round, detectedOpinion)}
       />
 
       {/* Ballot */}
