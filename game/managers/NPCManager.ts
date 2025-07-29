@@ -150,7 +150,7 @@ export class NPCManager {
     
     // Set NPC properties
     sprite.setCollideWorldBounds(true)
-    sprite.setScale(1.5)
+    sprite.setScale(2.25) 
     sprite.setSize(16, 16)
     sprite.setOffset(8, 16)
     
@@ -181,7 +181,8 @@ export class NPCManager {
       id: id,
       animationId: `${npcType.name}-${id}`,
       personality: this.npcConfigs[npcTypeIndex]?.personality || "A mysterious character",
-      isInteracting: false
+      isInteracting: false,
+      areaBounds: npcType.areaBounds
     }
     
     // Create animations for this specific NPC and get its unique animation ID
@@ -342,6 +343,42 @@ export class NPCManager {
       return
     }
 
+    // Check if NPC is within bounds and adjust if needed
+    if (npc.areaBounds) {
+      const bounds = npc.areaBounds
+      const sprite = npc.sprite
+      
+      // Keep NPC within bounds
+      if (sprite.x < bounds.x) {
+        sprite.x = bounds.x
+        npc.sprite.setVelocity(0, 0)
+        npc.isMoving = false
+        npc.moveTimer = time + Phaser.Math.Between(npc.pauseTimeMin, npc.pauseTimeMax)
+        return
+      }
+      if (sprite.x > bounds.x + bounds.width) {
+        sprite.x = bounds.x + bounds.width
+        npc.sprite.setVelocity(0, 0)
+        npc.isMoving = false
+        npc.moveTimer = time + Phaser.Math.Between(npc.pauseTimeMin, npc.pauseTimeMax)
+        return
+      }
+      if (sprite.y < bounds.y) {
+        sprite.y = bounds.y
+        npc.sprite.setVelocity(0, 0)
+        npc.isMoving = false
+        npc.moveTimer = time + Phaser.Math.Between(npc.pauseTimeMin, npc.pauseTimeMax)
+        return
+      }
+      if (sprite.y > bounds.y + bounds.height) {
+        sprite.y = bounds.y + bounds.height
+        npc.sprite.setVelocity(0, 0)
+        npc.isMoving = false
+        npc.moveTimer = time + Phaser.Math.Between(npc.pauseTimeMin, npc.pauseTimeMax)
+        return
+      }
+    }
+
     if (npc.isMoving && time >= npc.moveTimer) {
       // Stop moving and set idle animation
       npc.isMoving = false
@@ -389,15 +426,24 @@ export class NPCManager {
     return NPC_TYPES.find(type => type.startFrame === startFrame)?.name || 'unknown'
   }
 
-  spawnNPCsInCircle(mapWidth: number, mapHeight: number, levelLayer: Phaser.Tilemaps.TilemapLayer, player: Physics.Arcade.Sprite) {
-    const centerX = mapWidth / 2
-    const centerY = mapHeight / 2
-    const radius = Math.min(mapWidth, mapHeight) / 4
-
+  spawnNPCsInAreas(mapWidth: number, mapHeight: number, levelLayer: Phaser.Tilemaps.TilemapLayer, player: Physics.Arcade.Sprite) {
     NPC_TYPES.forEach((npcType, index) => {
-      const angle = (index / NPC_TYPES.length) * Math.PI * 2
-      const x = centerX + Math.cos(angle) * radius
-      const y = centerY + Math.sin(angle) * radius
+      let x: number, y: number
+      
+      if (npcType.areaBounds) {
+        // Spawn NPC within their designated area
+        const bounds = npcType.areaBounds
+        x = bounds.x + bounds.width / 2
+        y = bounds.y + bounds.height / 2
+      } else {
+        // Fallback to circle spawning if no area bounds defined
+        const centerX = mapWidth / 2
+        const centerY = mapHeight / 2
+        const radius = Math.min(mapWidth, mapHeight) / 4
+        const angle = (index / NPC_TYPES.length) * Math.PI * 2
+        x = centerX + Math.cos(angle) * radius
+        y = centerY + Math.sin(angle) * radius
+      }
       
       this.createNPC(x, y, npcType, levelLayer, player)
     })

@@ -17,11 +17,25 @@ export interface NPC {
   animationId: string
   personality: string
   isInteracting: boolean
+  // Area bounds for NPC movement
+  areaBounds?: {
+    x: number
+    y: number
+    width: number
+    height: number
+  }
 }
 
 export interface NPCType {
   name: string
   startFrame: number
+  // Optional area bounds for this NPC type
+  areaBounds?: {
+    x: number
+    y: number
+    width: number
+    height: number
+  }
 }
 
 export interface NPCConfig {
@@ -82,16 +96,40 @@ function calculateStartFrame(charIndex: number): number {
   return (row * FRAMES_PER_ROW * FRAMES_VERTICALLY) + (col * FRAMES_PER_CHAR)
 }
 
-// Define NPC types with their frame offsets
+// Define NPC types with their frame offsets and area bounds
 export const NPC_TYPES: NPCType[] = [
   // First row characters (0-2)
-  { name: 'white', startFrame: calculateStartFrame(0) },    // Top-left character
-  { name: 'brown', startFrame: calculateStartFrame(1) },    // Top-middle character
-  { name: 'blue', startFrame: calculateStartFrame(2) },     // Top-right character
+  { 
+    name: 'white', 
+    startFrame: calculateStartFrame(0),
+    areaBounds: { x: 100, y: 100, width: 300, height: 200 }  // Top-left area
+  },
+  { 
+    name: 'brown', 
+    startFrame: calculateStartFrame(1),
+    areaBounds: { x: 500, y: 100, width: 300, height: 200 }  // Top-middle area
+  },
+  { 
+    name: 'blue', 
+    startFrame: calculateStartFrame(2),
+    areaBounds: { x: 900, y: 100, width: 300, height: 200 }  // Top-right area
+  },
   // Second row characters (3-5)
-  { name: 'teal', startFrame: calculateStartFrame(3) },     // Bottom-left character
-  { name: 'dark', startFrame: calculateStartFrame(4) },     // Bottom-middle character
-  { name: 'military', startFrame: calculateStartFrame(5) }  // Bottom-right character
+  { 
+    name: 'teal', 
+    startFrame: calculateStartFrame(3),
+    areaBounds: { x: 100, y: 400, width: 300, height: 200 }  // Bottom-left area
+  },
+  { 
+    name: 'dark', 
+    startFrame: calculateStartFrame(4),
+    areaBounds: { x: 500, y: 400, width: 300, height: 200 }  // Bottom-middle area
+  },
+  { 
+    name: 'military', 
+    startFrame: calculateStartFrame(5),
+    areaBounds: { x: 900, y: 400, width: 300, height: 200 }  // Bottom-right area
+  }
 ]
 
 // Helper functions for frame calculations
