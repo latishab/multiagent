@@ -88,12 +88,23 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   const closeChat = () => {
     console.log('Closing chat with NPC:', chatState.npcId);
     
-    // Mark this NPC as spoken to in the current round
-    const currentRound = chatState.round;
-    const roundKey = currentRound === 1 ? 'round1' : 'round2';
+    // Don't mark NPC as spoken to just for closing the dialog
+    // Progress will be tracked based on actual conversation content
+    
+    setChatState(prev => ({
+      ...prev,
+      isOpen: false
+    }));
+
+    window.dispatchEvent(new CustomEvent('chatClosed', { detail: { npcId: chatState.npcId.toString() } }));
+  }
+
+  // Function to mark NPC as actually spoken to (called when conversation has content)
+  const markNPCAsSpoken = (npcId: number, round: number) => {
+    const roundKey = round === 1 ? 'round1' : 'round2';
     setSpokenNPCs(prev => ({
       ...prev,
-      [roundKey]: new Set(Array.from(prev[roundKey]).concat([chatState.npcId]))
+      [roundKey]: new Set(Array.from(prev[roundKey]).concat([npcId]))
     }));
 
     // Add ballot entry for this NPC conversation
@@ -125,15 +136,15 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     }
 
     const newEntry: BallotEntry = {
-      npcId: chatState.npcId,
-      npcName: npcNames[chatState.npcId],
-      system: npcSystems[chatState.npcId],
-      round: currentRound,
-      sustainableOption: npcOptions[chatState.npcId].sustainable,
-      unsustainableOption: npcOptions[chatState.npcId].unsustainable,
-      npcOpinion: currentRound === 1 ? 'Introduction phase - no opinion yet' : 
-        (chatState.isSustainable ? npcOptions[chatState.npcId].sustainable : npcOptions[chatState.npcId].unsustainable),
-      npcReasoning: currentRound === 1 ? 'NPC introduced their system and options' : 
+      npcId: npcId,
+      npcName: npcNames[npcId],
+      system: npcSystems[npcId],
+      round: round,
+      sustainableOption: npcOptions[npcId].sustainable,
+      unsustainableOption: npcOptions[npcId].unsustainable,
+      npcOpinion: round === 1 ? 'Introduction phase - no opinion yet' : 
+        (chatState.isSustainable ? npcOptions[npcId].sustainable : npcOptions[npcId].unsustainable),
+      npcReasoning: round === 1 ? 'NPC introduced their system and options' : 
         `NPC supports the ${chatState.isSustainable ? 'sustainable' : 'unsustainable'} option based on community conditions`,
       timestamp: Date.now()
     }
@@ -145,12 +156,11 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     const allNPCsSpoken = currentSpokenNPCs.size >= 6;
 
     // If all NPCs spoken in round 1, automatically advance to round 2
-    if (currentRound === 1 && allNPCsSpoken) {
+    if (round === 1 && allNPCsSpoken) {
       console.log('All NPCs spoken in round 1, advancing to round 2');
       setChatState(prev => ({
         ...prev,
-        round: 2,
-        isOpen: false
+        round: 2
       }));
       setSpokenNPCs(prev => ({
         ...prev,
@@ -159,21 +169,9 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       }));
     }
     // If all NPCs spoken in round 2, show completion message
-    else if (currentRound === 2 && allNPCsSpoken) {
+    else if (round === 2 && allNPCsSpoken) {
       console.log('All NPCs spoken in round 2, conversation complete');
-      setChatState(prev => ({
-        ...prev,
-        isOpen: false
-      }));
     }
-    else {
-      setChatState(prev => ({
-        ...prev,
-        isOpen: false
-      }));
-    }
-
-    window.dispatchEvent(new CustomEvent('chatClosed', { detail: { npcId: chatState.npcId.toString() } }));
   }
 
   // Handle round changes (now only for internal use)
@@ -399,6 +397,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         onClose={closeChat}
         onRoundChange={handleRoundChange}
         onStanceChange={handleStanceChange}
+        onConversationComplete={markNPCAsSpoken}
       />
 
       {/* Ballot */}

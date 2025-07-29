@@ -10,6 +10,7 @@ interface ChatDialogProps {
   onClose: () => void;
   onRoundChange: (round: number) => void;
   onStanceChange: (isProSustainable: boolean) => void;
+  onConversationComplete?: (npcId: number, round: number) => void;
 }
 
 interface Message {
@@ -55,7 +56,8 @@ export default function ChatDialog({
   isSustainable = true,
   onClose,
   onRoundChange,
-  onStanceChange
+  onStanceChange,
+  onConversationComplete
 }: ChatDialogProps) {
   // Keep message history per NPC and round
   const [messages, setMessages] = useState<Message[]>([]);
@@ -63,6 +65,7 @@ export default function ChatDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
+  const [hasMeaningfulConversation, setHasMeaningfulConversation] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -88,13 +91,17 @@ export default function ChatDialog({
           });
           
           setMessages(data.messages);
+          // If there are existing messages, mark as having meaningful conversation
+          setHasMeaningfulConversation(data.messages.length > 0);
         } else {
           console.log('No conversation history found, starting fresh');
           setMessages([]);
+          setHasMeaningfulConversation(false);
         }
       } catch (error) {
         console.error('Error loading conversation history:', error);
         setMessages([]);
+        setHasMeaningfulConversation(false);
       }
     };
     
@@ -147,6 +154,11 @@ export default function ChatDialog({
     const newMessages: Message[] = [...messages, { text: userMessage, sender: 'player' }];
     setMessages(newMessages);
 
+    // Mark that meaningful conversation has occurred
+    if (!hasMeaningfulConversation) {
+      setHasMeaningfulConversation(true);
+    }
+
     setIsLoading(true);
 
     const requestData = {
@@ -194,6 +206,11 @@ export default function ChatDialog({
             sender: 'npc' 
           }];
           setMessages(currentMessages);
+        }
+
+        // Call the conversation complete callback if this is the first meaningful exchange
+        if (hasMeaningfulConversation && onConversationComplete) {
+          onConversationComplete(npcId, round);
         }
       } else {
         throw new Error('Invalid response format from API');
