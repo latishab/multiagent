@@ -72,6 +72,9 @@ export default function ChatDialog({
   // Load messages when NPC or round changes
   useEffect(() => {
     const loadMessages = async () => {
+      // Only load messages if the chat is open
+      if (!isOpen) return;
+      
       const currentSessionId = await sessionManager.getSessionId();
       setSessionId(currentSessionId);
       
@@ -100,13 +103,14 @@ export default function ChatDialog({
         }
       } catch (error) {
         console.error('Error loading conversation history:', error);
+        // Don't let conversation history errors break the chat
         setMessages([]);
         setHasMeaningfulConversation(false);
       }
     };
     
     loadMessages();
-  }, [npcId, round]);
+  }, [npcId, round, isOpen]);
 
   // Log NPC info when props change
   useEffect(() => {
@@ -181,13 +185,21 @@ export default function ChatDialog({
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorMessage = 'Failed to get response from NPC';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (parseError) {
+          // If response is not JSON, use status text
+          errorMessage = `${response.status}: ${response.statusText}`;
+        }
+        
         console.error('API Error Response:', {
           status: response.status,
           statusText: response.statusText,
-          data: errorData
+          message: errorMessage
         });
-        throw new Error(errorData.error || errorData.message || 'Failed to get response from NPC');
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
