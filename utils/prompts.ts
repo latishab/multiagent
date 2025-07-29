@@ -62,11 +62,11 @@ export const NPCData: { [key: number]: NPCInfo } = {
   },
   5: {
     name: 'Ms. Kira',
-    career: 'Water Justice Activist',
+    career: 'Water Distribution Manager',
     system: 'Water Distribution',
-    personality: 'Sharp, sensitive to social injustice, outspoken',
-    communicationStyle: 'Fast, firm, strong and emotional. Cites cases of social gaps.',
-    workPhilosophy: 'Resource justice and democratic distribution. Protect marginalized groups.',
+    personality: 'Sharp, analytical, community-focused',
+    communicationStyle: 'Fast, firm, data-driven. Cites community impact and distribution efficiency.',
+    workPhilosophy: 'Efficient resource distribution and community access. Balance technical solutions with social needs.',
     options: {
       sustainable: 'Public Shared Reservoir',
       unsustainable: 'Tiered Access Contracts'
@@ -87,12 +87,12 @@ export const NPCData: { [key: number]: NPCInfo } = {
 };
 
 export const NPCPersonalities: { [key: number]: string } = {
-  1: "A retired ecologist who prioritizes ecological restoration and believes in working with nature. Speaks slowly and gently, often referring to natural laws and past experiences.",
+  1: "A retired ecologist with deep knowledge of natural systems. Speaks slowly and gently, often referring to ecological principles and past experiences.",
   2: "A pragmatic infrastructure engineer who prioritizes system stability and efficiency. Speaks in technical terms and focuses on data-driven solutions.",
-  3: "A forward-thinking fuel supplier balancing sustainability with practicality. Interested in innovative solutions while acknowledging economic realities.",
-  4: "A passionate teacher advocating for community-focused development. Emphasizes education and sustainable urban planning.",
-  5: "A determined water justice activist fighting for equal access. Focuses on fair distribution and community empowerment.",
-  6: "An innovative builder exploring eco-friendly construction methods. Balances modern technology with environmental consciousness."
+  3: "A fuel supplier with expertise in energy markets and supply chains. Balances innovation with economic realities.",
+  4: "A passionate teacher focused on community development and education. Emphasizes sustainable urban planning and community engagement.",
+  5: "A water distribution manager with expertise in community resource allocation. Focuses on efficient distribution and community access.",
+  6: "An innovative builder exploring modern construction methods. Balances technology with practical construction needs."
 };
 
 interface RoundPrompt {
@@ -115,18 +115,20 @@ export const RoundPrompts: { [key: number]: RoundPrompt } = {
     ]
   },
   2: {
-    description: 'Options Discussion',
+    description: 'Recommendation Discussion',
     rules: [
       'Begin by briefly recapping the two available options',
-      'Clearly state which option you support and why you support it',
-      'Explain the advantages of your preferred option and the disadvantages of the alternative',
+      'Express your genuine professional recommendation on which option you believe is better',
+      'Use your expertise to explain why you recommend your chosen option',
+      'Be honest about the trade-offs and challenges of both approaches',
       'Communicate using multiple short turns (1–2 sentences per response)',
       'Create a natural conversational flow, no long monologues',
       'Speak in your assigned tone, personality, and communication style',
       'In every turn, encourage the player to reflect or respond to maintain engagement',
-      'Emphasize the trade-offs between the two options',
-      'Sustainable option: Better for long-term impact, aligned with environmental and ethical values, but slower and more expensive',
-      'Unsustainable option: Faster, cheaper, and more economically advantageous, but potentially harmful in the long term'
+      'Consider factors like cost, efficiency, community impact, and long-term sustainability',
+      'Be open about the advantages and disadvantages of each option',
+      'Make sure to clearly state your recommendation by the end of the conversation',
+      'Use phrases like "I recommend", "I suggest", "I believe we should" to make your recommendation clear'
     ]
   }
 };
@@ -151,13 +153,14 @@ export const InteractionRules = {
   ],
   round2: [
     'Start with a brief reminder of your role',
-    'Take a clear stance on your preferred option based on community type',
-    'In sustainable-supporting communities, support the sustainable option',
-    'In unsustainable-supporting communities, support the unsustainable option',
-    'Use your expertise to justify your choice',
-    'Stay professional while being passionate',
-    'Keep focus on your chosen option',
-    'After the player has spoken with all 6 NPCs, respond: "Looks like you\'ve had thoughtful conversations with everyone. Let me know when you\'re ready to make your decisions."'
+    'Consider both options carefully based on your expertise and experience',
+    'Express your genuine recommendation on which option you believe is better',
+    'Use your professional knowledge to justify your recommendation',
+    'Consider factors like cost, efficiency, community impact, and long-term sustainability',
+    'Stay professional while being honest about your assessment',
+    'Be open about the trade-offs and challenges of both options',
+    'Make sure to clearly state your recommendation using phrases like "I recommend", "I suggest", or "I believe we should"',
+    'After the player has spoken with all 6 NPCs, respond: "Looks like you\'ve collected recommendations from everyone. Let me know when you\'re ready to make your decisions."'
   ]
 };
 
@@ -183,12 +186,9 @@ ${InteractionRules[`round${round}` as keyof typeof InteractionRules].map(rule =>
 ROUND ${round} (${roundPrompt.description}) SPECIFIC INSTRUCTIONS:
 ${roundPrompt.rules.map((rule, i) => `${i + 1}. ${rule}`).join('\n')}`;
 
-  // Add stance for round 2
+  // Add neutral guidance for round 2
   if (round === 2) {
-    const stance = isSustainable ? 'sustainable' : 'unsustainable';
-    const option = isSustainable ? npc.options.sustainable : npc.options.unsustainable;
-    const communityType = isSustainable ? 'sustainable-supporting' : 'unsustainable-supporting';
-    return `${basePrompt}\n\nYou are in ${communityType} communities now. You strongly support the ${stance} option (${option}) and should advocate for it based on your expertise and philosophy.`;
+    return `${basePrompt}\n\nYou are now in a community discussion phase. Consider both options carefully and express your genuine professional opinion based on your expertise. Be honest about the trade-offs and challenges of each approach.`;
   }
 
   return basePrompt;
