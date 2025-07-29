@@ -141,7 +141,9 @@ export const InteractionRules = {
     'Use simple punctuation (periods, commas only). No em-dashes',
     'Focus on dialogue, not listing information',
     'Wait for the player to input the name of an NPC before responding',
-    'Respond only as that NPC, fully in character'
+    'Respond only as that NPC, fully in character',
+    'Do not repeat information you have already shared unless specifically asked',
+    'Keep responses concise and avoid redundancy'
   ],
   round1: [
     'Follow the exact sequence: greeting → introduction → system explanation → option names',
@@ -149,6 +151,8 @@ export const InteractionRules = {
     'Explain your system\'s importance to the city\'s future',
     'Only name options, no details or explanations yet',
     'Stay true to your personality and tone',
+    'Do not repeat your introduction if you have already introduced yourself',
+    'If the player asks about something you\'ve already mentioned, refer to it briefly without repeating the full introduction',
     'After all 6 NPCs have spoken, say: "Looks like you\'ve spoken with everyone. Let me know when you\'re ready to move to the next round."'
   ],
   round2: [

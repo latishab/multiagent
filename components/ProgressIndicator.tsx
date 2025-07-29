@@ -110,6 +110,42 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, ballotEntr
             {currentRound === 1 ? 'Introduction' : 'Options Discussion'}
           </span>
         </div>
+        <div className="purpose-checklist">
+          <h4>What to Ask Each NPC:</h4>
+          <div className="checklist-items">
+            {currentRound === 1 ? (
+              <>
+                <div className="checklist-item">
+                  <span className="checklist-icon">👤</span>
+                  <span>Ask about their role and background</span>
+                </div>
+                <div className="checklist-item">
+                  <span className="checklist-icon">🏗️</span>
+                  <span>Learn about their system ({NPCSystems[1]}, {NPCSystems[2]}, etc.)</span>
+                </div>
+                <div className="checklist-item">
+                  <span className="checklist-icon">⚖️</span>
+                  <span>Find out about both options (sustainable vs economic)</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="checklist-item">
+                  <span className="checklist-icon">💭</span>
+                  <span>Ask for their recommendation</span>
+                </div>
+                <div className="checklist-item">
+                  <span className="checklist-icon">🤔</span>
+                  <span>Find out why they prefer their choice</span>
+                </div>
+                <div className="checklist-item">
+                  <span className="checklist-icon">📊</span>
+                  <span>Learn about the trade-offs they see</span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="progress-bars">
@@ -150,6 +186,9 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, ballotEntr
           const opinionData = getNPCOpinion(npcId, currentRound);
           const hasOpinion = opinionData !== null;
           
+          // Get ballot entry for this NPC and round
+          const ballotEntry = ballotEntries.find(entry => entry.npcId === npcId && entry.round === currentRound);
+          
           // Get mission text for current round
           const getMissionText = (npcId: number, round: number) => {
             const npc = NPCOptions[npcId];
@@ -179,7 +218,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, ballotEntr
                 <div className="npc-status-text">
                   {!isCurrentRound ? 'Not spoken' : 
                    currentRound === 1 ? 
-                     (isSpokenRound1 ? 'Introduction complete' : 'Introduction in progress') :
+                     (isSpokenRound1 ? (ballotEntry?.npcReasoning || 'Introduction complete') : 'Introduction in progress') :
                      (hasOpinion ? 'Recommendation collected' : 'Recommendation pending')}
                 </div>
                 {hasOpinion && currentRound === 2 && (
@@ -245,6 +284,41 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, ballotEntr
         .round-description {
           font-size: clamp(0.75rem, 2vw, 0.875rem);
           color: #9ca3af;
+        }
+
+        .purpose-checklist {
+          margin-top: 0.75rem;
+          padding: 0.5rem;
+          background: rgba(59, 130, 246, 0.1);
+          border: 1px solid rgba(59, 130, 246, 0.2);
+          border-radius: 6px;
+        }
+
+        .purpose-checklist h4 {
+          margin: 0 0 0.5rem 0;
+          font-size: clamp(0.7rem, 1.8vw, 0.8rem);
+          color: #3b82f6;
+          font-weight: 600;
+        }
+
+        .checklist-items {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+
+        .checklist-item {
+          display: flex;
+          align-items: center;
+          gap: 0.375rem;
+          font-size: clamp(0.6rem, 1.5vw, 0.7rem);
+          color: #d1d5db;
+          line-height: 1.3;
+        }
+
+        .checklist-icon {
+          font-size: clamp(0.7rem, 1.8vw, 0.8rem);
+          flex-shrink: 0;
         }
 
         .progress-bars {
@@ -444,6 +518,16 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, ballotEntr
           .npc-status-text {
             font-size: clamp(0.5rem, 1.3vw, 0.65rem);
             padding: 0.1rem 0.25rem;
+          }
+
+          .purpose-checklist {
+            margin-top: 0.5rem;
+            padding: 0.375rem;
+          }
+
+          .checklist-item {
+            font-size: clamp(0.55rem, 1.4vw, 0.65rem);
+            gap: 0.25rem;
           }
         }
       `}</style>
