@@ -28,7 +28,7 @@ export default class MainScene extends Scene {
       frameHeight: 32 
     })
 
-    //TODO: Spritesheet Slicing Guide for final.png (144x96 with 6 characters)
+    // Spritesheet Slicing Guide for update.png (144x96 with 6 characters)
     // The spritesheet layout is:
     // - Total size: 144x96 pixels
     // - Each character block is 48x48 pixels (a perfect 3x3 grid of frames)
@@ -56,7 +56,7 @@ export default class MainScene extends Scene {
     //   startFrame = (row * 9 * 3) + (col * 3)
     //   where row is 0 or 1, col is 0, 1, or 2
 
-    this.load.spritesheet('npcs', '/assets/characters/final.png', {
+    this.load.spritesheet('npcs', '/assets/characters/update.png', {
       frameWidth: 16,
       frameHeight: 16,
       margin: 0,

@@ -14,7 +14,7 @@ export class PlayerManager {
   createPlayer(mapCenterX: number, mapCenterY: number, levelLayer: Phaser.Tilemaps.TilemapLayer) {
     this.player = this.scene.physics.add.sprite(mapCenterX, mapCenterY, 'playerIdle', 0)
     this.player.setCollideWorldBounds(true)
-    this.player.setScale(1)
+    this.player.setScale(1.5)
     this.player.setSize(16, 16)
     this.player.setOffset(8, 16)
     

@@ -86,7 +86,7 @@ export class NPCManager {
     
     // Set NPC properties
     sprite.setCollideWorldBounds(true)
-    sprite.setScale(1)
+    sprite.setScale(1.5)
     sprite.setSize(16, 16)
     sprite.setOffset(8, 16)
     
