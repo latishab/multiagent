@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { OptionDescriptions } from '../utils/prompts'
+import { OptionDescriptions, SpecialistRecommendations } from '../utils/prompts'
 
 interface BallotEntry {
   npcId: number;
@@ -173,15 +173,14 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                             </div>
                           </div>
                           
-                          {hasInfo && (
-                            <div className="opinion-section">
-                              <h4>Specialist Opinion:</h4>
-                              <div className="opinion-content">
-                                <p><strong>Recommendation:</strong> {systemInfo.npcOpinion}</p>
-                                <p><strong>Reasoning:</strong> {systemInfo.npcReasoning}</p>
+                            {hasInfo && (
+                              <div className="opinion-section">
+                                <h4>Specialist Opinion:</h4>
+                                <div className="opinion-content">
+                                  <p>{SpecialistRecommendations[npcId]}</p>
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            )}
                           
                           {!hasInfo && (
                             <div className="no-opinion-message">
