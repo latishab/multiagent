@@ -31,10 +31,28 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   const [inventory, setInventory] = useState<Array<string | null>>(
     new Array(25).fill(null)
   )
-  const [showWelcome, setShowWelcome] = useState(true)
-  const [showGameMenu, setShowGameMenu] = useState(false)
-  const [hasStartedGame, setHasStartedGame] = useState(false)
-  const [hasTalkedToGuide, setHasTalkedToGuide] = useState(false)
+  const [showWelcome, setShowWelcome] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('multiagent-show-welcome');
+      return saved ? JSON.parse(saved) : true;
+    }
+    return true;
+  });
+  const [showGameMenu, setShowGameMenu] = useState(false);
+  const [hasStartedGame, setHasStartedGame] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('multiagent-has-started-game');
+      return saved ? JSON.parse(saved) : false;
+    }
+    return false;
+  });
+  const [hasTalkedToGuide, setHasTalkedToGuide] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('multiagent-has-talked-to-guide');
+      return saved ? JSON.parse(saved) : false;
+    }
+    return false;
+  });
   
   const [chatState, setChatState] = useState<{
     isOpen: boolean
@@ -42,13 +60,25 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     personality: string
     round: number
     isSustainable: boolean
-  }>({
-    isOpen: false,
-    npcId: -1,
-    personality: '',
-    round: 1,
-    isSustainable: true
-  })
+  }>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('multiagent-chat-state');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (error) {
+          console.error('Error loading chat state from localStorage:', error);
+        }
+      }
+    }
+    return {
+      isOpen: false,
+      npcId: -1,
+      personality: '',
+      round: 1,
+      isSustainable: true
+    };
+  });
 
   // Track which NPCs have been spoken to in each round
   const [spokenNPCs, setSpokenNPCs] = useState<{
@@ -123,6 +153,40 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     }
   }, [ballotEntries]);
 
+  // Save game state to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('multiagent-show-welcome', JSON.stringify(showWelcome));
+    }
+  }, [showWelcome]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('multiagent-has-started-game', JSON.stringify(hasStartedGame));
+    }
+  }, [hasStartedGame]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('multiagent-has-talked-to-guide', JSON.stringify(hasTalkedToGuide));
+    }
+  }, [hasTalkedToGuide]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('multiagent-chat-state', JSON.stringify(chatState));
+    }
+  }, [chatState]);
+
+  // Update global window state to reflect loaded values
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).hasGameStarted = hasStartedGame;
+      (window as any).hasTalkedToGuide = hasTalkedToGuide;
+      (window as any).currentRound = chatState.round;
+    }
+  }, [hasStartedGame, hasTalkedToGuide, chatState.round]);
+
   // Function to be called from the game to open chat
   const openChat = (npcId: string, personality: string) => {
     console.log('Opening chat with NPC:', { npcId, personality });
@@ -142,8 +206,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     
     // Check if game has started (player has talked to The Guide)
     if (!hasTalkedToGuide) {
-      console.log('Game has not started yet. Player must talk to The Guide first.');
-      // You could show a notification here if needed
       return;
     }
     
@@ -151,17 +213,27 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     const npcIdNum = parseInt(npcId);
     let correctRound = 1;
     
-    // If NPC has completed round 1, they should be in round 2
-    if (spokenNPCs.round1.has(npcIdNum)) {
+    // Check if Round 1 is complete
+    const round1Complete = spokenNPCs.round1.size >= 6;
+    
+    // If Round 1 is complete and NPC has been spoken to in Round 1, they should be in Round 2
+    if (round1Complete && spokenNPCs.round1.has(npcIdNum)) {
       correctRound = 2;
     }
     
-    // If NPC has completed round 2, they should stay in round 2
-    if (spokenNPCs.round2.has(npcIdNum)) {
-      correctRound = 2;
+    // If Round 1 is not complete, stay in Round 1 regardless of previous conversations
+    if (!round1Complete) {
+      correctRound = 1;
     }
     
-    console.log('Determined round for NPC:', { npcId: npcIdNum, correctRound, round1Spoken: spokenNPCs.round1.has(npcIdNum), round2Spoken: spokenNPCs.round2.has(npcIdNum) });
+    console.log('Determined round for NPC:', { 
+      npcId: npcIdNum, 
+      correctRound, 
+      round1Spoken: spokenNPCs.round1.has(npcIdNum), 
+      round2Spoken: spokenNPCs.round2.has(npcIdNum),
+      round1Complete,
+      round1Size: spokenNPCs.round1.size
+    });
     
     setChatState({
       isOpen: true,
@@ -193,44 +265,54 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       
       // Check if all NPCs have been spoken to in the current round
       const currentRound = chatState.round;
-      const roundKey = currentRound === 1 ? 'round1' : 'round2';
-      const currentSpokenNPCs = spokenNPCs[roundKey as keyof typeof spokenNPCs];
-      const allNPCsSpoken = currentSpokenNPCs.size >= 6;
+      const round1Complete = spokenNPCs.round1.size >= 6;
+      const round2Complete = spokenNPCs.round2.size >= 6;
       
-      if (allNPCsSpoken) {
-        // All NPCs spoken, advance to next round
-        if (currentRound === 1) {
-          console.log('All NPCs spoken in round 1, advancing to round 2');
-          setChatState(prev => ({
-            ...prev,
-            round: 2
-          }));
-        } else if (currentRound === 2) {
-          console.log('All NPCs spoken in round 2, triggering ending phase');
-          // Trigger ending phase after a short delay
-          setTimeout(() => {
-            setShowDecisionMode(true);
-            setShowPDA(true);
-          }, 1000); // Small delay for better UX
-        }
+      // Only advance to Round 2 if Round 1 is complete
+      if (currentRound === 1 && round1Complete) {
+        console.log('All NPCs spoken in round 1, advancing to round 2');
+        setChatState(prev => ({
+          ...prev,
+          round: 2
+        }));
+      } else if (currentRound === 2 && round2Complete) {
+        console.log('All NPCs spoken in round 2, triggering ending phase');
+        // Trigger ending phase after a short delay
+        setTimeout(() => {
+          setShowDecisionMode(true);
+          setShowPDA(true);
+        }, 1000); // Small delay for better UX
+      } else if (currentRound === 1 && !round1Complete) {
+        // Don't advance - player needs to complete Round 1 first
+      } else if (currentRound === 2 && !round2Complete) {
+        // Don't advance - player needs to complete Round 2 first
       }
+      // Note: The Guide conversation history is preserved across rounds, so we don't add them to spokenNPCs
       return;
     }
     
     const roundKey = round === 1 ? 'round1' : 'round2';
-    setSpokenNPCs(prev => {
-      const newSpokenNPCs = {
-        ...prev,
-        [roundKey]: new Set(Array.from(prev[roundKey]).concat([npcId]))
-      };
-      console.log('Updated spoken NPCs:', {
-        round1: Array.from(newSpokenNPCs.round1),
-        round2: Array.from(newSpokenNPCs.round2)
+    
+    // Only mark as spoken if they haven't been spoken to in this round yet
+    if (!spokenNPCs[roundKey as keyof typeof spokenNPCs].has(npcId)) {
+      setSpokenNPCs(prev => {
+        const newSpokenNPCs = {
+          ...prev,
+          [roundKey]: new Set(Array.from(prev[roundKey]).concat([npcId]))
+        };
+        console.log('Updated spoken NPCs:', {
+          round1: Array.from(newSpokenNPCs.round1),
+          round2: Array.from(newSpokenNPCs.round2)
+        });
+        return newSpokenNPCs;
       });
-      return newSpokenNPCs;
-    });
+    } else {
+      console.log('NPC already spoken to in this round, not marking again:', { npcId, round });
+      // Don't create ballot entry if NPC was already spoken to
+      return;
+    }
 
-    // Add ballot entry for this NPC conversation
+    // Add ballot entry for this NPC conversation (only for newly spoken NPCs)
     const npcNames: { [key: number]: string } = {
       1: 'Mrs. Aria',
       2: 'Chief Oskar',
@@ -467,6 +549,10 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     if (typeof window !== 'undefined') {
       localStorage.removeItem('multiagent-spoken-npcs');
       localStorage.removeItem('multiagent-ballot-entries');
+      localStorage.removeItem('multiagent-has-talked-to-guide');
+      localStorage.removeItem('multiagent-chat-state');
+      localStorage.removeItem('multiagent-has-started-game');
+      localStorage.setItem('multiagent-show-welcome', 'true');
     }
     // Reload the page to restart the game
     window.location.reload()
@@ -477,6 +563,10 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     if (typeof window !== 'undefined') {
       localStorage.removeItem('multiagent-spoken-npcs');
       localStorage.removeItem('multiagent-ballot-entries');
+      localStorage.removeItem('multiagent-has-talked-to-guide');
+      localStorage.removeItem('multiagent-chat-state');
+      localStorage.removeItem('multiagent-has-started-game');
+      localStorage.setItem('multiagent-show-welcome', 'true');
     }
     // Reload the page to start a new game
     window.location.reload()

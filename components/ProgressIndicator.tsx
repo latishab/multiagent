@@ -76,6 +76,55 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
   
   // Check if currently talking to The Guide
   const isTalkingToGuide = isChatOpen && currentChatNPCId === -1;
+  
+  // Check round completion status
+  const round1Complete = round1Spoken.length >= 6;
+  const round2Complete = round2Spoken.length >= 6;
+  
+  // Determine the actual current round based on completion status
+  const actualCurrentRound = (() => {
+    // If Round 1 is not complete, we're still in Round 1
+    if (!round1Complete) {
+      return 1;
+    }
+    // If Round 1 is complete but Round 2 is not, we're in Round 2
+    if (round1Complete && !round2Complete) {
+      return 2;
+    }
+    // If both rounds are complete, we're in Round 2 (decision phase)
+    if (round1Complete && round2Complete) {
+      return 2;
+    }
+    // Default fallback
+    return currentRound;
+  })();
+  
+  // Determine what guidance to show
+  const getGuidanceMessage = () => {
+    if (!hasGameStarted) {
+      return "Talk to The Guide to start your mission";
+    }
+    
+    if (actualCurrentRound === 1) {
+      if (round1Complete && !hasTalkedToGuide) {
+        return "Round 1 complete! Talk to The Guide to advance to Round 2";
+      } else if (round1Complete && hasTalkedToGuide) {
+        return "Round 2: Talk to all specialists to get their recommendations";
+      } else {
+        return `Round 1: Talk to specialists to learn about their systems (${round1Spoken.length}/6)`;
+      }
+    } else if (actualCurrentRound === 2) {
+      if (round2Complete && !hasTalkedToGuide) {
+        return "Round 2 complete! Talk to The Guide to make final decisions";
+      } else if (round2Complete && hasTalkedToGuide) {
+        return "Open your PDA to review all systems and make final decisions";
+      } else {
+        return `Round 2: Get recommendations from specialists (${round2Spoken.length}/6)`;
+      }
+    }
+    
+    return "Continue your mission";
+  };
 
   // Get opinion data for each NPC
   const getNPCOpinion = (npcId: number, round: number) => {
@@ -175,10 +224,13 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
         ) : (
           !isTalkingToGuide && (
             <div className="round-info">
-              <span className="current-round">Round {currentRound}</span>
+              <span className="current-round">Round {actualCurrentRound}</span>
               <span className="round-description">
-                {currentRound === 1 ? 'Introduction' : 'Options Discussion'}
+                {actualCurrentRound === 1 ? 'Introduction' : 'Options Discussion'}
               </span>
+              <div className="guidance-message">
+                {getGuidanceMessage()}
+              </div>
             </div>
           )
         )}
@@ -199,7 +251,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
             </div>
           </div>
 
-          {currentRound >= 2 && (
+          {round1Complete && (
             <div className="progress-bar-container">
               <div className="progress-label">
                 <span>Round 2: Options Discussion</span>
@@ -221,16 +273,16 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
           {[1, 2, 3, 4, 5, 6].map((npcId) => {
           const isSpokenRound1 = round1Spoken.includes(npcId);
           const isSpokenRound2 = round2Spoken.includes(npcId);
-          const isCurrentRound = currentRound === 1 ? isSpokenRound1 : isSpokenRound2;
+          const isCurrentRound = actualCurrentRound === 1 ? isSpokenRound1 : isSpokenRound2;
           
-          // Get opinion data for current round
-          const opinionData = getNPCOpinion(npcId, currentRound);
+          // Get opinion data for actual current round
+          const opinionData = getNPCOpinion(npcId, actualCurrentRound);
           const hasOpinion = opinionData !== null;
           
           return (
             <div 
               key={npcId}
-              className={`npc-item ${isCurrentRound ? 'spoken' : ''} ${currentRound === 1 ? 'round1' : 'round2'} ${hasOpinion ? 'has-opinion' : ''}`}
+              className={`npc-item ${isCurrentRound ? 'spoken' : ''} ${actualCurrentRound === 1 ? 'round1' : 'round2'} ${hasOpinion ? 'has-opinion' : ''}`}
             >
               <div className="npc-avatar">
                 {NPCNames[npcId].split(' ')[1]?.[0] || NPCNames[npcId][0]}
@@ -239,7 +291,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
                 <div className="npc-name">{NPCNames[npcId]}</div>
                 <div className="npc-system">{NPCSystems[npcId]}</div>
                 <div className="npc-checklist">
-                  {getNPCChecklistItems(npcId, currentRound).map((item, index) => (
+                  {getNPCChecklistItems(npcId, actualCurrentRound).map((item, index) => (
                     <div key={index} className="checklist-item">
                       <span className="checklist-checkbox">
                         {!isCurrentRound ? '☐' : '☑'}
@@ -250,7 +302,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
                 </div>
                 <div className="npc-status-text">
                   {!isCurrentRound ? 'Not spoken' : 
-                   currentRound === 1 ? 
+                   actualCurrentRound === 1 ? 
                      (isSpokenRound1 ? 'Introduction complete' : 'Introduction in progress') :
                      (hasOpinion ? 'Recommendation collected' : 'Recommendation pending')}
                 </div>
@@ -638,6 +690,18 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
         .npc-item.has-opinion .npc-status-text {
           color: #3b82f6;
           font-weight: 600;
+        }
+
+        .guidance-message {
+          margin-top: 0.5rem;
+          padding: 0.5rem;
+          background: rgba(59, 130, 246, 0.1);
+          border: 1px solid rgba(59, 130, 246, 0.3);
+          border-radius: 6px;
+          font-size: 0.8rem;
+          color: #3b82f6;
+          font-weight: 500;
+          text-align: center;
         }
 
         @media (max-width: 768px) {

@@ -110,7 +110,10 @@ function splitIntoConversationChunks(text: string): string[] {
     // Always add the current sentence to the chunk
     currentChunk.push(sentence);
     
-    // Only start a new chunk in very specific cases
+    // Calculate current chunk length
+    const currentChunkLength = currentChunk.join(' ').length;
+    
+    // Start a new chunk in these cases:
     const shouldStartNewChunk = 
       // If this is the last sentence
       i === sentences.length - 1 ||
@@ -119,7 +122,13 @@ function splitIntoConversationChunks(text: string): string[] {
       // If the next sentence starts a completely new topic (greeting, new introduction)
       nextSentence.toLowerCase().match(/^(hi|hello|hey|good morning|good afternoon|good evening)/) ||
       // If we have 3+ sentences and the next one seems like a new thought
-      (currentChunk.length >= 3 && nextSentence.toLowerCase().match(/^(well|now|so|anyway|by the way|speaking of|on that note)/));
+      (currentChunk.length >= 3 && nextSentence.toLowerCase().match(/^(well|now|so|anyway|by the way|speaking of|on that note)/)) ||
+      // If current chunk is getting too long (over 200 characters)
+      (currentChunkLength > 200 && currentChunk.length >= 2) ||
+      // If we have 4+ sentences in current chunk (natural paragraph break)
+      currentChunk.length >= 4 ||
+      // If next sentence starts with contrast words (new topic)
+      nextSentence.toLowerCase().match(/^(but|however|on the other hand|meanwhile|in contrast|alternatively|instead)/);
     
     if (shouldStartNewChunk) {
       chunks.push(currentChunk.join(' '));
@@ -251,15 +260,41 @@ export default function ChatDialog({
           
           console.log('Setting initial Guide messages:', initialMessages);
           
+          // Get session ID for storing messages
+          const currentSessionId = await sessionManager.getSessionId();
+          
           // Display messages one by one with typing effect
           for (let i = 0; i < initialMessages.length; i++) {
             // Show typing indicator
             setIsLoading(true);
-            await new Promise(resolve => setTimeout(resolve, 800)); // Typing delay
+            await new Promise(resolve => setTimeout(resolve, 500)); // Typing delay
             
-            // Add the message
+            // Add the message to local state
             setMessages(prev => [...prev, initialMessages[i]]);
             setIsLoading(false);
+            
+            // Send the message to API to store in conversation history
+            try {
+              await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  message: initialMessages[i].text,
+                  npcId: -1, // The Guide
+                  round: round,
+                  isSustainable: true,
+                  sessionId: currentSessionId,
+                  spokenNPCs: {
+                    round1: Array.from(spokenNPCs.round1),
+                    round2: Array.from(spokenNPCs.round2)
+                  }
+                })
+              });
+            } catch (error) {
+              console.error('Error storing initial message in conversation history:', error);
+            }
             
             // Wait before next message
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -389,14 +424,26 @@ export default function ChatDialog({
           
           // Special handling for main NPC round advancement
           if (npcId === -1) {
-            const responseLower = data.response.toLowerCase();
-            if (responseLower.includes('round 2') && round === 1) {
-              console.log('Main NPC advancing to Round 2');
+            // Use the shouldAdvanceRound field from API response if available
+            if (data.conversationAnalysis?.shouldAdvanceRound && round === 1) {
+              console.log('Main NPC advancing to Round 2 (via shouldAdvanceRound)');
               onRoundChange(2);
-            } else if (responseLower.includes('ending phase') && round === 2) {
-              console.log('Main NPC triggering ending phase');
+            } else if (data.conversationAnalysis?.shouldOpenPDA && round === 2) {
+              console.log('Main NPC triggering ending phase (via shouldOpenPDA)');
               if (typeof window !== 'undefined' && (window as any).triggerEndingPhase) {
                 (window as any).triggerEndingPhase();
+              }
+            } else {
+              // Fallback to text-based detection
+              const responseLower = data.response.toLowerCase();
+              if (responseLower.includes('round 2') && round === 1) {
+                console.log('Main NPC advancing to Round 2 (via text detection)');
+                onRoundChange(2);
+              } else if (responseLower.includes('ending phase') && round === 2) {
+                console.log('Main NPC triggering ending phase (via text detection)');
+                if (typeof window !== 'undefined' && (window as any).triggerEndingPhase) {
+                  (window as any).triggerEndingPhase();
+                }
               }
             }
           }
