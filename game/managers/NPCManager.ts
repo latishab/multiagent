@@ -373,6 +373,9 @@ export class NPCManager {
       for (const npc of this.npcs) {
         if (npc.isInteracting) continue
 
+        // Only consider NPCs that should be interactable
+        if (!this.shouldNPCBeInteractable(npc)) continue
+
         const distance = Phaser.Math.Distance.Between(
           player.x,
           player.y,
@@ -488,6 +491,49 @@ export class NPCManager {
     }
   }
 
+  private shouldNPCBeInteractable(npc: NPC): boolean {
+    // The Guide should always be interactable
+    if (npc.id === 'main') {
+      return true
+    }
+
+    // Check if game has started
+    const hasGameStarted = typeof window !== 'undefined' && (window as any).hasGameStarted
+    if (!hasGameStarted) {
+      return false
+    }
+
+    // Check if The Guide should be the only interactable NPC
+    const shouldShowGuideAlert = typeof window !== 'undefined' && 
+      ((window as any).shouldShowGuideAlert && (window as any).shouldShowGuideAlert())
+    
+    if (shouldShowGuideAlert) {
+      // Only The Guide should be interactable when guide alert is showing
+      return false
+    }
+
+    // For regular NPCs, check if they should be interactable based on current round
+    const currentRound = typeof window !== 'undefined' && (window as any).currentRound ? (window as any).currentRound : 1
+    const spokenNPCs = typeof window !== 'undefined' && (window as any).spokenNPCs ? (window as any).spokenNPCs : { round1: new Set(), round2: new Set() }
+    
+    const npcId = parseInt(npc.id)
+    if (isNaN(npcId)) {
+      return false // Invalid NPC ID
+    }
+
+    // In Round 1: All NPCs should be interactable
+    if (currentRound === 1) {
+      return true
+    }
+
+    // In Round 2: Only NPCs that haven't been spoken to in Round 2 should be interactable
+    if (currentRound === 2) {
+      return !spokenNPCs.round2.has(npcId)
+    }
+
+    return true
+  }
+
   private hideInteractionHint() {
     if (this.interactionText) {
       this.interactionText.setVisible(false)
@@ -499,18 +545,34 @@ export class NPCManager {
   }
 
   private checkInteractions() {
+    console.log('Current interactable NPC:', this.currentInteractableNPC?.id);
+    console.log('hasGameStarted:', typeof window !== 'undefined' ? (window as any).hasGameStarted : 'undefined');
+    console.log('isChatOpen:', typeof window !== 'undefined' ? (window as any).isChatOpen : 'undefined');
+    
     // Don't check for interactions if chat is open
     if (typeof window !== 'undefined' && (window as any).isChatOpen) {
+      console.log('❌ Chat is open, blocking interaction');
       return
     }
 
     // Don't check for interactions if any NPC is already interacting
     if (this.npcs.some(npc => npc.isInteracting)) {
+      console.log('❌ NPC is already interacting, blocking interaction');
+      return
+    }
+
+    // Check if the current interactable NPC should be interactable based on game state
+    if (this.currentInteractableNPC && !this.shouldNPCBeInteractable(this.currentInteractableNPC)) {
+      console.log('❌ NPC should not be interactable at this time:', this.currentInteractableNPC.id);
       return
     }
 
     // Check if game has started (player has talked to The Guide)
-    if (typeof window !== 'undefined' && !(window as any).hasGameStarted && this.currentInteractableNPC?.id !== 'main') {
+    // Only block regular NPCs if game hasn't started, but always allow The Guide
+    if (typeof window !== 'undefined' && !(window as any).hasGameStarted && this.currentInteractableNPC?.id === 'main') {
+      // Allow The Guide interaction even if game hasn't started
+    } else if (typeof window !== 'undefined' && !(window as any).hasGameStarted && this.currentInteractableNPC?.id !== 'main') {
+      // Block regular NPCs if game hasn't started
       return
     }
 
@@ -541,21 +603,17 @@ export class NPCManager {
       this.currentInteractableNPC.sprite.setVelocity(0)
 
       if (this.chatCallback) {
-        console.log('Calling chat callback with NPC:', {
-          id: this.currentInteractableNPC.id,
-          name: npcName
-        })
         this.chatCallback(
           this.currentInteractableNPC.id,
           npcData[this.currentInteractableNPC.id as keyof typeof npcData] || this.currentInteractableNPC.personality
         )
       } else {
-        console.warn('No chat callback registered!')
+        console.warn('❌ No chat callback registered!')
       }
 
       this.hideInteractionHint()
     } else {
-      console.log('No NPC in range for interaction')
+      console.log('❌ No NPC in range for interaction')
     }
   }
 

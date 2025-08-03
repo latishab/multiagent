@@ -244,9 +244,17 @@ Respond with a JSON object containing:
         response: "Perfect! You've gathered all the information you need. Now it's time to make your final decisions. Check your PDA to review all systems and make your choices.",
         shouldOpenPDA: true
       };
-    } else {
+    } else if (round === 2 && !round2Complete) {
+      return {
+        response: "You're making good progress! Continue talking to the specialists to get their recommendations. You need to consult all 6 specialists before making final decisions."
+      };
+    } else if (round === 1 && !round1Complete) {
       return {
         response: "Keep talking to the specialists to learn about their systems and the available options. Make sure to speak with all 6 specialists before returning to me."
+      };
+    } else {
+      return {
+        response: "Hello! I'm The Guide. I'm here to help you navigate the city's development challenges. Talk to the specialists to learn about their systems and options."
       };
     }
   }
@@ -455,11 +463,14 @@ async function handleGuideConversation(
   sessionId: string,
   spokenNPCs: { round1: Set<number>; round2: Set<number> }
 ): Promise<any> {
+  // Use round 1 for The Guide to preserve conversation across rounds
+  const effectiveRound = 1;
+  
   // Get conversation history for main NPC
-  const history = vectorStore.getConversationHistory(-1, round, sessionId);
+  const history = vectorStore.getConversationHistory(-1, effectiveRound, sessionId);
   
   // Add user message to history
-  vectorStore.addToConversationHistory(-1, round, {
+  vectorStore.addToConversationHistory(-1, effectiveRound, {
     role: 'user',
     content: message
   }, sessionId);
@@ -468,7 +479,7 @@ async function handleGuideConversation(
   const analysis = await analyzeGuideConversation(message, round, history, spokenNPCs);
   
   // Add assistant response to history
-  vectorStore.addToConversationHistory(-1, round, {
+  vectorStore.addToConversationHistory(-1, effectiveRound, {
     role: 'assistant',
     content: analysis.response
   }, sessionId);
