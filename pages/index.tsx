@@ -1,24 +1,42 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
-import Head from 'next/head'
 
-// Dynamically import the game component to avoid SSR issues with Phaser
+// Import test utility for development
+if (process.env.NODE_ENV === 'development') {
+  import('../utils/testSession').then(({ testSessionManagement }) => {
+    if (typeof window !== 'undefined') {
+      (window as any).testSessionManagement = testSessionManagement;
+    }
+  });
+}
+
 const GameComponent = dynamic(() => import('../components/GameComponent'), {
+  ssr: false
+})
+
+const UIOverlay = dynamic(() => import('../components/UIOverlay'), {
   ssr: false
 })
 
 export default function Home() {
   return (
-    <>
-      <Head>
-        <title>Farming Game</title>
-        <meta name="description" content="A Harvest Moon style farming game" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-      <main style={{ margin: 0, padding: 0, background: '#2c5f2d' }}>
+    <main className="relative w-screen h-screen overflow-hidden">
+      {/* Game Canvas Container */}
+      <div className="absolute inset-0" style={{ zIndex: 0 }}>
         <GameComponent />
-      </main>
-    </>
+      </div>
+
+      {/* UI Layer */}
+      <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 100 }}>
+        <UIOverlay gameInstance={null} />
+      </div>
+
+      <style jsx global>{`
+        /* Ensure Phaser canvas doesn't overlap UI */
+        canvas {
+          z-index: 0 !important;
+        }
+      `}</style>
+    </main>
   )
 } 

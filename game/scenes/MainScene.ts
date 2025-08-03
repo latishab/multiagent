@@ -13,11 +13,19 @@ export default class MainScene extends Scene {
   private playerManager!: PlayerManager
   private npcManager!: NPCManager
 
+  // UI properties
+  private selectedSlot: number = 0
+
   constructor() {
     super({ key: 'MainScene' })
   }
 
   preload() {
+    // Add error handling for texture loading
+    this.load.on('loaderror', (file: any) => {
+      console.error('Failed to load texture:', file.src)
+    })
+
     // Load player spritesheets
     this.load.spritesheet('playerIdle', '/assets/characters/Idle.png', { 
       frameWidth: 32, 
@@ -76,31 +84,53 @@ export default class MainScene extends Scene {
   }
 
   create() {
-    this.createMap()
+    try {
+      this.createMap()
+      
+      // Initialize managers
+      this.playerManager = new PlayerManager(this)
+      this.npcManager = new NPCManager(this)
+    } catch (error) {
+      console.error('Error during scene creation:', error)
+      this.createMap() // Fallback
+    }
     
-    // Initialize managers
-    this.playerManager = new PlayerManager(this)
-    this.npcManager = new NPCManager(this)
-    
-    // Create player and NPCs
-    this.playerManager.createPlayerAnimations()
-    const player = this.playerManager.createPlayer(
-      this.map.widthInPixels / 2,
-      this.map.heightInPixels / 2,
-      this.levelLayer
-    )
-    this.playerManager.setupControls()
-    
-    // Spawn NPCs
-    this.npcManager.spawnNPCsInCircle(
-      this.map.widthInPixels,
-      this.map.heightInPixels,
-      this.levelLayer,
-      player
-    )
-    
-    this.setupCamera()
-    this.scale.on('resize', this.handleResize, this)
+    try {
+      // Create player and NPCs
+      this.playerManager.createPlayerAnimations()
+      const player = this.playerManager.createPlayer(
+        this.map.widthInPixels / 2,
+        this.map.heightInPixels / 2,
+        this.levelLayer
+      )
+      
+      // Spawn NPCs in their designated areas
+      this.npcManager.spawnNPCsInAreas(
+        this.map.widthInPixels,
+        this.map.heightInPixels,
+        this.levelLayer,
+        player
+      )
+      
+      // Setup NPC chat interaction
+      this.npcManager.setInteractionCallback((npcId: string, personality: string) => {
+        if (typeof window !== 'undefined' && (window as any).openChat) {
+          ;(window as any).openChat(npcId, personality)
+        }
+      })
+
+      // Listen for chat closed event
+      if (typeof window !== 'undefined') {
+        window.addEventListener('chatClosed', ((event: CustomEvent) => {
+          this.npcManager.endInteraction(event.detail.npcId)
+        }) as EventListener)
+      }
+      
+      this.setupCamera()
+      this.scale.on('resize', this.handleResize, this)
+    } catch (error) {
+      console.error('Error during game initialization:', error)
+    }
   }
 
   update() {
@@ -134,7 +164,8 @@ export default class MainScene extends Scene {
   }
 
   private setupCamera() {
-    this.cameras.main.startFollow(this.playerManager.getPlayer())
+    const player = this.playerManager.getPlayer()
+    this.cameras.main.startFollow(player)
     this.cameras.main.setZoom(2)
     this.cameras.main.roundPixels = true
     
