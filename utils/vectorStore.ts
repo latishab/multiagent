@@ -35,6 +35,14 @@ class VectorStore {
   }
 
   public getConversationKey(npcId: number, round: number, sessionId?: string): string {
+    // Special handling for The Guide (npcId: -1) - preserve conversation across rounds
+    if (npcId === -1) {
+      if (sessionId) {
+        return `guide_session_${sessionId}`;
+      }
+      return 'guide';
+    }
+    
     if (sessionId) {
       return `npc_${npcId}_round_${round}_session_${sessionId}`;
     }
@@ -71,11 +79,14 @@ class VectorStore {
       sessionId,
       messageRole: message.role,
       messageContent: message.content.slice(0, 50) + '...',
-      totalMessages: history.messages.length
+      totalMessages: history.messages.length,
+      isGuide: npcId === -1
     });
 
-    // Cleanup old conversations after 1 hour
-    this.cleanupOldConversations();
+    // Cleanup old conversations after 1 hour (but preserve The Guide's conversation)
+    if (npcId !== -1) {
+      this.cleanupOldConversations();
+    }
   }
 
   private cleanupOldConversations() {

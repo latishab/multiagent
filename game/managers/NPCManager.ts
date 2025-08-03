@@ -511,7 +511,6 @@ export class NPCManager {
 
     // Check if game has started (player has talked to The Guide)
     if (typeof window !== 'undefined' && !(window as any).hasGameStarted && this.currentInteractableNPC?.id !== 'main') {
-      console.log('Game has not started yet. Player must talk to The Guide first.');
       return
     }
 
@@ -537,12 +536,6 @@ export class NPCManager {
         npcConfig = this.npcConfigs[npcIndex];
         npcName = npcConfig?.name;
       }
-      
-      console.log('Found interactable NPC:', {
-        id: this.currentInteractableNPC.id,
-        name: npcName,
-        personality: npcData[this.currentInteractableNPC.id as keyof typeof npcData] || this.currentInteractableNPC.personality
-      })
       
       this.currentInteractableNPC.isInteracting = true
       this.currentInteractableNPC.sprite.setVelocity(0)

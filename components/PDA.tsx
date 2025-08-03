@@ -151,41 +151,50 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                         </div>
                         
                         <div className="system-details">
-                          <div className="options-section">
-                            <h4>Available Options:</h4>
-                            <div className="options-grid">
-                              <div className="option sustainable">
-                                <span className="option-icon">🌱</span>
-                                <div className="option-info">
-                                  <strong>Sustainable:</strong>
-                                  <p>{NPCOptions[npcId].sustainable}</p>
-                                  <p className="option-description">{OptionDescriptions[npcId].sustainable}</p>
+                          {hasInfo ? (
+                            <>
+                              <div className="options-section">
+                                <h4>Available Options:</h4>
+                                <div className="options-grid">
+                                  <div className="option sustainable">
+                                    <span className="option-icon">🌱</span>
+                                    <div className="option-info">
+                                      <strong>Sustainable:</strong>
+                                      <p>{NPCOptions[npcId].sustainable}</p>
+                                      <p className="option-description">{OptionDescriptions[npcId].sustainable}</p>
+                                    </div>
+                                  </div>
+                                  <div className="option unsustainable">
+                                    <span className="option-icon">💰</span>
+                                    <div className="option-info">
+                                      <strong>Economic:</strong>
+                                      <p>{NPCOptions[npcId].unsustainable}</p>
+                                      <p className="option-description">{OptionDescriptions[npcId].unsustainable}</p>
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
-                              <div className="option unsustainable">
-                                <span className="option-icon">💰</span>
-                                <div className="option-info">
-                                  <strong>Economic:</strong>
-                                  <p>{NPCOptions[npcId].unsustainable}</p>
-                                  <p className="option-description">{OptionDescriptions[npcId].unsustainable}</p>
+                              
+                              {systemInfo.round === 2 && (
+                                <div className="opinion-section">
+                                  <h4>Specialist Opinion:</h4>
+                                  <div className="opinion-content">
+                                    <p>{SpecialistRecommendations[npcId]}</p>
+                                  </div>
                                 </div>
-                              </div>
-                            </div>
-                          </div>
-                          
-                            {hasInfo && (
-                              <div className="opinion-section">
-                                <h4>Specialist Opinion:</h4>
-                                <div className="opinion-content">
-                                  <p>{SpecialistRecommendations[npcId]}</p>
+                              )}
+                              
+                              {systemInfo.round === 1 && (
+                                <div className="no-opinion-message">
+                                  <p>No specialist opinion collected yet.</p>
+                                  <p>Talk to {NPCNames[npcId]} in Round 2 to get their recommendation.</p>
                                 </div>
-                              </div>
-                            )}
-                          
-                          {!hasInfo && (
-                            <div className="no-opinion-message">
-                              <p>No specialist opinion collected yet.</p>
-                              <p>Talk to {NPCNames[npcId]} in Round 2 to get their recommendation.</p>
+                              )}
+                            </>
+                          ) : (
+                            <div className="no-info-message">
+                              <p>No information collected yet.</p>
+                              <p>Talk to {NPCNames[npcId]} to learn about their system and options.</p>
                             </div>
                           )}
                         </div>
