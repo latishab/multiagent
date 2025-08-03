@@ -297,7 +297,9 @@ ${round === 1 ?
   `- NPC should introduce themselves (name, background, profession)
 - NPC should explain their system (${npc.system})
 - NPC should mention both options: ${npc.options.sustainable} and ${npc.options.unsustainable}
-- Conversation should be friendly and informative` :
+- NPC should explain what at least ONE option does (how it works, what it means)
+- Conversation should be friendly and informative
+- CRITICAL: NPC should NOT give recommendations or opinions in Round 1` :
   `- NPC should clearly state their recommendation between ${npc.options.sustainable} and ${npc.options.unsustainable}
 - NPC should explain their reasoning for their choice
 - NPC should use recommendation phrases like "I recommend", "I suggest", "I believe we should"`}
@@ -305,7 +307,12 @@ ${round === 1 ?
 FULL CONVERSATION HISTORY:
 ${conversationText}
 
-IMPORTANT: For Round 1, check the ENTIRE conversation. If the NPC has mentioned their name, their role/profession, their system (${npc.system}), and both options (${npc.options.sustainable} and ${npc.options.unsustainable}) anywhere in the conversation, then the introduction is COMPLETE.
+IMPORTANT: For Round 1, check the ENTIRE conversation. The conversation is ONLY COMPLETE if:
+1. NPC has mentioned their name and role/profession
+2. NPC has explained their system (${npc.system})
+3. NPC has mentioned both options (${npc.options.sustainable} and ${npc.options.unsustainable})
+4. NPC has explained what at least ONE of the options actually does (not just mentioned the name)
+5. NPC has NOT given any recommendations or opinions about which option is better
 
 Look through ALL the NPC's responses, not just the latest one. The information can be spread across multiple responses.
 
@@ -314,10 +321,12 @@ Determine if this conversation is COMPLETE (has all required information) or INC
 Respond with ONLY: "COMPLETE: [brief reason]" or "INCOMPLETE: [what's missing]"
 
 Example responses for Round 1:
-- "COMPLETE: NPC introduced themselves, explained their system, and mentioned both options"
-- "COMPLETE: NPC mentioned their name, role, system, and both options across multiple responses"
+- "COMPLETE: NPC introduced themselves, explained their system, mentioned both options, and explained what Modular Eco-Pods do"
+- "COMPLETE: NPC mentioned their name, role, system, both options, and described how Smart Concrete Complex works"
+- "INCOMPLETE: NPC mentioned both options but didn't explain what either option actually does"
 - "INCOMPLETE: NPC didn't mention the ${npc.options.unsustainable} option"
 - "INCOMPLETE: NPC didn't explain their system"
+- "INCOMPLETE: NPC gave a recommendation in Round 1 (should only happen in Round 2)"
 
 Example responses for Round 2:
 - "COMPLETE: NPC clearly recommended ${npc.options.sustainable} with good reasoning"
