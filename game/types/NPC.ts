@@ -31,9 +31,9 @@ export interface NPCType {
  * Each character occupies a 3x3 grid of 16x16 frames (48x48 total)
  * 
  * Frame layout within each character block:
- * [0][1][2] - Down animations (walking down)
+ * [0][1][2] - Up animations (walking up)
  * [3][4][5] - Side animations (walking left/right) 
- * [6][7][8] - Up animations (walking up)
+ * [6][7][8] - Down animations (walking down)
  * 
  * SPRITESHEET LAYOUT (2 rows, 3 characters per row):
  * Row 1: [Character 0][Character 1][Character 2] - 48px each
@@ -41,9 +41,9 @@ export interface NPCType {
  * 
  * REQUIRED STANDARDIZATION:
  * - Each character MUST have exactly 3 frames for each direction
- * - Down frames MUST be in the top row of their 3x3 block
+ * - Up frames MUST be in the top row of their 3x3 block
  * - Side frames MUST be in the middle row of their 3x3 block  
- * - Up frames MUST be in the bottom row of their 3x3 block
+ * - Down frames MUST be in the bottom row of their 3x3 block
  * - All frames must be 16x16 pixels
  * - No gaps or spacing between frames
  * - Characters must be arranged in 2 rows of 3 characters each
@@ -80,16 +80,17 @@ export const NPC_TYPES: NPCType[] = [
 
 // Helper functions for frame calculations
 export function getDownFrames(startFrame: number): number[] {
-  // Down frames are in the first row of the character's 3x3 block
+  // Down frames are in the third row (bottom) of the character's 3x3 block
+  const rowOffset = FRAMES_PER_ROW * 2
   return [
-    startFrame,
-    startFrame + 1,
-    startFrame + 2
+    startFrame + rowOffset,
+    startFrame + rowOffset + 1,
+    startFrame + rowOffset + 2
   ]
 }
 
 export function getSideFrames(startFrame: number): number[] {
-  // Side frames are in the second row of the character's 3x3 block
+  // Side frames are in the second row (middle) of the character's 3x3 block
   const rowOffset = FRAMES_PER_ROW
   return [
     startFrame + rowOffset,
@@ -99,11 +100,10 @@ export function getSideFrames(startFrame: number): number[] {
 }
 
 export function getUpFrames(startFrame: number): number[] {
-  // Up frames are in the third row of the character's 3x3 block
-  const rowOffset = FRAMES_PER_ROW * 2
+  // Up frames are in the first row (top) of the character's 3x3 block
   return [
-    startFrame + rowOffset,
-    startFrame + rowOffset + 1,
-    startFrame + rowOffset + 2
+    startFrame,
+    startFrame + 1,
+    startFrame + 2
   ]
 } 
