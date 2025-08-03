@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { OptionDescriptions } from '../utils/prompts'
 
 interface BallotEntry {
   npcId: number;
@@ -149,28 +150,30 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                           {hasInfo && <span className="info-badge">✓</span>}
                         </div>
                         
-                        {selectedSystem === npcId && hasInfo && (
-                          <div className="system-details">
-                            <div className="options-section">
-                              <h4>Available Options:</h4>
-                              <div className="options-grid">
-                                <div className="option sustainable">
-                                  <span className="option-icon">🌱</span>
-                                  <div className="option-info">
-                                    <strong>Sustainable:</strong>
-                                    <p>{systemInfo.sustainableOption}</p>
-                                  </div>
+                        <div className="system-details">
+                          <div className="options-section">
+                            <h4>Available Options:</h4>
+                            <div className="options-grid">
+                              <div className="option sustainable">
+                                <span className="option-icon">🌱</span>
+                                <div className="option-info">
+                                  <strong>Sustainable:</strong>
+                                  <p>{NPCOptions[npcId].sustainable}</p>
+                                  <p className="option-description">{OptionDescriptions[npcId].sustainable}</p>
                                 </div>
-                                <div className="option unsustainable">
-                                  <span className="option-icon">💰</span>
-                                  <div className="option-info">
-                                    <strong>Economic:</strong>
-                                    <p>{systemInfo.unsustainableOption}</p>
-                                  </div>
+                              </div>
+                              <div className="option unsustainable">
+                                <span className="option-icon">💰</span>
+                                <div className="option-info">
+                                  <strong>Economic:</strong>
+                                  <p>{NPCOptions[npcId].unsustainable}</p>
+                                  <p className="option-description">{OptionDescriptions[npcId].unsustainable}</p>
                                 </div>
                               </div>
                             </div>
-                            
+                          </div>
+                          
+                          {hasInfo && (
                             <div className="opinion-section">
                               <h4>Specialist Opinion:</h4>
                               <div className="opinion-content">
@@ -178,15 +181,15 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                                 <p><strong>Reasoning:</strong> {systemInfo.npcReasoning}</p>
                               </div>
                             </div>
-                          </div>
-                        )}
-                        
-                        {selectedSystem === npcId && !hasInfo && (
-                          <div className="no-info-message">
-                            <p>No information collected yet.</p>
-                            <p>Talk to {NPCNames[npcId]} to learn about this system.</p>
-                          </div>
-                        )}
+                          )}
+                          
+                          {!hasInfo && (
+                            <div className="no-opinion-message">
+                              <p>No specialist opinion collected yet.</p>
+                              <p>Talk to {NPCNames[npcId]} in Round 2 to get their recommendation.</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -570,6 +573,14 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
           font-size: 0.85rem;
         }
 
+        .option-description {
+          margin: 0.5rem 0 0 0 !important;
+          color: #6b7280 !important;
+          font-size: 0.8rem !important;
+          font-style: italic;
+          line-height: 1.3;
+        }
+
         .opinion-section h4 {
           margin: 0 0 0.75rem 0;
           color: #f9fafb;
@@ -590,6 +601,17 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
           color: #9ca3af;
           font-style: italic;
           margin-top: 1rem;
+        }
+
+        .no-opinion-message {
+          text-align: center;
+          color: #9ca3af;
+          font-style: italic;
+          margin-top: 1rem;
+          padding: 1rem;
+          background: rgba(55, 65, 81, 0.3);
+          border-radius: 8px;
+          border: 1px solid #4b5563;
         }
 
         /* Decisions Tab Styles */
