@@ -43,7 +43,16 @@ class VectorStore {
 
   public getConversationHistory(npcId: number, round: number, sessionId?: string): Message[] {
     const key = this.getConversationKey(npcId, round, sessionId);
-    return this.conversations.get(key)?.messages || [];
+    const history = this.conversations.get(key)?.messages || [];
+    console.log('Getting conversation history:', {
+      key,
+      npcId,
+      round,
+      sessionId,
+      messageCount: history.length,
+      messages: history.map(msg => ({ role: msg.role, content: msg.content.slice(0, 50) + '...' }))
+    });
+    return history;
   }
 
   public addToConversationHistory(npcId: number, round: number, message: Message, sessionId?: string) {
@@ -54,6 +63,16 @@ class VectorStore {
     history.lastUpdated = Date.now();
     
     this.conversations.set(key, history);
+
+    console.log('Added to conversation history:', {
+      key,
+      npcId,
+      round,
+      sessionId,
+      messageRole: message.role,
+      messageContent: message.content.slice(0, 50) + '...',
+      totalMessages: history.messages.length
+    });
 
     // Cleanup old conversations after 1 hour
     this.cleanupOldConversations();

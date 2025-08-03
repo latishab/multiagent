@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { sessionManager } from '../utils/sessionManager'
+import { getInitialGuideMessages, GuideNarrative, narrativesToMessages } from '../utils/guideNarratives'
 
 interface ChatDialogProps {
   isOpen: boolean;
@@ -7,6 +8,7 @@ interface ChatDialogProps {
   personality: string;
   round: number;
   isSustainable?: boolean;
+  spokenNPCs?: { round1: Set<number>; round2: Set<number> };
   onClose: () => void;
   onRoundChange: (round: number) => void;
   onStanceChange: (isProSustainable: boolean) => void;
@@ -19,6 +21,7 @@ interface Message {
 }
 
 const NPCNames: { [key: number]: string } = {
+  [-1]: 'The Guide',
   1: 'Mrs. Aria',
   2: 'Chief Oskar',
   3: 'Mr. Moss',
@@ -28,6 +31,11 @@ const NPCNames: { [key: number]: string } = {
 }
 
 const NPCOptions: { [key: number]: { sustainable: string; unsustainable: string; system: string } } = {
+  [-1]: { 
+    sustainable: 'Sustainable Development', 
+    unsustainable: 'Economic Growth',
+    system: 'City Planning'
+  },
   1: { 
     sustainable: 'Constructed Wetlands', 
     unsustainable: 'Chemical Filtration Tanks',
@@ -63,22 +71,92 @@ const NPCOptions: { [key: number]: { sustainable: string; unsustainable: string;
 // List of common titles that shouldn't be split
 const titles = ['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Prof.'];
 
-// Helper function to split text into sentences while preserving titles
-function splitIntoSentences(text: string): string[] {
+// Helper function to split text into natural conversation chunks
+// This groups related sentences together to create more natural-looking chat bubbles
+// instead of splitting every sentence into a separate bubble
+function splitIntoConversationChunks(text: string): string[] {
   // 1. temporarily replace periods in titles with a placeholder
   let processedText = text;
   titles.forEach(title => {
     processedText = processedText.replace(new RegExp(title, 'g'), title.replace('.', '@@'));
   });
 
-  // 2. split on sentence boundaries
+  // 2. Split into sentences first
   const sentences = processedText
     .split(/(?<=[.!?])\s+/)
     .map(s => s.trim())
     .filter(s => s.length > 0)
     .map(s => s.replace(/@@/g, '.'));
 
-  return sentences;
+  // 3. Much more natural chunking logic
+  const chunks: string[] = [];
+  let currentChunk: string[] = [];
+
+  // Special cases for very short responses
+  if (sentences.length === 1) {
+    return [sentences.join(' ')];
+  }
+
+  // If total response is short, keep as one chunk
+  const totalLength = sentences.join(' ').length;
+  if (totalLength < 150) {
+    return [sentences.join(' ')];
+  }
+
+  for (let i = 0; i < sentences.length; i++) {
+    const sentence = sentences[i];
+    const nextSentence = sentences[i + 1];
+    
+    // Always add the current sentence to the chunk
+    currentChunk.push(sentence);
+    
+    // Only start a new chunk in very specific cases
+    const shouldStartNewChunk = 
+      // If this is the last sentence
+      i === sentences.length - 1 ||
+      // If the next sentence is a direct question (not rhetorical)
+      (nextSentence.includes('?') && !nextSentence.toLowerCase().includes('you') && !nextSentence.toLowerCase().includes('i')) ||
+      // If the next sentence starts a completely new topic (greeting, new introduction)
+      nextSentence.toLowerCase().match(/^(hi|hello|hey|good morning|good afternoon|good evening)/) ||
+      // If we have 3+ sentences and the next one seems like a new thought
+      (currentChunk.length >= 3 && nextSentence.toLowerCase().match(/^(well|now|so|anyway|by the way|speaking of|on that note)/));
+    
+    if (shouldStartNewChunk) {
+      chunks.push(currentChunk.join(' '));
+      currentChunk = [];
+    }
+  }
+
+  // Add any remaining sentences as a chunk
+  if (currentChunk.length > 0) {
+    chunks.push(currentChunk.join(' '));
+  }
+
+  // 4. Post-process chunks to merge very short ones
+  const finalChunks: string[] = [];
+  let currentMergedChunk: string[] = [];
+
+  for (const chunk of chunks) {
+    // If chunk is very short (less than 50 chars), try to merge it with the next one
+    if (chunk.length < 50 && currentMergedChunk.length === 0) {
+      currentMergedChunk.push(chunk);
+    } else if (currentMergedChunk.length > 0) {
+      // Merge with the previous short chunk
+      currentMergedChunk.push(chunk);
+      finalChunks.push(currentMergedChunk.join(' '));
+      currentMergedChunk = [];
+    } else {
+      // Normal chunk, add directly
+      finalChunks.push(chunk);
+    }
+  }
+
+  // Add any remaining merged chunk
+  if (currentMergedChunk.length > 0) {
+    finalChunks.push(currentMergedChunk.join(' '));
+  }
+
+  return finalChunks.length > 0 ? finalChunks : chunks;
 }
 
 export default function ChatDialog({ 
@@ -87,19 +165,21 @@ export default function ChatDialog({
   personality, 
   round, 
   isSustainable = true,
+  spokenNPCs = { round1: new Set(), round2: new Set() },
   onClose,
   onRoundChange,
   onStanceChange,
   onConversationComplete
 }: ChatDialogProps) {
-  // Keep message history per NPC and round
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
+  const [hasInitialMessagesSent, setHasInitialMessagesSent] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const initialMessagesSentRef = useRef(false);
 
   // Load messages when NPC or round changes
   useEffect(() => {
@@ -126,19 +206,78 @@ export default function ChatDialog({
           });
           
           setMessages(data.messages);
+          // If we have existing messages, mark initial messages as already sent
+          if (data.messages.length > 0) {
+            setHasInitialMessagesSent(true);
+            initialMessagesSentRef.current = true;
+          } else {
+            setHasInitialMessagesSent(false);
+            initialMessagesSentRef.current = false;
+          }
         } else {
           console.log('No conversation history found, starting fresh');
           setMessages([]);
+          setHasInitialMessagesSent(false);
+          initialMessagesSentRef.current = false;
         }
       } catch (error) {
         console.error('Error loading conversation history:', error);
         // Don't let conversation history errors break the chat
         setMessages([]);
+        setHasInitialMessagesSent(false);
+        initialMessagesSentRef.current = false;
       }
     };
     
     loadMessages();
   }, [npcId, round, isOpen]);
+
+  // Auto-send initial messages from The Guide when chat opens
+  useEffect(() => {
+    const sendInitialGuideMessages = async () => {
+      // Only for The Guide and when chat is open
+      if (!isOpen || npcId !== -1) return;
+      
+      // Check if this is a fresh conversation (no messages yet) and initial messages haven't been sent
+      if (messages.length === 0 && !initialMessagesSentRef.current) {
+        initialMessagesSentRef.current = true; // Mark as sent to prevent re-triggering
+        setIsLoading(true);
+        setHasInitialMessagesSent(true);
+        
+        try {
+          // Get the initial guide narratives and convert to messages
+          const initialNarratives = getInitialGuideMessages();
+          const initialMessages = narrativesToMessages(initialNarratives);
+          
+          console.log('Setting initial Guide messages:', initialMessages);
+          
+          // Display messages one by one with typing effect
+          for (let i = 0; i < initialMessages.length; i++) {
+            // Show typing indicator
+            setIsLoading(true);
+            await new Promise(resolve => setTimeout(resolve, 800)); // Typing delay
+            
+            // Add the message
+            setMessages(prev => [...prev, initialMessages[i]]);
+            setIsLoading(false);
+            
+            // Wait before next message
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+          
+        } catch (error) {
+          console.error('Error setting initial Guide messages:', error);
+          // Fallback to a single message if there's an error
+          const fallbackMessage = { text: "Hello there! I'm The Guide, and I'm here to help you navigate the city's development challenges.", sender: 'npc' as const };
+          setMessages([fallbackMessage]);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    
+    sendInitialGuideMessages();
+  }, [isOpen, npcId]);
 
   // Log NPC info when props change
   useEffect(() => {
@@ -192,7 +331,11 @@ export default function ChatDialog({
       npcId,
       round,
       isSustainable,
-      sessionId: currentSessionId
+      sessionId: currentSessionId,
+      spokenNPCs: {
+        round1: Array.from(spokenNPCs.round1),
+        round2: Array.from(spokenNPCs.round2)
+      }
     };
 
     console.log('Sending chat request:', requestData);
@@ -227,48 +370,63 @@ export default function ChatDialog({
       const data = await response.json();
       console.log('API Success Response:', data);
 
-      if (data.response) {
-        // Check if opinion was detected
-        if (data.detectedOpinion && round === 2) {
-          console.log('Opinion detected:', data.detectedOpinion);
-          // Update ballot with detected opinion
-          if (onConversationComplete) {
-            onConversationComplete(npcId, round, data.detectedOpinion, data.conversationAnalysis);
+              if (data.response) {
+          // Check if opinion was detected
+          if (data.detectedOpinion && round === 2) {
+            console.log('Opinion detected:', data.detectedOpinion);
+            // Update ballot with detected opinion
+            if (onConversationComplete) {
+              onConversationComplete(npcId, round, data.detectedOpinion, data.conversationAnalysis);
+            }
           }
-        }
 
-        // Log conversation analysis
-        if (data.conversationAnalysis) {
-          console.log('Conversation analysis:', data.conversationAnalysis);
-          console.log('Analysis result - isComplete:', data.conversationAnalysis.isComplete);
-          console.log('Analysis result - reason:', data.conversationAnalysis.reason);
-        }
-        // Split response into sentences and add delay between each
-        const sentences = splitIntoSentences(data.response);
-        let currentMessages = newMessages;
-        
-        // Add each sentence as a separate message with a small delay
-        for (let i = 0; i < sentences.length; i++) {
-          await new Promise(resolve => setTimeout(resolve, 500 * (i + 1)));
-          currentMessages = [...currentMessages, { 
-            text: sentences[i], 
-            sender: 'npc' 
-          }];
-          setMessages(currentMessages);
-        }
-
-        // Call the conversation complete callback based on conversation analysis
-        if (onConversationComplete && data.conversationAnalysis) {
-          // For Round 1: Call when introduction is complete
-          // For Round 2: Call when opinion is detected (handled above)
-          if (round === 1 && data.conversationAnalysis.isComplete) {
-            console.log('Round 1 conversation complete, calling onConversationComplete');
-            onConversationComplete(npcId, round, undefined, data.conversationAnalysis);
+          // Log conversation analysis
+          if (data.conversationAnalysis) {
+            console.log('Conversation analysis:', data.conversationAnalysis);
+            console.log('Analysis result - isComplete:', data.conversationAnalysis.isComplete);
+            console.log('Analysis result - reason:', data.conversationAnalysis.reason);
           }
+          
+          // Special handling for main NPC round advancement
+          if (npcId === -1) {
+            const responseLower = data.response.toLowerCase();
+            if (responseLower.includes('round 2') && round === 1) {
+              console.log('Main NPC advancing to Round 2');
+              onRoundChange(2);
+            } else if (responseLower.includes('ending phase') && round === 2) {
+              console.log('Main NPC triggering ending phase');
+              if (typeof window !== 'undefined' && (window as any).triggerEndingPhase) {
+                (window as any).triggerEndingPhase();
+              }
+            }
+          }
+          
+          // Split response into natural conversation chunks and add delay between each
+          const chunks = splitIntoConversationChunks(data.response);
+          let currentMessages = newMessages;
+          
+          // Add each chunk as a separate message with a small delay
+          for (let i = 0; i < chunks.length; i++) {
+            await new Promise(resolve => setTimeout(resolve, 500 * (i + 1)));
+            currentMessages = [...currentMessages, { 
+              text: chunks[i], 
+              sender: 'npc' 
+            }];
+            setMessages(currentMessages);
+          }
+
+          // Call the conversation complete callback based on conversation analysis
+          if (onConversationComplete && data.conversationAnalysis) {
+            // For Round 1: Call when introduction is complete
+            // For Round 2: Call when opinion is detected (handled above)
+            if (round === 1 && data.conversationAnalysis.isComplete) {
+              console.log('Round 1 conversation complete, calling onConversationComplete');
+              onConversationComplete(npcId, round, undefined, data.conversationAnalysis);
+            }
+          }
+        } else {
+          throw new Error('Invalid response format from API');
         }
-      } else {
-        throw new Error('Invalid response format from API');
-      }
     } catch (error) {
       console.error('Full error details:', error);
       setError(error instanceof Error ? error.message : String(error));
@@ -324,42 +482,34 @@ export default function ChatDialog({
       {/* Chat Dialog */}
       <div className="chat-dialog" onKeyDown={handleKeyDown}>
         <div className="chat-container">
-          {/* Round Indicator */}
-          <div className="round-indicator">
-            <div className="round-info">
-              <span className="round-number">Round {round}</span>
-              <span className="round-desc">
-                {round === 1 ? 'Introduction' : 'Options Discussion'}
-              </span>
-            </div>
-          </div>
-
-          {/* Purpose Statement */}
-          {messages.length === 0 && (
-            <div className="purpose-statement">
-              <div className="purpose-content">
-                <h3>Your Mission</h3>
-                <p>
-                  {round === 1 ? 
-                    `Find out about ${NPCNames[npcId]}'s role in the ${NPCOptions[npcId]?.system} system and learn about the pros and cons of building ${NPCOptions[npcId]?.sustainable} vs ${NPCOptions[npcId]?.unsustainable}.` :
-                    `Discover ${NPCNames[npcId]}'s opinion on whether to choose ${NPCOptions[npcId]?.sustainable} (sustainable) or ${NPCOptions[npcId]?.unsustainable} (economic) for the ${NPCOptions[npcId]?.system}.`
-                  }
-                </p>
-                <div className="purpose-details">
-                  {round === 1 ? (
-                    <span>Round 1: Introduction - Learn about their system and the available options</span>
-                  ) : (
-                    <span>Round 2: Decision - Find out which option they support and why</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Header */}
           <div className="chat-header">
-            <h2>Chat with {npcId ? NPCNames[npcId] || 'NPC' : 'NPC'}</h2>
-            <button onClick={onClose} className="close-button">✕</button>
+            <div className="header-content">
+              <div className="npc-profile">
+                <div className="profile-picture">
+                  {npcId === -1 ? (
+                    // The Guide - use a special icon or default
+                    <div className="guide-icon">👤</div>
+                  ) : (
+                    <img 
+                      src={`/assets/characters/${npcId}.1.png`} 
+                      alt={`${NPCNames[npcId] || 'NPC'}`}
+                      onError={(e) => {
+                        // Fallback to jpeg if png doesn't exist
+                        const target = e.target as HTMLImageElement;
+                        target.src = `/assets/characters/${npcId}.jpeg`;
+                      }}
+                    />
+                  )}
+                </div>
+                <div className="npc-info">
+                  <h2>{npcId ? NPCNames[npcId] || 'NPC' : 'NPC'}</h2>
+                  <span className="npc-system">{NPCOptions[npcId]?.system || 'System'}</span>
+                </div>
+              </div>
+              <button onClick={onClose} className="close-button">✕</button>
+            </div>
           </div>
 
           {/* Messages */}
@@ -433,77 +583,71 @@ export default function ChatDialog({
           flex-direction: column;
         }
 
-        .round-indicator {
-          background-color: rgba(17, 24, 39, 0.95);
-          border-bottom: 2px solid #374151;
-          padding: 10px 20px;
-          flex-shrink: 0;
-        }
-
-        .round-info {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 4px;
-        }
-
-        .round-number {
-          color: #e5e7eb;
-          font-size: 16px;
-          font-weight: bold;
-        }
-
-        .round-desc {
-          color: #9ca3af;
-          font-size: 12px;
-        }
-
-        .purpose-statement {
-          background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.15));
-          border-bottom: 2px solid #374151;
-          padding: 16px 20px;
-          flex-shrink: 0;
-        }
-
-        .purpose-content {
-          text-align: center;
-        }
-
-        .purpose-content h3 {
-          color: #3b82f6;
-          font-size: 18px;
-          font-weight: bold;
-          margin: 0 0 8px 0;
-        }
-
-        .purpose-content p {
-          color: #e5e7eb;
-          font-size: 14px;
-          line-height: 1.5;
-          margin: 0 0 8px 0;
-        }
-
-        .purpose-details {
-          color: #9ca3af;
-          font-size: 12px;
-          font-style: italic;
-        }
-
         .chat-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
           padding: 16px 20px;
           background-color: rgba(31, 41, 55, 0.95);
           border-bottom: 2px solid #374151;
           flex-shrink: 0;
         }
 
-        .chat-header h2 {
+        .header-content {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .npc-profile {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .profile-picture {
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          overflow: hidden;
+          border: 2px solid #374151;
+          background-color: #1f2937;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .profile-picture img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          border-radius: 50%;
+        }
+
+        .npc-info {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .npc-info h2 {
           color: #e5e7eb;
-          font-size: 22px;
+          font-size: 18px;
           font-weight: bold;
           margin: 0;
+        }
+
+        .npc-system {
+          color: #9ca3af;
+          font-size: 12px;
+          font-style: italic;
+        }
+
+        .guide-icon {
+          font-size: 24px;
+          color: #e5e7eb;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          height: 100%;
         }
 
         .chat-header .close-button {
@@ -553,7 +697,7 @@ export default function ChatDialog({
 
         .message {
           display: flex;
-          margin-bottom: 4px;
+          margin-bottom: 12px;
           animation: fadeIn 0.3s ease-out forwards;
           opacity: 0;
         }
@@ -572,23 +716,26 @@ export default function ChatDialog({
         }
 
         .message-content {
-          max-width: 80%;
-          padding: 8px 16px;
-          border-radius: 16px;
+          max-width: 75%;
+          padding: 12px 18px;
+          border-radius: 18px;
           color: #ffffff;
           word-break: break-word;
           font-size: 16px;
           line-height: 1.5;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
 
         .player .message-content {
-          background-color: #2563eb;
-          border-bottom-right-radius: 4px;
+          background: linear-gradient(135deg, #2563eb, #1d4ed8);
+          border-bottom-right-radius: 6px;
+          margin-left: auto;
         }
 
         .npc .message-content {
-          background-color: #4b5563;
-          border-bottom-left-radius: 4px;
+          background: linear-gradient(135deg, #4b5563, #374151);
+          border-bottom-left-radius: 6px;
+          margin-right: auto;
         }
 
         .typing-indicator {

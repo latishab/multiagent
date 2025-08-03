@@ -21,10 +21,22 @@ export default class MainScene extends Scene {
   }
 
   preload() {
-    // Add error handling for texture loading
+    // Add comprehensive error handling for texture loading
     this.load.on('loaderror', (file: any) => {
       console.error('Failed to load texture:', file.src)
     })
+    
+    this.load.on('loadcomplete', () => {
+      console.log('All assets loaded successfully')
+    })
+    
+    // Add WebGL error handling
+    if (this.renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer) {
+      const gl = this.renderer.gl;
+      if (gl) {
+        gl.getError(); // Clear any existing errors
+      }
+    }
 
     // Load player spritesheets
     this.load.spritesheet('playerIdle', '/assets/characters/Idle.png', { 
@@ -93,6 +105,17 @@ export default class MainScene extends Scene {
 
   create() {
     try {
+      // Check for WebGL errors before creating map
+      if (this.renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer) {
+        const gl = this.renderer.gl;
+        if (gl) {
+          const error = gl.getError();
+          if (error !== gl.NO_ERROR) {
+            console.warn('WebGL error before map creation:', error);
+          }
+        }
+      }
+      
       this.createMap()
       
       // Initialize managers
