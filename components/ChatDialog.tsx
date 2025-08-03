@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { sessionManager } from '../utils/sessionManager'
-import { getInitialGuideMessages, GuideNarrative, narrativesToMessages } from '../utils/guideNarratives'
+import { getInitialGuideMessages, getRoundAdvancementMessages, getDecisionPhaseMessages, GuideNarrative, narrativesToMessages } from '../utils/guideNarratives'
 
 interface ChatDialogProps {
   isOpen: boolean;
@@ -185,10 +185,8 @@ export default function ChatDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
-  const [hasInitialMessagesSent, setHasInitialMessagesSent] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const initialMessagesSentRef = useRef(false);
 
   // Load messages when NPC or round changes
   useEffect(() => {
@@ -201,7 +199,9 @@ export default function ChatDialog({
       
       try {
         // Load conversation history from API
-        const response = await fetch(`/api/conversation-history?npcId=${npcId}&round=${round}&sessionId=${currentSessionId}`);
+        // For The Guide, use round 1 to preserve conversation across rounds
+        const effectiveRound = npcId === -1 ? 1 : round;
+        const response = await fetch(`/api/conversation-history?npcId=${npcId}&round=${effectiveRound}&sessionId=${currentSessionId}`);
         
         if (response.ok) {
           const data = await response.json();
@@ -215,27 +215,16 @@ export default function ChatDialog({
           });
           
           setMessages(data.messages);
-          // If we have existing messages, mark initial messages as already sent
-          if (data.messages.length > 0) {
-            setHasInitialMessagesSent(true);
-            initialMessagesSentRef.current = true;
-          } else {
-            setHasInitialMessagesSent(false);
-            initialMessagesSentRef.current = false;
-          }
+          console.log('📚 Loaded conversation history with', data.messages.length, 'messages');
         } else {
           console.log('No conversation history found, starting fresh');
           setMessages([]);
-          setHasInitialMessagesSent(false);
-          initialMessagesSentRef.current = false;
         }
-      } catch (error) {
-        console.error('Error loading conversation history:', error);
-        // Don't let conversation history errors break the chat
-        setMessages([]);
-        setHasInitialMessagesSent(false);
-        initialMessagesSentRef.current = false;
-      }
+              } catch (error) {
+          console.error('Error loading conversation history:', error);
+          // Don't let conversation history errors break the chat
+          setMessages([]);
+        }
     };
     
     loadMessages();
@@ -247,72 +236,63 @@ export default function ChatDialog({
       // Only for The Guide and when chat is open
       if (!isOpen || npcId !== -1) return;
       
-      // Check if this is a fresh conversation (no messages yet) and initial messages haven't been sent
-      if (messages.length === 0 && !initialMessagesSentRef.current) {
-        initialMessagesSentRef.current = true; // Mark as sent to prevent re-triggering
-        setIsLoading(true);
-        setHasInitialMessagesSent(true);
+      // Simple check: if we have messages, don't send initial messages
+      if (messages.length > 0) {
+        console.log('✅ Conversation has messages, skipping initial messages');
+        return;
+      }
+      
+      // Determine what initial messages to send based on game state
+      let guideNarratives;
+      if (round === 1 && spokenNPCs.round1.size === 0) {
+        guideNarratives = getInitialGuideMessages();
+      } else if (round === 1 && spokenNPCs.round1.size >= 6) {
+        guideNarratives = getRoundAdvancementMessages();
+      } else if (round === 2 && spokenNPCs.round2.size >= 6) {
+        guideNarratives = getDecisionPhaseMessages();
+      } else if (round === 2 && spokenNPCs.round2.size === 0 && spokenNPCs.round1.size >= 6) {
+        guideNarratives = getRoundAdvancementMessages();
+      } else {
+        // No initial messages needed
+        return;
+      }
+      
+      console.log('📝 Sending initial messages for round', round);
+      setIsLoading(true);
+      
+      try {
+        const initialMessages = narrativesToMessages(guideNarratives);
+        const currentSessionId = await sessionManager.getSessionId();
         
-        try {
-          // Get the initial guide narratives and convert to messages
-          const initialNarratives = getInitialGuideMessages();
-          const initialMessages = narrativesToMessages(initialNarratives);
+        // Send messages one by one
+        for (let i = 0; i < initialMessages.length; i++) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          setMessages(prev => [...prev, initialMessages[i]]);
           
-          console.log('Setting initial Guide messages:', initialMessages);
+          // Store message
+          await fetch('/api/store-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: initialMessages[i].text,
+              npcId: -1,
+              round: 1,
+              sessionId: currentSessionId,
+              role: 'assistant'
+            })
+          });
           
-          // Get session ID for storing messages
-          const currentSessionId = await sessionManager.getSessionId();
-          
-          // Display messages one by one with typing effect
-          for (let i = 0; i < initialMessages.length; i++) {
-            // Show typing indicator
-            setIsLoading(true);
-            await new Promise(resolve => setTimeout(resolve, 500)); // Typing delay
-            
-            // Add the message to local state
-            setMessages(prev => [...prev, initialMessages[i]]);
-            setIsLoading(false);
-            
-            // Send the message to API to store in conversation history
-            try {
-              await fetch('/api/chat', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  message: initialMessages[i].text,
-                  npcId: -1, // The Guide
-                  round: round,
-                  isSustainable: true,
-                  sessionId: currentSessionId,
-                  spokenNPCs: {
-                    round1: Array.from(spokenNPCs.round1),
-                    round2: Array.from(spokenNPCs.round2)
-                  }
-                })
-              });
-            } catch (error) {
-              console.error('Error storing initial message in conversation history:', error);
-            }
-            
-            // Wait before next message
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
-          
-        } catch (error) {
-          console.error('Error setting initial Guide messages:', error);
-          // Fallback to a single message if there's an error
-          const fallbackMessage = { text: "Hello there! I'm The Guide, and I'm here to help you navigate the city's development challenges.", sender: 'npc' as const };
-          setMessages([fallbackMessage]);
-        } finally {
-          setIsLoading(false);
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
+      } catch (error) {
+        console.error('Error sending initial messages:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
     
     sendInitialGuideMessages();
-  }, [isOpen, npcId]);
+  }, [isOpen, npcId, round, spokenNPCs.round1.size, spokenNPCs.round2.size, messages.length]);
 
   // Log NPC info when props change
   useEffect(() => {

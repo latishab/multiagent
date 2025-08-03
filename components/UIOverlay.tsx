@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Game } from 'phaser'
 import ChatDialog from './ChatDialog'
+import GuideDialog from './GuideDialog'
 import GameMenu from './GameMenu'
 import ProgressIndicator from './ProgressIndicator'
 import PDA from './PDA'
@@ -109,7 +110,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       round1: new Set<number>(),
       round2: new Set<number>()
     };
-    console.log('Initialized empty spoken NPCs:', result);
     return result;
   });
 
@@ -119,6 +119,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   const [endingType, setEndingType] = useState<'good' | 'bad' | 'medium' | null>(null);
   const [showPDA, setShowPDA] = useState(false);
   const [showDecisionMode, setShowDecisionMode] = useState(false);
+  const [guideDialogOpen, setGuideDialogOpen] = useState(false);
   
   // Ballot entries to track NPC opinions
   const [ballotEntries, setBallotEntries] = useState<BallotEntry[]>(() => {
@@ -184,23 +185,15 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       (window as any).hasGameStarted = hasStartedGame;
       (window as any).hasTalkedToGuide = hasTalkedToGuide;
       (window as any).currentRound = chatState.round;
+      (window as any).spokenNPCs = spokenNPCs;
     }
-  }, [hasStartedGame, hasTalkedToGuide, chatState.round]);
+  }, [hasStartedGame, hasTalkedToGuide, chatState.round, spokenNPCs]);
 
   // Function to be called from the game to open chat
   const openChat = (npcId: string, personality: string) => {
-    console.log('Opening chat with NPC:', { npcId, personality });
-    
     // Special handling for main NPC (The Guide)
     if (npcId === 'main') {
-      console.log('Opening chat with main NPC (The Guide)');
-      setChatState({
-        isOpen: true,
-        npcId: -1, // Use -1 for main NPC
-        personality: 'neutral', // Main NPC is neutral
-        round: chatState.round, // Main NPC uses current global round
-        isSustainable: true // Neutral stance
-      });
+      setGuideDialogOpen(true);
       return;
     }
     
@@ -254,13 +247,18 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     window.dispatchEvent(new CustomEvent('chatClosed', { detail: { npcId: chatState.npcId.toString() } }));
   }
 
+  // Function to close guide dialog
+  const closeGuideDialog = () => {
+    setGuideDialogOpen(false);
+    window.dispatchEvent(new CustomEvent('chatClosed', { detail: { npcId: 'main' } }));
+  }
+
   // Function to mark NPC as actually spoken to (called when conversation has content)
   const markNPCAsSpoken = (npcId: number, round: number, detectedOpinion?: { opinion: string; reasoning: string }, conversationAnalysis?: { isComplete: boolean; reason: string }) => {
     console.log('markNPCAsSpoken called:', { npcId, round, detectedOpinion, conversationAnalysis });
     
     // Special handling for main NPC (The Guide)
     if (npcId === -1) {
-      console.log('Main NPC conversation completed');
       setHasTalkedToGuide(true);
       
       // Check if all NPCs have been spoken to in the current round
@@ -308,7 +306,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       });
     } else {
       console.log('NPC already spoken to in this round, not marking again:', { npcId, round });
-      // Don't create ballot entry if NPC was already spoken to
       return;
     }
 
@@ -512,24 +509,25 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
 
   // Expose the game state to the window object
   useEffect(() => {
-    (window as any).hasGameStarted = hasTalkedToGuide
+    (window as any).hasGameStarted = hasStartedGame
     return () => {
       delete (window as any).hasGameStarted
     }
-  }, [hasTalkedToGuide])
+  }, [hasStartedGame])
 
   // Expose the guide alert state to the game
   useEffect(() => {
     (window as any).shouldShowGuideAlert = () => {
-      // Show guide alert when the game hasn't started yet (ProgressIndicator shows initial guide checklist)
-      // OR when the player hasn't talked to The Guide yet
+      // Show guide alert when:
+      // 1. Game hasn't started yet (ProgressIndicator shows initial guide checklist)
+      // 2. Player hasn't talked to The Guide yet (including when Round 1 is complete)
       return !hasStartedGame || !hasTalkedToGuide;
     }
     
     return () => {
       delete (window as any).shouldShowGuideAlert
     }
-  }, [hasTalkedToGuide, hasStartedGame])
+  }, [hasTalkedToGuide, hasStartedGame, spokenNPCs.round1.size])
 
   // Expose the triggerEndingPhase function to the window object
   useEffect(() => {
@@ -541,6 +539,263 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     }
     return () => {
       delete (window as any).triggerEndingPhase
+    }
+  }, [])
+
+  // Expose testing functions to the window object
+  useEffect(() => {
+    (window as any).completeRound1 = () => {
+      console.log('🧪 TESTING: Completing Round 1 for all NPCs');
+      setSpokenNPCs(prev => ({
+        round1: new Set([1, 2, 3, 4, 5, 6]),
+        round2: prev.round2
+      }));
+      
+      // Create ballot entries for Round 1 (introduction phase)
+      const round1Entries: BallotEntry[] = [
+        {
+          npcId: 1,
+          npcName: 'Mrs. Aria',
+          system: 'Water Cycle',
+          round: 1,
+          sustainableOption: 'Constructed Wetlands',
+          unsustainableOption: 'Chemical Filtration Tanks',
+          npcOpinion: '',
+          npcReasoning: '',
+          timestamp: Date.now()
+        },
+        {
+          npcId: 2,
+          npcName: 'Chief Oskar',
+          system: 'Energy Grid',
+          round: 1,
+          sustainableOption: 'Local Solar Microgrids',
+          unsustainableOption: 'Gas Power Hub',
+          npcOpinion: '',
+          npcReasoning: '',
+          timestamp: Date.now()
+        },
+        {
+          npcId: 3,
+          npcName: 'Mr. Moss',
+          system: 'Fuel Acquisition',
+          round: 1,
+          sustainableOption: 'Biofuel Cooperative',
+          unsustainableOption: 'Diesel Supply Contracts',
+          npcOpinion: '',
+          npcReasoning: '',
+          timestamp: Date.now()
+        },
+        {
+          npcId: 4,
+          npcName: 'Miss Dai',
+          system: 'Land Use',
+          round: 1,
+          sustainableOption: 'Urban Agriculture Zones',
+          unsustainableOption: 'Industrial Expansion',
+          npcOpinion: '',
+          npcReasoning: '',
+          timestamp: Date.now()
+        },
+        {
+          npcId: 5,
+          npcName: 'Ms. Kira',
+          system: 'Water Distribution',
+          round: 1,
+          sustainableOption: 'Public Shared Reservoir',
+          unsustainableOption: 'Tiered Access Contracts',
+          npcOpinion: '',
+          npcReasoning: '',
+          timestamp: Date.now()
+        },
+        {
+          npcId: 6,
+          npcName: 'Mr. Han',
+          system: 'Housing & Shelter',
+          round: 1,
+          sustainableOption: 'Modular Eco-Pods',
+          unsustainableOption: 'Smart Concrete Complex',
+          npcOpinion: '',
+          npcReasoning: '',
+          timestamp: Date.now()
+        }
+      ];
+      
+      setBallotEntries(round1Entries);
+      setHasTalkedToGuide(false); // Don't auto-talk to guide, let player do it
+      setHasStartedGame(true); // Game has started, but guide not talked to yet
+      console.log('✅ Round 1 completed! Talk to The Guide to advance to Round 2');
+      console.log('📱 PDA populated with Round 1 information');
+    }
+
+    (window as any).completeRound2 = () => {
+      console.log('🧪 TESTING: Completing Round 2 for all NPCs');
+      setSpokenNPCs(prev => ({
+        round1: new Set([1, 2, 3, 4, 5, 6]),
+        round2: new Set([1, 2, 3, 4, 5, 6])
+      }));
+      
+      // Create ballot entries for both Round 1 and Round 2
+      const round1Entries: BallotEntry[] = [
+        {
+          npcId: 1,
+          npcName: 'Mrs. Aria',
+          system: 'Water Cycle',
+          round: 1,
+          sustainableOption: 'Constructed Wetlands',
+          unsustainableOption: 'Chemical Filtration Tanks',
+          npcOpinion: '',
+          npcReasoning: '',
+          timestamp: Date.now()
+        },
+        {
+          npcId: 2,
+          npcName: 'Chief Oskar',
+          system: 'Energy Grid',
+          round: 1,
+          sustainableOption: 'Local Solar Microgrids',
+          unsustainableOption: 'Gas Power Hub',
+          npcOpinion: '',
+          npcReasoning: '',
+          timestamp: Date.now()
+        },
+        {
+          npcId: 3,
+          npcName: 'Mr. Moss',
+          system: 'Fuel Acquisition',
+          round: 1,
+          sustainableOption: 'Biofuel Cooperative',
+          unsustainableOption: 'Diesel Supply Contracts',
+          npcOpinion: '',
+          npcReasoning: '',
+          timestamp: Date.now()
+        },
+        {
+          npcId: 4,
+          npcName: 'Miss Dai',
+          system: 'Land Use',
+          round: 1,
+          sustainableOption: 'Urban Agriculture Zones',
+          unsustainableOption: 'Industrial Expansion',
+          npcOpinion: '',
+          npcReasoning: '',
+          timestamp: Date.now()
+        },
+        {
+          npcId: 5,
+          npcName: 'Ms. Kira',
+          system: 'Water Distribution',
+          round: 1,
+          sustainableOption: 'Public Shared Reservoir',
+          unsustainableOption: 'Tiered Access Contracts',
+          npcOpinion: '',
+          npcReasoning: '',
+          timestamp: Date.now()
+        },
+        {
+          npcId: 6,
+          npcName: 'Mr. Han',
+          system: 'Housing & Shelter',
+          round: 1,
+          sustainableOption: 'Modular Eco-Pods',
+          unsustainableOption: 'Smart Concrete Complex',
+          npcOpinion: '',
+          npcReasoning: '',
+          timestamp: Date.now()
+        }
+      ];
+      
+      const round2Entries: BallotEntry[] = [
+        {
+          npcId: 1,
+          npcName: 'Mrs. Aria',
+          system: 'Water Cycle',
+          round: 2,
+          sustainableOption: 'Constructed Wetlands',
+          unsustainableOption: 'Chemical Filtration Tanks',
+          npcOpinion: 'I recommend the Constructed Wetlands. While they take longer to purify water, they work with nature rather than against it. The chemical tanks might be faster, but they introduce toxins that could harm the ecosystem for generations. We need to think long-term about our water quality.',
+          npcReasoning: 'Environmental sustainability and long-term ecosystem health',
+          timestamp: Date.now()
+        },
+        {
+          npcId: 2,
+          npcName: 'Chief Oskar',
+          system: 'Energy Grid',
+          round: 2,
+          sustainableOption: 'Local Solar Microgrids',
+          unsustainableOption: 'Gas Power Hub',
+          npcOpinion: 'I recommend the Gas Power Hub. Stability comes first in energy systems. The solar microgrids are promising but require massive battery storage for reliability. Right now, we need guaranteed power to keep the city running. The Hub integrates smoothly with existing infrastructure.',
+          npcReasoning: 'System stability and reliability over innovation',
+          timestamp: Date.now()
+        },
+        {
+          npcId: 3,
+          npcName: 'Mr. Moss',
+          system: 'Fuel Acquisition',
+          round: 2,
+          sustainableOption: 'Biofuel Cooperative',
+          unsustainableOption: 'Diesel Supply Contracts',
+          npcOpinion: 'I recommend the Biofuel Cooperative. It creates local jobs and reduces our carbon footprint. The diesel contracts might be cheaper upfront, but they lock us into fossil fuel dependency. We need to invest in sustainable alternatives now, even if it costs more initially.',
+          npcReasoning: 'Local economic development and sustainability',
+          timestamp: Date.now()
+        },
+        {
+          npcId: 4,
+          npcName: 'Miss Dai',
+          system: 'Land Use',
+          round: 2,
+          sustainableOption: 'Urban Agriculture Zones',
+          unsustainableOption: 'Industrial Expansion',
+          npcOpinion: 'I recommend the Urban Agriculture Zones. They create community spaces and improve food security. The industrial expansion might bring more tax revenue, but it eliminates green spaces and increases pollution. We need to balance economic growth with community wellbeing.',
+          npcReasoning: 'Community wellbeing and food security',
+          timestamp: Date.now()
+        },
+        {
+          npcId: 5,
+          npcName: 'Ms. Kira',
+          system: 'Water Distribution',
+          round: 2,
+          sustainableOption: 'Public Shared Reservoir',
+          unsustainableOption: 'Tiered Access Contracts',
+          npcOpinion: 'I recommend the Public Shared Reservoir. Water is a basic human right that shouldn\'t be privatized. The tiered contracts might encourage conservation, but they could create water poverty for low-income families. Equal access ensures no one goes thirsty.',
+          npcReasoning: 'Water justice and equal access',
+          timestamp: Date.now()
+        },
+        {
+          npcId: 6,
+          npcName: 'Mr. Han',
+          system: 'Housing & Shelter',
+          round: 2,
+          sustainableOption: 'Modular Eco-Pods',
+          unsustainableOption: 'Smart Concrete Complex',
+          npcOpinion: 'I recommend the Modular Eco-Pods. They\'re quick to deploy and environmentally friendly. The smart concrete complexes might be more durable, but they\'re extremely resource-intensive. We need housing solutions that don\'t destroy the environment we\'re trying to rebuild.',
+          npcReasoning: 'Environmental impact and quick deployment',
+          timestamp: Date.now()
+        }
+      ];
+      
+      setBallotEntries([...round1Entries, ...round2Entries]);
+      setHasTalkedToGuide(false); // Don't auto-talk to guide, let player do it
+      setHasStartedGame(true); // Game has started, but guide not talked to yet
+      console.log('✅ Round 2 completed! Talk to The Guide to make final decisions');
+      console.log('📱 PDA populated with Round 1 and Round 2 information');
+    }
+
+    (window as any).resetToRound1 = () => {
+      console.log('🧪 TESTING: Resetting to Round 1');
+      setSpokenNPCs({
+        round1: new Set(),
+        round2: new Set()
+      });
+      setHasTalkedToGuide(false);
+      setHasStartedGame(true); // Game has started, but guide not talked to yet
+      console.log('✅ Reset to Round 1! Talk to NPCs to complete Round 1');
+    }
+
+    return () => {
+      delete (window as any).completeRound1
+      delete (window as any).completeRound2
+      delete (window as any).resetToRound1
     }
   }, [])
 
@@ -722,6 +977,16 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         onClose={closeChat}
         onRoundChange={handleRoundChange}
         onStanceChange={handleStanceChange}
+        onConversationComplete={(npcId, round, detectedOpinion, conversationAnalysis) => markNPCAsSpoken(npcId, round, detectedOpinion, conversationAnalysis)}
+      />
+
+      {/* Guide Dialog */}
+      <GuideDialog
+        isOpen={guideDialogOpen}
+        round={chatState.round}
+        spokenNPCs={spokenNPCs}
+        onClose={closeGuideDialog}
+        onRoundChange={handleRoundChange}
         onConversationComplete={(npcId, round, detectedOpinion, conversationAnalysis) => markNPCAsSpoken(npcId, round, detectedOpinion, conversationAnalysis)}
       />
 

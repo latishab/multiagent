@@ -63,8 +63,6 @@ const NPCOptions: { [key: number]: { sustainable: string; unsustainable: string;
 }
 
 export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedToGuide = false, isChatOpen = false, currentChatNPCId = -1 }: ProgressIndicatorProps) {
-  console.log('ProgressIndicator re-rendering with:', { currentRound, spokenNPCs });
-  
   const round1Spoken = Array.from(spokenNPCs.round1);
   const round2Spoken = Array.from(spokenNPCs.round2);
   
@@ -87,8 +85,12 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
     if (!round1Complete) {
       return 1;
     }
-    // If Round 1 is complete but Round 2 is not, we're in Round 2
-    if (round1Complete && !round2Complete) {
+    // If Round 1 is complete but player hasn't talked to The Guide yet, stay in Round 1
+    if (round1Complete && !hasTalkedToGuide) {
+      return 1;
+    }
+    // If Round 1 is complete and player has talked to The Guide, we're in Round 2
+    if (round1Complete && hasTalkedToGuide && !round2Complete) {
       return 2;
     }
     // If both rounds are complete, we're in Round 2 (decision phase)
@@ -183,7 +185,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
     <div className="progress-indicator">
       <div className="progress-header">
         <h3>Mission Checklist</h3>
-        {!hasGameStarted ? (
+        {(!hasGameStarted || (round1Complete && !hasTalkedToGuide) || (round2Complete && !hasTalkedToGuide)) ? (
           <div className="initial-state">
             <div className="guide-checklist">
               <div className="guide-header">
@@ -191,7 +193,11 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
                 <span className="guide-title">The Guide</span>
               </div>
               <div className="guide-mission">
-                <div className="mission-title">Mission: Start Your Journey</div>
+                <div className="mission-title">
+                  {!hasGameStarted ? "Mission: Start Your Journey" : 
+                   round1Complete && !round2Complete ? "Mission: Advance to Round 2" :
+                   round2Complete ? "Mission: Make Final Decisions" : "Mission: Continue"}
+                </div>
                 <div className="checklist-items">
                   <div className="checklist-item">
                     <span className="checklist-checkbox">
@@ -203,20 +209,44 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
                     <span className="checklist-checkbox">
                       {!hasTalkedToGuide ? '☐' : '☑'}
                     </span>
-                    <span className="checklist-text">Talk to The Guide to understand your mission</span>
-                  </div>
-                  <div className="checklist-item">
-                    <span className="checklist-checkbox">
-                      {!hasTalkedToGuide ? '☐' : '☑'}
+                    <span className="checklist-text">
+                      {!hasGameStarted ? "Talk to The Guide to understand your mission" : 
+                       round1Complete && !round2Complete ? "Talk to The Guide to advance to Round 2" :
+                       round2Complete ? "Talk to The Guide to make final decisions" : "Talk to The Guide"}
                     </span>
-                    <span className="checklist-text">Learn about the 6 specialists you need to consult</span>
                   </div>
-                  <div className="checklist-item">
-                    <span className="checklist-checkbox">
-                      {!hasTalkedToGuide ? '☐' : '☑'}
-                    </span>
-                    <span className="checklist-text">Understand how to use your PDA for tracking progress</span>
-                  </div>
+                  {!hasGameStarted && (
+                    <>
+                      <div className="checklist-item">
+                        <span className="checklist-checkbox">
+                          {!hasTalkedToGuide ? '☐' : '☑'}
+                        </span>
+                        <span className="checklist-text">Learn about the 6 specialists you need to consult</span>
+                      </div>
+                      <div className="checklist-item">
+                        <span className="checklist-checkbox">
+                          {!hasTalkedToGuide ? '☐' : '☑'}
+                        </span>
+                        <span className="checklist-text">Understand how to use your PDA for tracking progress</span>
+                      </div>
+                    </>
+                  )}
+                  {round2Complete && (
+                    <>
+                      <div className="checklist-item">
+                        <span className="checklist-checkbox">
+                          {!hasTalkedToGuide ? '☐' : '☑'}
+                        </span>
+                        <span className="checklist-text">Review all collected information in your PDA</span>
+                      </div>
+                      <div className="checklist-item">
+                        <span className="checklist-checkbox">
+                          {!hasTalkedToGuide ? '☐' : '☑'}
+                        </span>
+                        <span className="checklist-text">Make final decisions for the city's future</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -236,22 +266,26 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
         )}
       </div>
 
-      {hasGameStarted && (
+      {hasGameStarted && !(round1Complete && !hasTalkedToGuide) && (
         <div className="progress-bars">
-          <div className="progress-bar-container">
-            <div className="progress-label">
-              <span>Round 1: Introduction</span>
-              <span className="progress-count">{round1Spoken.length}/6</span>
+          {/* Show Round 1 progress bar only when in Round 1 */}
+          {actualCurrentRound === 1 && (
+            <div className="progress-bar-container">
+              <div className="progress-label">
+                <span>Round 1: Introduction</span>
+                <span className="progress-count">{round1Spoken.length}/6</span>
+              </div>
+              <div className="progress-bar">
+                <div 
+                  className="progress-fill round1-fill"
+                  style={{ width: `${round1Progress}%` }}
+                />
+              </div>
             </div>
-            <div className="progress-bar">
-              <div 
-                className="progress-fill round1-fill"
-                style={{ width: `${round1Progress}%` }}
-              />
-            </div>
-          </div>
+          )}
 
-          {round1Complete && (
+          {/* Show Round 2 progress bar only when in Round 2 */}
+          {actualCurrentRound === 2 && (
             <div className="progress-bar-container">
               <div className="progress-label">
                 <span>Round 2: Options Discussion</span>
@@ -268,7 +302,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
         </div>
       )}
 
-      {hasGameStarted && (
+      {hasGameStarted && !(round1Complete && !hasTalkedToGuide) && (
         <div className="npc-grid">
           {[1, 2, 3, 4, 5, 6].map((npcId) => {
           const isSpokenRound1 = round1Spoken.includes(npcId);
@@ -666,7 +700,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
 
         .npc-item.round2.has-opinion {
           background: rgba(31, 41, 55, 0.9);
-          border-color: #10b981;
+          border-color:  #374151;
         }
 
         .npc-status-text {
