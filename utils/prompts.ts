@@ -137,6 +137,16 @@ export const OptionDescriptions: { [key: number]: { sustainable: string; unsusta
   }
 };
 
+// Hardcoded specialist recommendations for Round 2 to ensure consistency
+export const SpecialistRecommendations: { [key: number]: string } = {
+  1: 'I recommend the Constructed Wetlands. While they take longer to purify water, they work with nature rather than against it. The chemical tanks might be faster, but they introduce toxins that could harm the ecosystem for generations. We need to think long-term about our water quality.',
+  2: 'I recommend the Gas Power Hub. Stability comes first in energy systems. The solar microgrids are promising but require massive battery storage for reliability. Right now, we need guaranteed power to keep the city running. The Hub integrates smoothly with existing infrastructure.',
+  3: 'I recommend the Biofuel Cooperative. It creates local jobs and reduces our carbon footprint. The diesel contracts might be cheaper upfront, but they lock us into fossil fuel dependency. We need to invest in sustainable alternatives now, even if it costs more initially.',
+  4: 'I recommend the Urban Agriculture Zones. They create community spaces and improve food security. The industrial expansion might bring more tax revenue, but it eliminates green spaces and increases pollution. We need to balance economic growth with community wellbeing.',
+  5: 'I recommend the Public Shared Reservoir. Water is a basic human right that shouldn\'t be privatized. The tiered contracts might encourage conservation, but they could create water poverty for low-income families. Equal access ensures no one goes thirsty.',
+  6: 'I recommend the Modular Eco-Pods. They\'re quick to deploy and environmentally friendly. The smart concrete complexes might be more durable, but they\'re extremely resource-intensive. We need housing solutions that don\'t destroy the environment we\'re trying to rebuild.'
+};
+
 interface RoundPrompt {
   description: string;
   rules: string[];
@@ -277,6 +287,7 @@ export function getSystemPrompt(npc: NPCInfo, round: number, isSustainable: bool
   const npcId = Object.keys(NPCData).find(key => NPCData[parseInt(key)].name === npc.name);
   const npcIdNumber = npcId ? parseInt(npcId) : 1;
   const optionDescriptions = OptionDescriptions[npcIdNumber];
+  const specialistRecommendation = SpecialistRecommendations[npcIdNumber];
   
   const basePrompt = `You are ${npc.name}, a ${npc.career} in charge of the city's ${npc.system} system.
 
@@ -292,6 +303,9 @@ YOUR OPTIONS (only mention when specifically asked):
 DETAILED OPTION DESCRIPTIONS:
 - ${npc.options.sustainable}: ${optionDescriptions.sustainable}
 - ${npc.options.unsustainable}: ${optionDescriptions.unsustainable}
+
+YOUR ROUND 2 RECOMMENDATION (use this exact recommendation when asked in Round 2):
+${specialistRecommendation}
 
 INTERACTION RULES:
 ${InteractionRules.general.map(rule => `• ${rule}`).join('\n')}
@@ -325,12 +339,16 @@ For "which one do you think is best?" or "what do you recommend?" (Round 1):
 - "I'm still evaluating both options. Each has different trade-offs that need careful consideration."
 - "I haven't made a final recommendation yet. I need to analyze the data more thoroughly."
 
+For "which one do you think is best?" or "what do you recommend?" (Round 2):
+- Use the exact recommendation provided above: "${specialistRecommendation}"
+
 CRITICAL: Do not reveal information unless specifically asked!
-CRITICAL: Do NOT give recommendations in Round 1!`;
+CRITICAL: Do NOT give recommendations in Round 1!
+CRITICAL: In Round 2, when asked for recommendations, use the exact recommendation provided above!`;
 
   // Add neutral guidance for round 2
   if (round === 2) {
-    return `${basePrompt}\n\nYou are now in a community discussion phase. Consider both options carefully and express your genuine professional opinion based on your expertise. Be honest about the trade-offs and challenges of each approach.`;
+    return `${basePrompt}\n\nYou are now in a community discussion phase. When asked for your recommendation, use the exact recommendation provided above. Be honest about the trade-offs and challenges of each approach.`;
   }
 
   return basePrompt;
