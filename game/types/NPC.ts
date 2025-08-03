@@ -132,6 +132,13 @@ export const NPC_TYPES: NPCType[] = [
   }
 ]
 
+// Main NPC type that uses new.png spritesheet
+export const MAIN_NPC_TYPE: NPCType = {
+  name: 'main',
+  startFrame: 0, 
+  areaBounds: { x: 400, y: 300, width: 400, height: 300 }  // Central area
+}
+
 // Helper functions for frame calculations
 export function getDownFrames(startFrame: number): number[] {
   // Down frames are in the third row (bottom) of the character's 3x3 block
