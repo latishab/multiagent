@@ -3,7 +3,9 @@ import { Game } from 'phaser'
 import ChatDialog from './ChatDialog'
 import GameMenu from './GameMenu'
 import ProgressIndicator from './ProgressIndicator'
-import Ballot from './Ballot'
+import PDA from './PDA'
+import EndingOverlay from './EndingOverlay'
+
 import styles from '../styles/UIOverlay.module.css'
 
 interface BallotEntry {
@@ -31,7 +33,8 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   )
   const [showWelcome, setShowWelcome] = useState(true)
   const [showGameMenu, setShowGameMenu] = useState(false)
-  const [showBallot, setShowBallot] = useState(false)
+  const [hasStartedGame, setHasStartedGame] = useState(false)
+  const [hasTalkedToGuide, setHasTalkedToGuide] = useState(false)
   
   const [chatState, setChatState] = useState<{
     isOpen: boolean
@@ -58,24 +61,37 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          return {
-            round1: new Set(parsed.round1 || []),
-            round2: new Set(parsed.round2 || [])
+          const result: { round1: Set<number>; round2: Set<number> } = {
+            round1: new Set((parsed.round1 || []).map((id: any) => Number(id))),
+            round2: new Set((parsed.round2 || []).map((id: any) => Number(id)))
           };
+          console.log('Loaded spoken NPCs from localStorage:', {
+            round1: Array.from(result.round1),
+            round2: Array.from(result.round2)
+          });
+          return result;
         } catch (error) {
           console.error('Error loading spoken NPCs from localStorage:', error);
         }
       }
     }
-    return {
-      round1: new Set(),
-      round2: new Set()
+    const result: { round1: Set<number>; round2: Set<number> } = {
+      round1: new Set<number>(),
+      round2: new Set<number>()
     };
+    console.log('Initialized empty spoken NPCs:', result);
+    return result;
   });
 
+  // Track final decisions for ending calculation
+  const [finalDecisions, setFinalDecisions] = useState<{ [npcId: number]: 'sustainable' | 'unsustainable' }>({});
+  const [showEnding, setShowEnding] = useState(false);
+  const [endingType, setEndingType] = useState<'good' | 'bad' | 'medium' | null>(null);
+  const [showPDA, setShowPDA] = useState(false);
+  const [showDecisionMode, setShowDecisionMode] = useState(false);
+  
   // Ballot entries to track NPC opinions
   const [ballotEntries, setBallotEntries] = useState<BallotEntry[]>(() => {
-    // Load from localStorage on initialization
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('multiagent-ballot-entries');
       if (saved) {
@@ -88,19 +104,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     }
     return [];
   });
-
-  // Add ballot to inventory on first load
-  useEffect(() => {
-    if (!showWelcome) {
-      setInventory(prev => {
-        const newInventory = [...prev]
-        if (!newInventory.includes('📝 Ballot')) {
-          newInventory[0] = '📝 Ballot'
-        }
-        return newInventory
-      })
-    }
-  }, [showWelcome])
 
   // Save spoken NPCs to localStorage whenever they change
   useEffect(() => {
@@ -123,22 +126,54 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   // Function to be called from the game to open chat
   const openChat = (npcId: string, personality: string) => {
     console.log('Opening chat with NPC:', { npcId, personality });
+    
+    // Special handling for main NPC (The Guide)
+    if (npcId === 'main') {
+      console.log('Opening chat with main NPC (The Guide)');
+      setChatState({
+        isOpen: true,
+        npcId: -1, // Use -1 for main NPC
+        personality: 'neutral', // Main NPC is neutral
+        round: chatState.round, // Main NPC uses current global round
+        isSustainable: true // Neutral stance
+      });
+      return;
+    }
+    
+    // Check if game has started (player has talked to The Guide)
+    if (!hasTalkedToGuide) {
+      console.log('Game has not started yet. Player must talk to The Guide first.');
+      // You could show a notification here if needed
+      return;
+    }
+    
+    // Determine the correct round for regular NPCs
+    const npcIdNum = parseInt(npcId);
+    let correctRound = 1;
+    
+    // If NPC has completed round 1, they should be in round 2
+    if (spokenNPCs.round1.has(npcIdNum)) {
+      correctRound = 2;
+    }
+    
+    // If NPC has completed round 2, they should stay in round 2
+    if (spokenNPCs.round2.has(npcIdNum)) {
+      correctRound = 2;
+    }
+    
+    console.log('Determined round for NPC:', { npcId: npcIdNum, correctRound, round1Spoken: spokenNPCs.round1.has(npcIdNum), round2Spoken: spokenNPCs.round2.has(npcIdNum) });
+    
     setChatState({
       isOpen: true,
-      npcId: parseInt(npcId),
+      npcId: npcIdNum,
       personality,
-      round: chatState.round,
+      round: correctRound,
       isSustainable: chatState.isSustainable
     });
   }
 
   // Function to close chat
   const closeChat = () => {
-    console.log('Closing chat with NPC:', chatState.npcId);
-    
-    // Don't mark NPC as spoken to just for closing the dialog
-    // Progress will be tracked based on actual conversation content
-    
     setChatState(prev => ({
       ...prev,
       isOpen: false
@@ -149,11 +184,51 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
 
   // Function to mark NPC as actually spoken to (called when conversation has content)
   const markNPCAsSpoken = (npcId: number, round: number, detectedOpinion?: { opinion: string; reasoning: string }, conversationAnalysis?: { isComplete: boolean; reason: string }) => {
+    console.log('markNPCAsSpoken called:', { npcId, round, detectedOpinion, conversationAnalysis });
+    
+    // Special handling for main NPC (The Guide)
+    if (npcId === -1) {
+      console.log('Main NPC conversation completed');
+      setHasTalkedToGuide(true);
+      
+      // Check if all NPCs have been spoken to in the current round
+      const currentRound = chatState.round;
+      const roundKey = currentRound === 1 ? 'round1' : 'round2';
+      const currentSpokenNPCs = spokenNPCs[roundKey as keyof typeof spokenNPCs];
+      const allNPCsSpoken = currentSpokenNPCs.size >= 6;
+      
+      if (allNPCsSpoken) {
+        // All NPCs spoken, advance to next round
+        if (currentRound === 1) {
+          console.log('All NPCs spoken in round 1, advancing to round 2');
+          setChatState(prev => ({
+            ...prev,
+            round: 2
+          }));
+        } else if (currentRound === 2) {
+          console.log('All NPCs spoken in round 2, triggering ending phase');
+          // Trigger ending phase after a short delay
+          setTimeout(() => {
+            setShowDecisionMode(true);
+            setShowPDA(true);
+          }, 1000); // Small delay for better UX
+        }
+      }
+      return;
+    }
+    
     const roundKey = round === 1 ? 'round1' : 'round2';
-    setSpokenNPCs(prev => ({
-      ...prev,
-      [roundKey]: new Set(Array.from(prev[roundKey]).concat([npcId]))
-    }));
+    setSpokenNPCs(prev => {
+      const newSpokenNPCs = {
+        ...prev,
+        [roundKey]: new Set(Array.from(prev[roundKey]).concat([npcId]))
+      };
+      console.log('Updated spoken NPCs:', {
+        round1: Array.from(newSpokenNPCs.round1),
+        round2: Array.from(newSpokenNPCs.round2)
+      });
+      return newSpokenNPCs;
+    });
 
     // Add ballot entry for this NPC conversation
     const npcNames: { [key: number]: string } = {
@@ -224,23 +299,66 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     const currentSpokenNPCs = spokenNPCs[roundKey as keyof typeof spokenNPCs];
     const allNPCsSpoken = currentSpokenNPCs.size >= 6;
 
-    // If all NPCs spoken in round 1, automatically advance to round 2
-    if (round === 1 && allNPCsSpoken) {
-      console.log('All NPCs spoken in round 1, advancing to round 2');
-      setChatState(prev => ({
-        ...prev,
-        round: 2
-      }));
-      setSpokenNPCs(prev => ({
-        ...prev,
-        round1: new Set(),
-        round2: new Set()
-      }));
+    // Round advancement is now handled by the main NPC conversation
+    // Regular NPCs just track progress, main NPC triggers round changes
+    console.log(`NPC ${npcId} conversation completed in round ${round}. All NPCs spoken: ${allNPCsSpoken}`);
+  }
+
+  // Function to calculate and show ending
+  const calculateAndShowEnding = () => {
+    const sustainableCount = Object.values(finalDecisions).filter(decision => decision === 'sustainable').length;
+    const unsustainableCount = Object.values(finalDecisions).filter(decision => decision === 'unsustainable').length;
+    
+    console.log('Calculating ending:', { sustainableCount, unsustainableCount, finalDecisions });
+    
+    let ending: 'good' | 'bad' | 'medium';
+    if (sustainableCount === unsustainableCount) {
+      ending = 'medium';
+    } else if (sustainableCount > unsustainableCount) {
+      ending = 'good';
+    } else {
+      ending = 'bad';
     }
-    // If all NPCs spoken in round 2, show completion message
-    else if (round === 2 && allNPCsSpoken) {
-      console.log('All NPCs spoken in round 2, conversation complete');
+    
+    console.log('Ending determined:', ending);
+    setEndingType(ending);
+    setShowEnding(true);
+  }
+
+  // Function to handle when decisions are complete
+  const handleDecisionsComplete = (decisions: { [npcId: number]: 'sustainable' | 'unsustainable' }) => {
+    console.log('All decisions complete:', decisions);
+    setFinalDecisions(decisions);
+    
+    // Calculate and show ending
+    setTimeout(() => {
+      calculateAndShowEnding();
+    }, 500); // Small delay for smooth transition
+  }
+
+  // Function to handle final decision for a system
+  const handleFinalDecision = (npcId: number, choice: 'sustainable' | 'unsustainable') => {
+    setFinalDecisions(prev => ({
+      ...prev,
+      [npcId]: choice
+    }));
+    
+    // Check if all 6 decisions have been made
+    const newDecisions = { ...finalDecisions, [npcId]: choice };
+    if (Object.keys(newDecisions).length === 6) {
+      // All decisions made, calculate ending
+      setTimeout(() => {
+        calculateAndShowEnding();
+      }, 1000); // Small delay for better UX
     }
+  }
+
+  // Function to handle ending close
+  const handleEndingClose = () => {
+    setShowEnding(false);
+    setEndingType(null);
+    // Could restart the game or go to main menu here
+    window.location.reload();
   }
 
   // Handle round changes (now only for internal use)
@@ -265,10 +383,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
 
   // Handle inventory item clicks
   const handleInventoryItemClick = (item: string | null, index: number) => {
-    if (item === '📝 Ballot') {
-      setShowBallot(true)
-      setInventoryOpen(false)
-    }
+    // Handle inventory item clicks here
   }
 
   // Handle keyboard input for hotbar selection
@@ -277,9 +392,9 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       const key = parseInt(event.key)
       if (key >= 1 && key <= 5) {
         setSelectedSlot(key - 1)
-        // If slot 1 is selected and ballot is available, open ballot
-        if (key === 1 && inventory[0] === '📝 Ballot') {
-          setShowBallot(true)
+        // If slot 1 is selected, open PDA
+        if (key === 1) {
+          setShowPDA(true)
         }
       }
       if (event.key === 'i' || event.key === 'I') {
@@ -288,8 +403,8 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       if (event.key === 'Escape') {
         if (showGameMenu) {
           setShowGameMenu(false)
-        } else if (showBallot) {
-          setShowBallot(false)
+        } else if (showPDA) {
+          setShowPDA(false)
         } else if (chatState.isOpen) {
           closeChat()
         } else if (inventoryOpen) {
@@ -303,13 +418,47 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
 
     window.addEventListener('keydown', handleKeyPress)
     return () => window.removeEventListener('keydown', handleKeyPress)
-  }, [inventoryOpen, showGameMenu, showBallot, chatState.isOpen, inventory])
+  }, [inventoryOpen, showGameMenu, showPDA, chatState.isOpen, inventory])
 
   // Expose the openChat function to the window object for the game to use
   useEffect(() => {
     (window as any).openChat = openChat
     return () => {
       delete (window as any).openChat
+    }
+  }, [openChat])
+
+  // Expose the game state to the window object
+  useEffect(() => {
+    (window as any).hasGameStarted = hasTalkedToGuide
+    return () => {
+      delete (window as any).hasGameStarted
+    }
+  }, [hasTalkedToGuide])
+
+  // Expose the guide alert state to the game
+  useEffect(() => {
+    (window as any).shouldShowGuideAlert = () => {
+      // Show guide alert when the game hasn't started yet (ProgressIndicator shows initial guide checklist)
+      // OR when the player hasn't talked to The Guide yet
+      return !hasStartedGame || !hasTalkedToGuide;
+    }
+    
+    return () => {
+      delete (window as any).shouldShowGuideAlert
+    }
+  }, [hasTalkedToGuide, hasStartedGame])
+
+  // Expose the triggerEndingPhase function to the window object
+  useEffect(() => {
+    (window as any).triggerEndingPhase = () => {
+      console.log('Triggering ending phase');
+      // Show the PDA in decision mode for final choices
+      setShowDecisionMode(true);
+      setShowPDA(true);
+    }
+    return () => {
+      delete (window as any).triggerEndingPhase
     }
   }, [])
 
@@ -336,9 +485,9 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   // Handle hotbar slot clicks
   const handleHotbarClick = (index: number) => {
     setSelectedSlot(index)
-    // If slot 1 is clicked and ballot is available, open ballot
-    if (index === 0 && inventory[0] === '📝 Ballot') {
-      setShowBallot(true)
+    // If slot 1 is clicked, open PDA
+    if (index === 0) {
+      setShowPDA(true)
     }
   }
 
@@ -367,12 +516,12 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
                   <span className={styles.description}>Open inventory</span>
                 </div>
                 <div className={styles.controlItem}>
-                  <span className={styles.key}>1-5</span>
-                  <span className={styles.description}>Select hotbar slots</span>
+                  <span className={styles.key}>1</span>
+                  <span className={styles.description}>Open PDA (📱)</span>
                 </div>
                 <div className={styles.controlItem}>
-                  <span className={styles.key}>1</span>
-                  <span className={styles.description}>Open ballot (if available)</span>
+                  <span className={styles.key}>2-5</span>
+                  <span className={styles.description}>Select hotbar slots</span>
                 </div>
                 <div className={styles.controlItem}>
                   <span className={styles.key}>ESC</span>
@@ -388,14 +537,17 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
                 <li>Press <strong>E</strong> near an NPC to start a conversation</li>
                 <li>Each NPC represents a different city system</li>
                 <li>Make choices between sustainable and economic options</li>
+                <li>Check your PDA (📱) in hotbar slot 1 to track systems and make decisions</li>
                 <li>Your decisions will affect the city's future!</li>
-                <li>Check your ballot (📝) in hotbar slot 1 or inventory to track opinions</li>
               </ul>
             </div>
 
             <button 
               className={styles.startButton}
-              onClick={() => setShowWelcome(false)}
+              onClick={() => {
+                setShowWelcome(false);
+                setHasStartedGame(true);
+              }}
             >
               Start Playing
             </button>
@@ -408,7 +560,9 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         <ProgressIndicator
           currentRound={chatState.round}
           spokenNPCs={spokenNPCs}
-          ballotEntries={ballotEntries}
+          hasTalkedToGuide={hasTalkedToGuide}
+          isChatOpen={chatState.isOpen}
+          currentChatNPCId={chatState.npcId}
         />
       )}
 
@@ -417,10 +571,10 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         {[0, 1, 2, 3, 4].map((index) => (
           <div
             key={index}
-            className={`${styles.hotbarSlot} ${selectedSlot === index ? styles.active : ''} ${index === 0 && inventory[0] === '📝 Ballot' ? styles.hasBallot : ''}`}
+            className={`${styles.hotbarSlot} ${selectedSlot === index ? styles.active : ''} ${index === 0 ? styles.hasPDA : ''}`}
             onClick={() => handleHotbarClick(index)}
           >
-            {index === 0 && inventory[0] === '📝 Ballot' ? '📝' : index + 1}
+            {index === 0 ? '📱' : index + 1}
           </div>
         ))}
       </div>
@@ -474,17 +628,11 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         personality={chatState.personality}
         round={chatState.round}
         isSustainable={chatState.isSustainable}
+        spokenNPCs={spokenNPCs}
         onClose={closeChat}
         onRoundChange={handleRoundChange}
         onStanceChange={handleStanceChange}
         onConversationComplete={(npcId, round, detectedOpinion, conversationAnalysis) => markNPCAsSpoken(npcId, round, detectedOpinion, conversationAnalysis)}
-      />
-
-      {/* Ballot */}
-      <Ballot
-        isOpen={showBallot}
-        onClose={() => setShowBallot(false)}
-        ballotEntries={ballotEntries}
       />
 
       {/* Game Menu */}
@@ -493,6 +641,22 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         onClose={() => setShowGameMenu(false)}
         onRestartGame={handleRestartGame}
         onNewGame={handleNewGame}
+      />
+
+      {/* PDA */}
+      <PDA
+        isOpen={showPDA}
+        onClose={() => setShowPDA(false)}
+        ballotEntries={ballotEntries}
+        onDecisionsComplete={handleDecisionsComplete}
+        showDecisionMode={showDecisionMode}
+      />
+      
+      {/* Ending Overlay */}
+      <EndingOverlay
+        isVisible={showEnding}
+        endingType={endingType}
+        onClose={handleEndingClose}
       />
     </>
   )

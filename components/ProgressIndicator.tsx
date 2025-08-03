@@ -6,17 +6,9 @@ interface ProgressIndicatorProps {
     round1: Set<number>;
     round2: Set<number>;
   };
-  ballotEntries?: Array<{
-    npcId: number;
-    npcName: string;
-    system: string;
-    round: number;
-    sustainableOption: string;
-    unsustainableOption: string;
-    npcOpinion: string;
-    npcReasoning: string;
-    timestamp: number;
-  }>;
+  hasTalkedToGuide?: boolean;
+  isChatOpen?: boolean;
+  currentChatNPCId?: number;
 }
 
 const NPCNames: { [key: number]: string } = {
@@ -70,8 +62,8 @@ const NPCOptions: { [key: number]: { sustainable: string; unsustainable: string;
   }
 }
 
-export default function ProgressIndicator({ currentRound, spokenNPCs, ballotEntries = [] }: ProgressIndicatorProps) {
-  console.log('ProgressIndicator re-rendering with:', { currentRound, spokenNPCs, ballotEntries });
+export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedToGuide = false, isChatOpen = false, currentChatNPCId = -1 }: ProgressIndicatorProps) {
+  console.log('ProgressIndicator re-rendering with:', { currentRound, spokenNPCs });
   
   const round1Spoken = Array.from(spokenNPCs.round1);
   const round2Spoken = Array.from(spokenNPCs.round2);
@@ -79,107 +71,154 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, ballotEntr
   const round1Progress = (round1Spoken.length / 6) * 100;
   const round2Progress = (round2Spoken.length / 6) * 100;
 
+  // Check if game has started (if any NPCs have been spoken to or guide has been talked to)
+  const hasGameStarted = round1Spoken.length > 0 || round2Spoken.length > 0 || hasTalkedToGuide;
+  
+  // Check if currently talking to The Guide
+  const isTalkingToGuide = isChatOpen && currentChatNPCId === -1;
+
   // Get opinion data for each NPC
   const getNPCOpinion = (npcId: number, round: number) => {
-    const entry = ballotEntries.find(e => e.npcId === npcId && e.round === round);
-    if (!entry) return null;
-    
     // For round 1, just show that they were introduced
     if (round === 1) {
-      return { type: 'introduced', sustainable: entry.sustainableOption, unsustainable: entry.unsustainableOption };
+      return { type: 'introduced' };
     }
     
     // For round 2, show their actual opinion
     if (round === 2) {
-      const isSustainable = entry.npcOpinion === entry.sustainableOption;
-      return { 
-        type: 'opinion', 
-        opinion: isSustainable ? 'sustainable' : 'unsustainable',
-        option: isSustainable ? entry.sustainableOption : entry.unsustainableOption
-      };
+      return { type: 'opinion' };
     }
     
     return null;
+  };
+
+  // Get mission text for current round
+  const getMissionText = (npcId: number, round: number) => {
+    const npc = NPCOptions[npcId];
+    if (!npc) return 'System information not available';
+    
+    if (round === 1) {
+      return `Understand ${npc.system} options`;
+    } else if (round === 2) {
+      return `Get ${NPCNames[npcId]}'s recommendation`;
+    }
+    
+    return 'Mission information not available';
+  };
+
+  // Get detailed checklist items for each NPC
+  const getNPCChecklistItems = (npcId: number, round: number) => {
+    const npc = NPCOptions[npcId];
+    if (!npc) return [];
+    
+    if (round === 1) {
+      return [
+        `Understand the current state of ${npc.system}`,
+        `Learn about ${npc.sustainable} approach`,
+        `Learn about ${npc.unsustainable} approach`,
+        `Compare the trade-offs between both options`
+      ];
+    } else if (round === 2) {
+      return [
+        `Ask ${NPCNames[npcId]} for their recommendation`,
+        `Understand why they prefer their choice`,
+        `Learn about the specific benefits they see`,
+        `Understand the concerns they have about alternatives`
+      ];
+    }
+    
+    return [];
   };
 
   return (
     <div className="progress-indicator">
       <div className="progress-header">
         <h3>Mission Checklist</h3>
-        <div className="round-info">
-          <span className="current-round">Round {currentRound}</span>
-          <span className="round-description">
-            {currentRound === 1 ? 'Introduction' : 'Options Discussion'}
-          </span>
-        </div>
-        <div className="purpose-checklist">
-          <h4>What to Ask Each NPC:</h4>
-          <div className="checklist-items">
-            {currentRound === 1 ? (
-              <>
-                <div className="checklist-item">
-                  <span className="checklist-icon">👤</span>
-                  <span>Ask about their role and background</span>
+        {!hasGameStarted ? (
+          <div className="initial-state">
+            <div className="guide-checklist">
+              <div className="guide-header">
+                <span className="guide-icon">👤</span>
+                <span className="guide-title">The Guide</span>
+              </div>
+              <div className="guide-mission">
+                <div className="mission-title">Mission: Start Your Journey</div>
+                <div className="checklist-items">
+                  <div className="checklist-item">
+                    <span className="checklist-checkbox">
+                      {!hasTalkedToGuide ? '☐' : '☑'}
+                    </span>
+                    <span className="checklist-text">Find The Guide in the city</span>
+                  </div>
+                  <div className="checklist-item">
+                    <span className="checklist-checkbox">
+                      {!hasTalkedToGuide ? '☐' : '☑'}
+                    </span>
+                    <span className="checklist-text">Talk to The Guide to understand your mission</span>
+                  </div>
+                  <div className="checklist-item">
+                    <span className="checklist-checkbox">
+                      {!hasTalkedToGuide ? '☐' : '☑'}
+                    </span>
+                    <span className="checklist-text">Learn about the 6 specialists you need to consult</span>
+                  </div>
+                  <div className="checklist-item">
+                    <span className="checklist-checkbox">
+                      {!hasTalkedToGuide ? '☐' : '☑'}
+                    </span>
+                    <span className="checklist-text">Understand how to use your PDA for tracking progress</span>
+                  </div>
                 </div>
-                <div className="checklist-item">
-                  <span className="checklist-icon">🏗️</span>
-                  <span>Learn about their system ({NPCSystems[1]}, {NPCSystems[2]}, etc.)</span>
-                </div>
-                <div className="checklist-item">
-                  <span className="checklist-icon">⚖️</span>
-                  <span>Find out about both options (sustainable vs economic)</span>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="checklist-item">
-                  <span className="checklist-icon">💭</span>
-                  <span>Ask for their recommendation</span>
-                </div>
-                <div className="checklist-item">
-                  <span className="checklist-icon">🤔</span>
-                  <span>Find out why they prefer their choice</span>
-                </div>
-                <div className="checklist-item">
-                  <span className="checklist-icon">📊</span>
-                  <span>Learn about the trade-offs they see</span>
-                </div>
-              </>
-            )}
+              </div>
+            </div>
           </div>
-        </div>
+        ) : (
+          !isTalkingToGuide && (
+            <div className="round-info">
+              <span className="current-round">Round {currentRound}</span>
+              <span className="round-description">
+                {currentRound === 1 ? 'Introduction' : 'Options Discussion'}
+              </span>
+            </div>
+          )
+        )}
       </div>
 
-      <div className="progress-bars">
-        <div className="progress-bar-container">
-          <div className="progress-label">
-            <span>Round 1: Introduction</span>
-            <span className="progress-count">{round1Spoken.length}/6</span>
+      {hasGameStarted && (
+        <div className="progress-bars">
+          <div className="progress-bar-container">
+            <div className="progress-label">
+              <span>Round 1: Introduction</span>
+              <span className="progress-count">{round1Spoken.length}/6</span>
+            </div>
+            <div className="progress-bar">
+              <div 
+                className="progress-fill round1-fill"
+                style={{ width: `${round1Progress}%` }}
+              />
+            </div>
           </div>
-          <div className="progress-bar">
-            <div 
-              className="progress-fill round1-fill"
-              style={{ width: `${round1Progress}%` }}
-            />
-          </div>
-        </div>
 
-        <div className="progress-bar-container">
-          <div className="progress-label">
-            <span>Round 2: Options Discussion</span>
-            <span className="progress-count">{round2Spoken.length}/6</span>
-          </div>
-          <div className="progress-bar">
-            <div 
-              className="progress-fill round2-fill"
-              style={{ width: `${round2Progress}%` }}
-            />
-          </div>
+          {currentRound >= 2 && (
+            <div className="progress-bar-container">
+              <div className="progress-label">
+                <span>Round 2: Options Discussion</span>
+                <span className="progress-count">{round2Spoken.length}/6</span>
+              </div>
+              <div className="progress-bar">
+                <div 
+                  className="progress-fill round2-fill"
+                  style={{ width: `${round2Progress}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
-      <div className="npc-grid">
-        {[1, 2, 3, 4, 5, 6].map((npcId) => {
+      {hasGameStarted && (
+        <div className="npc-grid">
+          {[1, 2, 3, 4, 5, 6].map((npcId) => {
           const isSpokenRound1 = round1Spoken.includes(npcId);
           const isSpokenRound2 = round2Spoken.includes(npcId);
           const isCurrentRound = currentRound === 1 ? isSpokenRound1 : isSpokenRound2;
@@ -188,30 +227,8 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, ballotEntr
           const opinionData = getNPCOpinion(npcId, currentRound);
           const hasOpinion = opinionData !== null;
           
-          // Get ballot entry for this NPC and round
-          const ballotEntry = ballotEntries.find(entry => entry.npcId === npcId && entry.round === currentRound);
-          
-          // Debug logging for Ms. Kira (NPC 5)
-          if (npcId === 5) {
-            console.log('ProgressIndicator - NPC 5 ballot entry:', ballotEntry);
-            console.log('ProgressIndicator - All ballot entries:', ballotEntries);
-            console.log('ProgressIndicator - Current round:', currentRound);
-          }
-          
-          // Get mission text for current round
-          const getMissionText = (npcId: number, round: number) => {
-            const npc = NPCOptions[npcId];
-            if (!npc) return '';
-            
-            if (round === 1) {
-              return `Learn about ${npc.sustainable} vs ${npc.unsustainable}`;
-            } else {
-              return `Discover their opinion on ${npc.sustainable} vs ${npc.unsustainable}`;
-            }
-          };
-          
           return (
-                        <div 
+            <div 
               key={npcId}
               className={`npc-item ${isCurrentRound ? 'spoken' : ''} ${currentRound === 1 ? 'round1' : 'round2'} ${hasOpinion ? 'has-opinion' : ''}`}
             >
@@ -221,33 +238,32 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, ballotEntr
               <div className="npc-info">
                 <div className="npc-name">{NPCNames[npcId]}</div>
                 <div className="npc-system">{NPCSystems[npcId]}</div>
-                <div className="npc-mission">
-                  {getMissionText(npcId, currentRound)}
+                <div className="npc-checklist">
+                  {getNPCChecklistItems(npcId, currentRound).map((item, index) => (
+                    <div key={index} className="checklist-item">
+                      <span className="checklist-checkbox">
+                        {!isCurrentRound ? '☐' : '☑'}
+                      </span>
+                      <span className="checklist-text">{item}</span>
+                    </div>
+                  ))}
                 </div>
                 <div className="npc-status-text">
                   {!isCurrentRound ? 'Not spoken' : 
                    currentRound === 1 ? 
-                     (isSpokenRound1 ? (ballotEntry?.npcReasoning || 'Introduction complete') : 'Introduction in progress') :
+                     (isSpokenRound1 ? 'Introduction complete' : 'Introduction in progress') :
                      (hasOpinion ? 'Recommendation collected' : 'Recommendation pending')}
                 </div>
-                {hasOpinion && currentRound === 2 && (
-                  <div className="npc-opinion">
-                    {opinionData?.type === 'opinion' && (
-                      <span className={`opinion-indicator ${opinionData.opinion}`}>
-                        {opinionData.opinion === 'sustainable' ? '🌱' : '💰'} {opinionData.option}
-                      </span>
-                    )}
-                  </div>
-                )}
               </div>
-              <div className="npc-status">
-                {!isCurrentRound ? '○' : 
-                 hasOpinion ? (currentRound === 2 ? '💬' : '✓') : '⋯'}
+              <div className="npc-checkbox">
+                {!isCurrentRound ? '☐' : 
+                 hasOpinion ? '☑' : '☒'}
               </div>
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
 
       <style jsx>{`
         .progress-indicator {
@@ -293,6 +309,101 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, ballotEntr
         .round-description {
           font-size: clamp(0.75rem, 2vw, 0.875rem);
           color: #9ca3af;
+        }
+
+        .initial-state {
+          margin-bottom: 1rem;
+        }
+
+        .guide-checklist {
+          background: rgba(59, 130, 246, 0.1);
+          border: 2px solid rgba(59, 130, 246, 0.3);
+          border-radius: 8px;
+          padding: 1rem;
+        }
+
+        .guide-header {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.75rem;
+        }
+
+        .guide-icon {
+          font-size: 1.5rem;
+        }
+
+        .guide-title {
+          font-size: clamp(0.875rem, 2.5vw, 1rem);
+          font-weight: bold;
+          color: #3b82f6;
+        }
+
+        .guide-mission {
+          margin-top: 0.5rem;
+        }
+
+        .mission-title {
+          font-size: clamp(0.75rem, 2vw, 0.875rem);
+          font-weight: 600;
+          color: #f9fafb;
+          margin-bottom: 0.5rem;
+        }
+
+        .checklist-items {
+          display: flex;
+          flex-direction: column;
+          gap: 0.375rem;
+        }
+
+        .checklist-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.375rem;
+          font-size: clamp(0.625rem, 1.8vw, 0.75rem);
+          line-height: 1.3;
+        }
+
+        .checklist-checkbox {
+          font-size: clamp(0.75rem, 2vw, 0.875rem);
+          color: #6b7280;
+          flex-shrink: 0;
+          margin-top: 0.1rem;
+        }
+
+        .checklist-text {
+          color: #9ca3af;
+          flex: 1;
+        }
+
+        .guide-message {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          padding: 1rem;
+          background: rgba(59, 130, 246, 0.1);
+          border: 1px solid rgba(59, 130, 246, 0.3);
+          border-radius: 8px;
+          margin-top: 1rem;
+        }
+
+        .guide-icon {
+          font-size: 2rem;
+          flex-shrink: 0;
+        }
+
+        .guide-text h4 {
+          margin: 0 0 0.25rem 0;
+          font-size: clamp(0.875rem, 2.5vw, 1rem);
+          color: #3b82f6;
+          font-weight: bold;
+        }
+
+        .guide-text p {
+          margin: 0;
+          font-size: clamp(0.75rem, 2vw, 0.875rem);
+          color: #9ca3af;
+          line-height: 1.4;
         }
 
         .purpose-checklist {
@@ -382,26 +493,26 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, ballotEntr
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          padding: 0.375rem;
-          border-radius: 6px;
-          background: rgba(55, 65, 81, 0.3);
-          border: 1px solid #4b5563;
+          padding: 0.5rem;
+          border-radius: 8px;
+          background: rgba(31, 41, 55, 0.8);
+          border: 2px solid #374151;
           transition: all 0.2s;
-          margin-bottom: 0.25rem;
+          margin-bottom: 0.5rem;
         }
 
         .npc-item.spoken {
-          background: rgba(59, 130, 246, 0.2);
-          border-color: #3b82f6;
+          background: rgba(31, 41, 55, 0.9);
+          border-color: #10b981;
         }
 
         .npc-item.round1.spoken {
-          background: rgba(59, 130, 246, 0.2);
+          background: rgba(31, 41, 55, 0.9);
           border-color: #3b82f6;
         }
 
         .npc-item.round2.spoken {
-          background: rgba(16, 185, 129, 0.2);
+          background: rgba(31, 41, 55, 0.9);
           border-color: #10b981;
         }
 
@@ -435,22 +546,40 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, ballotEntr
           color: #9ca3af;
         }
 
-        .npc-mission {
+        .npc-checklist {
+          margin-top: 0.5rem;
+        }
+
+        .checklist-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.25rem;
+          margin-bottom: 0.25rem;
           font-size: clamp(0.5rem, 1.5vw, 0.625rem);
+          line-height: 1.3;
+        }
+
+        .checklist-checkbox {
+          font-size: clamp(0.75rem, 2vw, 0.875rem);
           color: #6b7280;
-          font-style: italic;
-          margin-top: 2px;
-          line-height: 1.2;
-        }
-
-        .npc-status {
-          font-size: clamp(1rem, 3vw, 1.125rem);
-          font-weight: bold;
-          color: #9ca3af;
           flex-shrink: 0;
+          margin-top: 0.1rem;
         }
 
-        .npc-item.spoken .npc-status {
+        .checklist-text {
+          color: #9ca3af;
+          flex: 1;
+        }
+
+        .npc-checkbox {
+          font-size: clamp(1.25rem, 4vw, 1.5rem);
+          font-weight: bold;
+          color: #6b7280;
+          flex-shrink: 0;
+          transition: all 0.2s;
+        }
+
+        .npc-item.spoken .npc-checkbox {
           color: #10b981;
         }
 
@@ -479,12 +608,12 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, ballotEntr
         }
 
         .npc-item.has-opinion {
-          background: rgba(59, 130, 246, 0.3);
-          border-color: #3b82f6;
+          background: rgba(31, 41, 55, 0.9);
+          border-color:  #374151;
         }
 
         .npc-item.round2.has-opinion {
-          background: rgba(16, 185, 129, 0.3);
+          background: rgba(31, 41, 55, 0.9);
           border-color: #10b981;
         }
 

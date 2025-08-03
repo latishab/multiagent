@@ -9,6 +9,7 @@ export class NPCManager {
   private chatCallback?: (npcId: string, personality: string) => void
   private currentInteractableNPC: NPC | null = null
   private interactionText: Phaser.GameObjects.Text | null = null
+  private guideAlertText: Phaser.GameObjects.Text | null = null
   
   private readonly npcConfigs = [
     {
@@ -68,6 +69,18 @@ export class NPCManager {
     this.interactionText.setOrigin(0.5, 1)
     this.interactionText.setDepth(1000)
     this.interactionText.setVisible(false)
+
+    // Create the guide alert text object
+    this.guideAlertText = this.scene.add.text(0, 0, '!', {
+      fontSize: '16px',
+      backgroundColor: '#f59e0b',
+      padding: { x: 6, y: 2 },
+      color: '#1f2937',
+      fontStyle: 'bold'
+    })
+    this.guideAlertText.setOrigin(0.5, 1)
+    this.guideAlertText.setDepth(1001) // Higher than regular interaction text
+    this.guideAlertText.setVisible(false)
 
     // Listen for chat closed event
     if (typeof window !== 'undefined') {
@@ -356,6 +369,7 @@ export class NPCManager {
       let closestNPC: NPC | null = null
       let closestDistance = Infinity
 
+      // Check for nearby NPCs for interaction hints
       for (const npc of this.npcs) {
         if (npc.isInteracting) continue
 
@@ -372,6 +386,7 @@ export class NPCManager {
         }
       }
 
+      // Handle interaction text visibility
       if (closestNPC !== this.currentInteractableNPC) {
         if (closestNPC) {
           this.showInteractionHint(closestNPC)
@@ -381,9 +396,45 @@ export class NPCManager {
         this.currentInteractableNPC = closestNPC
       }
 
-      if (this.currentInteractableNPC && this.interactionText) {
+      // Handle guide alert globally (not tied to proximity)
+      const shouldShowGuideAlert = typeof window !== 'undefined' && 
+        ((window as any).shouldShowGuideAlert && (window as any).shouldShowGuideAlert());
+      
+      if (shouldShowGuideAlert) {
+        // Find The Guide NPC to position the alert
+        const guideNPC = this.npcs.find(npc => npc.id === 'main');
+        if (guideNPC && this.guideAlertText) {
+          this.guideAlertText.setVisible(true)
+          this.guideAlertText.setPosition(guideNPC.sprite.x, guideNPC.sprite.y - 20)
+        }
+      } else {
+        // Hide guide alert when not needed
+        if (this.guideAlertText) {
+          this.guideAlertText.setVisible(false)
+        }
+      }
+
+      // Update interaction text positions for nearby NPCs
+      if (this.currentInteractableNPC) {
         const npc = this.currentInteractableNPC
-        this.interactionText.setPosition(npc.sprite.x, npc.sprite.y - 20)
+        
+        // Don't show interaction text for The Guide when guide alert is showing
+        if (npc.id === 'main' && shouldShowGuideAlert) {
+          if (this.interactionText) {
+            this.interactionText.setVisible(false)
+          }
+        } else {
+          // Show regular interaction text for all NPCs
+          if (this.interactionText) {
+            this.interactionText.setVisible(true)
+            this.interactionText.setPosition(npc.sprite.x, npc.sprite.y - 20)
+          }
+        }
+      } else {
+        // No NPC in range - hide interaction text
+        if (this.interactionText) {
+          this.interactionText.setVisible(false)
+        }
       }
     }
 
@@ -393,15 +444,56 @@ export class NPCManager {
   }
 
   private showInteractionHint(npc: NPC) {
-    if (this.interactionText) {
-      this.interactionText.setVisible(true)
-      this.interactionText.setPosition(npc.sprite.x, npc.sprite.y - 20)
+    // Special handling for The Guide
+    if (npc.id === 'main') {
+      if (typeof window !== 'undefined' && (window as any).shouldShowGuideAlert && (window as any).shouldShowGuideAlert()) {
+        // Show guide alert instead of "Press E to talk"
+        if (this.guideAlertText) {
+          this.guideAlertText.setVisible(true)
+          this.guideAlertText.setPosition(npc.sprite.x, npc.sprite.y - 20)
+        }
+        // Hide the regular interaction text
+        if (this.interactionText) {
+          this.interactionText.setVisible(false)
+        }
+      } else {
+        // Hide guide alert if it shouldn't be shown
+        if (this.guideAlertText) {
+          this.guideAlertText.setVisible(false)
+        }
+        // Show regular "Press E to talk" for The Guide when alert shouldn't be shown
+        if (this.interactionText) {
+          this.interactionText.setText('Press E to talk')
+          this.interactionText.setVisible(true)
+          this.interactionText.setPosition(npc.sprite.x, npc.sprite.y - 20)
+        }
+      }
+    } else {
+      // Regular NPCs - check if game has started
+      if (typeof window !== 'undefined' && !(window as any).hasGameStarted) {
+        // Show message that player needs to talk to The Guide first
+        if (this.interactionText) {
+          this.interactionText.setText('Talk to The Guide first')
+          this.interactionText.setVisible(true)
+          this.interactionText.setPosition(npc.sprite.x, npc.sprite.y - 20)
+        }
+      } else {
+        // Normal interaction for regular NPCs
+        if (this.interactionText) {
+          this.interactionText.setText('Press E to talk')
+          this.interactionText.setVisible(true)
+          this.interactionText.setPosition(npc.sprite.x, npc.sprite.y - 20)
+        }
+      }
     }
   }
 
   private hideInteractionHint() {
     if (this.interactionText) {
       this.interactionText.setVisible(false)
+    }
+    if (this.guideAlertText) {
+      this.guideAlertText.setVisible(false)
     }
     this.currentInteractableNPC = null
   }
@@ -417,7 +509,12 @@ export class NPCManager {
       return
     }
 
-    console.log('E key pressed, checking for NPC interactions...')
+    // Check if game has started (player has talked to The Guide)
+    if (typeof window !== 'undefined' && !(window as any).hasGameStarted && this.currentInteractableNPC?.id !== 'main') {
+      console.log('Game has not started yet. Player must talk to The Guide first.');
+      return
+    }
+
     if (this.currentInteractableNPC) {
       const npcData = {
         "1": "A retired ecologist who prioritizes ecological restoration and believes in working with nature. Speaks slowly and gently, often referring to natural laws and past experiences.",
@@ -474,9 +571,17 @@ export class NPCManager {
   }
 
   endInteraction(npcId: string) {
-    const npc = this.npcs.find(n => n.id === npcId)
+    let targetNpcId = npcId
+    if (npcId === '-1') {
+      targetNpcId = 'main'
+    }
+    
+    const npc = this.npcs.find(n => n.id === targetNpcId)
     if (npc) {
+      console.log('Ending interaction for NPC:', { originalId: npcId, targetId: targetNpcId, npcName: npc.type })
       npc.isInteracting = false
+    } else {
+      console.warn('Could not find NPC to end interaction:', { originalId: npcId, targetId: targetNpcId })
     }
   }
 

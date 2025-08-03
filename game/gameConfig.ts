@@ -31,6 +31,32 @@ export const gameConfig: Types.Core.GameConfig = {
         const gl = game.renderer.gl;
         if (gl) {
           gl.getExtension('WEBGL_debug_renderer_info');
+          
+          // Add error handling for WebGL context
+          const canvas = gl.canvas;
+          if (canvas) {
+            canvas.addEventListener('webglcontextlost', (event) => {
+              console.error('WebGL context lost:', event);
+              event.preventDefault();
+            });
+            
+            canvas.addEventListener('webglcontextrestored', () => {
+              console.log('WebGL context restored');
+            });
+          }
+        }
+      }
+    },
+    postBoot: (game) => {
+      // Additional error handling after boot
+      if (game.renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer) {
+        const gl = game.renderer.gl;
+        if (gl) {
+          // Check for WebGL errors
+          const error = gl.getError();
+          if (error !== gl.NO_ERROR) {
+            console.warn('WebGL error detected:', error);
+          }
         }
       }
     }
