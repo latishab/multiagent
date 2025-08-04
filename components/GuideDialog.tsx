@@ -36,73 +36,100 @@ export default function GuideDialog({
   useEffect(() => {
     const loadMessagesAndHandleInitial = async () => {
       if (!isOpen) return;
+      setIsLoading(true);
+
+      const currentSessionId = await sessionManager.getSessionId();
+      setSessionId(currentSessionId);
       
-        const currentSessionId = await sessionManager.getSessionId();
-        setSessionId(currentSessionId);
+      try {
+        // --- 1. Load Existing History ---
+        let existingMessages: Message[] = [];
+        const response = await fetch(`/api/conversation-history?npcId=-1&round=1&sessionId=${currentSessionId}`);
         
-        try {
-          // First, load existing conversation history
-          const response = await fetch(`/api/conversation-history?npcId=-1&round=1&sessionId=${currentSessionId}`);
+        if (response.ok) {
+          const data = await response.json();
+          existingMessages = data.messages || [];
+          console.log('🔍 Loaded existing messages:', existingMessages);
+        } else {
+          console.log('No existing conversation history found.');
+        }
+
+        // --- 2. Determine which initial messages are needed based on game state ---
+        let messagesToDisplay = [...existingMessages]; // Start with what we have
+        let needsDBUpdate = false;
+
+        // State A: First time ever opening the dialog
+        if (round === 1 && existingMessages.length === 0) {
+          console.log('📖 History is empty. Initializing Round 1.');
+          const initialMessages = narrativesToMessages(getInitialGuideMessages());
           
-          let existingMessages: any[] = [];
-          if (response.ok) {
-            const data = await response.json();
-            existingMessages = data.messages;
+          // Add to the messages to be displayed
+          messagesToDisplay.push(...initialMessages);
+          needsDBUpdate = true;
+        
+        // ✅ NEW: State B - Player has completed Round 2, start the Decision Phase
+        // We check this condition BEFORE checking for the start of Round 2.
+        } else if (round === 2 && spokenNPCs.round2.size >= 6) {
+          const decisionPhaseMessages = narrativesToMessages(getDecisionPhaseMessages());
+          const initialDecisionMessage = decisionPhaseMessages[0]?.text;
+
+          const initialDecisionMessageAlreadyExists = existingMessages.some(
+            (msg) => msg.text === initialDecisionMessage
+          );
+
+          if (!initialDecisionMessageAlreadyExists) {
+            console.log('📖 Injecting messages for the Decision Phase.');
+            messagesToDisplay.push(...decisionPhaseMessages);
+            needsDBUpdate = true;
           }
-          
-          // If we have any messages, just use them (preserve existing conversation)
-          if (existingMessages.length > 0) {
-            setMessages(existingMessages);
-            return;
+
+        // State C: Player has completed Round 1 and is now starting Round 2
+        } else if (round === 2 && spokenNPCs.round1.size >= 6) {
+          const round2IntroMessages = narrativesToMessages(getRoundAdvancementMessages());
+          const initialRound2Message = round2IntroMessages[0]?.text;
+
+          // Check if the Round 2 intro messages have ALREADY been added
+          const initialRound2MessageAlreadyExists = existingMessages.some(
+            (msg) => msg.text === initialRound2Message
+          );
+
+          if (!initialRound2MessageAlreadyExists) {
+            console.log('📖 Injecting initial messages for Round 2.');
+            messagesToDisplay.push(...round2IntroMessages);
+            needsDBUpdate = true;
           }
-          
-          // Only add initial messages if we have no existing conversation
-          setIsLoading(true);
-          
-          let guideNarratives;
-          if (round === 1 && spokenNPCs.round1.size === 0) {
-            guideNarratives = getInitialGuideMessages();
-          } else if (round === 1 && spokenNPCs.round1.size >= 6) {
-            guideNarratives = getRoundAdvancementMessages();
-          } else if (round === 2 && spokenNPCs.round2.size >= 6) {
-            guideNarratives = getDecisionPhaseMessages();
-          } else if (round === 2 && spokenNPCs.round2.size === 0 && spokenNPCs.round1.size >= 6) {
-            guideNarratives = getRoundAdvancementMessages();
-          } else {
-            // No initial messages needed
-            setMessages([]);
-            return;
-          }
-          
-          const initialMessages = narrativesToMessages(guideNarratives);
-          
-          // Store initial messages one by one with delays (like ChatDialog.tsx)
-          for (let i = 0; i < initialMessages.length; i++) {
-            // Add message to UI immediately (like ChatDialog.tsx)
-            setMessages(prev => [...prev, initialMessages[i]]);
-            
-            // Store message
+        }
+
+        // --- 3. Update the database if new messages were added ---
+        if (needsDBUpdate) {
+          // We only need to store the newly added messages
+          const newMessages = messagesToDisplay.slice(existingMessages.length);
+
+          for (const msg of newMessages) {
             await fetch('/api/store-message', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                message: initialMessages[i].text,
+                message: msg.text,
                 npcId: -1,
-                round: 1,
+                round: 1, // Guide history is always stored in round 1
                 sessionId: currentSessionId,
                 role: 'assistant'
               })
             });
-            
-            // Add delay between messages (like ChatDialog.tsx)
-            await new Promise(resolve => setTimeout(resolve, 500));
           }
-        } catch (error) {
-          console.error('Error loading guide conversation history:', error);
-          setMessages([]);
-        } finally {
-          setIsLoading(false);
         }
+
+        // --- 4. Set the final state for the UI ---
+        console.log('🔍 Final messages to display:', messagesToDisplay);
+        setMessages(messagesToDisplay);
+
+      } catch (error) {
+        console.error('Error loading guide conversation history:', error);
+        setMessages([]);
+      } finally {
+        setIsLoading(false);
+      }
     };
     
     loadMessagesAndHandleInitial();
