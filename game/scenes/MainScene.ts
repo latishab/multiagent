@@ -21,10 +21,22 @@ export default class MainScene extends Scene {
   }
 
   preload() {
-    // Add error handling for texture loading
+    // Add comprehensive error handling for texture loading
     this.load.on('loaderror', (file: any) => {
       console.error('Failed to load texture:', file.src)
     })
+    
+    this.load.on('loadcomplete', () => {
+      console.log('All assets loaded successfully')
+    })
+    
+    // Add WebGL error handling
+    if (this.renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer) {
+      const gl = this.renderer.gl;
+      if (gl) {
+        gl.getError(); // Clear any existing errors
+      }
+    }
 
     // Load player spritesheets
     this.load.spritesheet('playerIdle', '/assets/characters/Idle.png', { 
@@ -54,9 +66,9 @@ export default class MainScene extends Scene {
     // Row 2 (48-96px): [Teal 48px][Dark 48px][Military 48px]
     // 
     // Frame layout within each 48x48 character block:
-    // [0][1][2] - Down animations
+    // [0][1][2] - Up animations
     // [3][4][5] - Side animations
-    // [6][7][8] - Up animations
+    // [6][7][8] - Down animations
     // 
     // To calculate frame index:
     // - Each row is 144/16 = 9 frames wide
@@ -65,6 +77,14 @@ export default class MainScene extends Scene {
     //   where row is 0 or 1, col is 0, 1, or 2
 
     this.load.spritesheet('npcs', '/assets/characters/update.png', {
+      frameWidth: 16,
+      frameHeight: 16,
+      margin: 0,
+      spacing: 0
+    })
+    
+    // Load main NPC spritesheet (new.png)
+    this.load.spritesheet('main-npc', '/assets/characters/new.png', {
       frameWidth: 16,
       frameHeight: 16,
       margin: 0,
@@ -85,6 +105,17 @@ export default class MainScene extends Scene {
 
   create() {
     try {
+      // Check for WebGL errors before creating map
+      if (this.renderer instanceof Phaser.Renderer.WebGL.WebGLRenderer) {
+        const gl = this.renderer.gl;
+        if (gl) {
+          const error = gl.getError();
+          if (error !== gl.NO_ERROR) {
+            console.warn('WebGL error before map creation:', error);
+          }
+        }
+      }
+      
       this.createMap()
       
       // Initialize managers
@@ -111,6 +142,9 @@ export default class MainScene extends Scene {
         this.levelLayer,
         player
       )
+      
+      // Spawn main NPC
+      this.npcManager.spawnMainNPC(this.levelLayer, player)
       
       // Setup NPC chat interaction
       this.npcManager.setInteractionCallback((npcId: string, personality: string) => {

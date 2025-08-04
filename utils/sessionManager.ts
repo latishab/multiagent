@@ -81,14 +81,15 @@ class SessionManager {
 
   // Get or create session ID
   public async getSessionId(): Promise<string> {
-    if (this.sessionId) {
-      return this.sessionId;
-    }
-
     // Try to get from localStorage first
     const storedSessionId = localStorage.getItem('multiagent_session_id');
     if (storedSessionId) {
       this.sessionId = storedSessionId;
+      return this.sessionId;
+    }
+
+    // If we have a session ID in memory, use it
+    if (this.sessionId) {
       return this.sessionId;
     }
 
