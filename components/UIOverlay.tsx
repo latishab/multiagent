@@ -551,6 +551,9 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         round2: prev.round2
       }));
       
+      // ✅ ADD THIS LINE to update the game round
+      setChatState(prev => ({ ...prev, round: 2 }));
+      
       // Create ballot entries for Round 1 (introduction phase)
       const round1Entries: BallotEntry[] = [
         {
@@ -634,6 +637,9 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         round1: new Set([1, 2, 3, 4, 5, 6]),
         round2: new Set([1, 2, 3, 4, 5, 6])
       }));
+      
+      // ✅ ADD THIS LINE to update the game round to 2
+      setChatState(prev => ({ ...prev, round: 2 }));
       
       // Create ballot entries for both Round 1 and Round 2
       const round1Entries: BallotEntry[] = [
@@ -777,8 +783,13 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       setBallotEntries([...round1Entries, ...round2Entries]);
       setHasTalkedToGuide(false); // Don't auto-talk to guide, let player do it
       setHasStartedGame(true); // Game has started, but guide not talked to yet
+      
+      // ✅ ENABLE DECISION MODE when Round 2 is complete
+      setShowDecisionMode(true);
+      
       console.log('✅ Round 2 completed! Talk to The Guide to make final decisions');
       console.log('📱 PDA populated with Round 1 and Round 2 information');
+      console.log('⚖️ Decision mode enabled - players can now make final choices');
     }
 
     (window as any).resetToRound1 = () => {
