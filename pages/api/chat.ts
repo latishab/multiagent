@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { vectorStore } from '../../utils/vectorStore';
+import { upstashStore } from '../../utils/upstashStore';
 import { NPCData, getSystemPrompt } from '../../utils/prompts';
 
 // ============================================================================
@@ -139,19 +140,19 @@ async function analyzeGuideConversation(
   message: string, 
   round: number, 
   conversationHistory: Message[],
-  spokenNPCs: { round1: Set<number>; round2: Set<number> }
+  spokenNPCs: { round1: number[]; round2: number[] }
 ): Promise<GuideAnalysis> {
   
-  const round1Complete = spokenNPCs.round1.size === 6;
-  const round2Complete = spokenNPCs.round2.size === 6;
+  const round1Complete = spokenNPCs.round1.length === 6;
+  const round2Complete = spokenNPCs.round2.length === 6;
   
   // Create context for LLM analysis
   const context = {
     currentRound: round,
     round1Complete,
     round2Complete,
-    round1Progress: spokenNPCs.round1.size,
-    round2Progress: spokenNPCs.round2.size,
+    round1Progress: spokenNPCs.round1.length,
+    round2Progress: spokenNPCs.round2.length,
     playerMessage: message,
     conversationLength: conversationHistory.length
   };
@@ -161,8 +162,8 @@ async function analyzeGuideConversation(
 
 Context:
 - Current round: ${round}
-- Round 1 progress: ${spokenNPCs.round1.size}/6 specialists consulted
-- Round 2 progress: ${spokenNPCs.round2.size}/6 specialists consulted
+- Round 1 progress: ${spokenNPCs.round1.length}/6 specialists consulted
+- Round 2 progress: ${spokenNPCs.round2.length}/6 specialists consulted
 - Round 1 complete: ${round1Complete}
 - Round 2 complete: ${round2Complete}
 - Player message: "${message}"
@@ -221,8 +222,17 @@ Respond with a JSON object containing:
       throw new Error('Invalid analysis response');
     }
 
-    // Parse the JSON response
-    const result = JSON.parse(analysis);
+    // Parse the JSON response (handle markdown formatting)
+    let cleanAnalysis = analysis.trim();
+    
+    // Remove markdown code blocks if present
+    if (cleanAnalysis.startsWith('```json')) {
+      cleanAnalysis = cleanAnalysis.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (cleanAnalysis.startsWith('```')) {
+      cleanAnalysis = cleanAnalysis.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    
+    const result = JSON.parse(cleanAnalysis);
     
     return {
       response: result.response,
@@ -386,22 +396,22 @@ Example responses for Round 2:
 /**
  * Handles conversation history management and system prompt setup
  */
-function setupConversationHistory(npcId: number, round: number, sessionId: string, npc: NPCInfo, isSustainable: boolean): void {
-  const history = vectorStore.getConversationHistory(npcId, round, sessionId);
+async function setupConversationHistory(npcId: number, round: number, sessionId: string, npc: NPCInfo, isSustainable: boolean): Promise<void> {
+  const history = await upstashStore.getConversationHistory(npcId, round, sessionId);
 
   // Add system prompt to history if it's empty
   if (history.length === 0) {
     const systemPrompt = getSystemPrompt(npc, round, isSustainable);
-    vectorStore.addToConversationHistory(npcId, round, {
+    await upstashStore.addToConversationHistory(npcId, round, {
       role: 'system',
       content: systemPrompt
     }, sessionId);
   } else {
     // Check if there's already a system message in the history
-    const hasSystemMessage = history.some(msg => msg.role === 'system');
+    const hasSystemMessage = history.some((msg: any) => msg.role === 'system');
     if (!hasSystemMessage) {
       const systemPrompt = getSystemPrompt(npc, round, isSustainable);
-      vectorStore.addToConversationHistory(npcId, round, {
+      await upstashStore.addToConversationHistory(npcId, round, {
         role: 'system',
         content: systemPrompt
       }, sessionId);
@@ -422,6 +432,7 @@ async function addConversationContext(
   
   // Only add context from similar conversations if this is not the first message
   if (updatedHistory.length > 2) { // More than just system + user message
+    // Use Pinecone for long-term memory (semantic search)
     const similarMessages = await vectorStore.querySimilar(message, npcId, 2, sessionId) as PineconeMatch[];
     
     if (similarMessages && similarMessages.length > 0) {
@@ -461,16 +472,16 @@ async function handleGuideConversation(
   message: string,
   round: number,
   sessionId: string,
-  spokenNPCs: { round1: Set<number>; round2: Set<number> }
+  spokenNPCs: { round1: number[]; round2: number[] }
 ): Promise<any> {
   // Use round 1 for The Guide to preserve conversation across rounds
   const effectiveRound = 1;
   
-  // Get conversation history for main NPC
-  const history = vectorStore.getConversationHistory(-1, effectiveRound, sessionId);
+  // Get conversation history from Upstash (short-term memory)
+  const history = await upstashStore.getConversationHistory(-1, effectiveRound, sessionId);
   
-  // Add user message to history
-  vectorStore.addToConversationHistory(-1, effectiveRound, {
+  // Add user message to Upstash (short-term memory)
+  await upstashStore.addToConversationHistory(-1, effectiveRound, {
     role: 'user',
     content: message
   }, sessionId);
@@ -478,8 +489,8 @@ async function handleGuideConversation(
   // Analyze conversation with LLM
   const analysis = await analyzeGuideConversation(message, round, history, spokenNPCs);
   
-  // Add assistant response to history
-  vectorStore.addToConversationHistory(-1, effectiveRound, {
+  // Add assistant response to Upstash (short-term memory)
+  await upstashStore.addToConversationHistory(-1, effectiveRound, {
     role: 'assistant',
     content: analysis.response
   }, sessionId);
@@ -507,17 +518,17 @@ async function handleRegularNPCConversation(
   npc: NPCInfo,
   isSustainable: boolean
 ): Promise<any> {
-  // Setup conversation history
-  setupConversationHistory(npcId, round, sessionId, npc, isSustainable);
+  // Setup conversation history (Redis for short-term memory)
+  await setupConversationHistory(npcId, round, sessionId, npc, isSustainable);
 
-  // Add user message to history
-  vectorStore.addToConversationHistory(npcId, round, {
+  // Add user message to Upstash (short-term memory)
+  await upstashStore.addToConversationHistory(npcId, round, {
     role: 'user',
     content: message
   }, sessionId);
 
-  // Get updated history
-  const updatedHistory = vectorStore.getConversationHistory(npcId, round, sessionId);
+  // Get updated history from Upstash (short-term memory)
+  const updatedHistory = await upstashStore.getConversationHistory(npcId, round, sessionId);
 
   // Store the message in Pinecone
   const messageId = `${npcId}_${round}_${Date.now()}`;
@@ -601,14 +612,14 @@ async function handleRegularNPCConversation(
     sessionId: sessionId || 'default'
   });
 
-  // Add assistant response to history
-  vectorStore.addToConversationHistory(npcId, round, {
+  // Add assistant response to Upstash (short-term memory)
+  await upstashStore.addToConversationHistory(npcId, round, {
     role: 'assistant',
     content: aiResponse
   }, sessionId);
 
   // Analyze conversation completeness AFTER adding the current response
-  const finalHistory = vectorStore.getConversationHistory(npcId, round, sessionId);
+  const finalHistory = await upstashStore.getConversationHistory(npcId, round, sessionId);
   const conversationAnalysis = await analyzeConversationCompleteness(finalHistory, npc, round);
 
   return {

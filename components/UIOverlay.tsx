@@ -551,6 +551,9 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         round2: prev.round2
       }));
       
+      // ✅ ADD THIS LINE to update the game round
+      setChatState(prev => ({ ...prev, round: 2 }));
+      
       // Create ballot entries for Round 1 (introduction phase)
       const round1Entries: BallotEntry[] = [
         {
@@ -634,6 +637,9 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         round1: new Set([1, 2, 3, 4, 5, 6]),
         round2: new Set([1, 2, 3, 4, 5, 6])
       }));
+      
+      // ✅ ADD THIS LINE to update the game round to 2
+      setChatState(prev => ({ ...prev, round: 2 }));
       
       // Create ballot entries for both Round 1 and Round 2
       const round1Entries: BallotEntry[] = [

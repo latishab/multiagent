@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { vectorStore } from '../../utils/vectorStore';
 import { getEffectiveRound, validateConversationParams } from '../../utils/conversationUtils';
+import { upstashStore } from '../../utils/upstashStore';
 
 export default async function handler(
   req: NextApiRequest,
@@ -36,13 +36,13 @@ export default async function handler(
     // Get effective round for conversation storage
     const effectiveRound = getEffectiveRound(npcIdNumber, roundNumber);
 
-    // Get conversation history from vectorStore
-    const history = vectorStore.getConversationHistory(npcIdNumber, effectiveRound, sessionId as string);
+    // Get conversation history from Upstash store
+    const history = await upstashStore.getConversationHistory(npcIdNumber, effectiveRound, sessionId as string);
 
     // Convert to UI-friendly format (exclude system messages)
     const uiMessages = history
-      .filter(msg => msg.role !== 'system')
-      .map(msg => ({
+      .filter((msg: any) => msg.role !== 'system')
+      .map((msg: any) => ({
         text: msg.content,
         sender: msg.role === 'user' ? 'player' : 'npc'
       }));
