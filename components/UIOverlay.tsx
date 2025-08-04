@@ -783,8 +783,13 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       setBallotEntries([...round1Entries, ...round2Entries]);
       setHasTalkedToGuide(false); // Don't auto-talk to guide, let player do it
       setHasStartedGame(true); // Game has started, but guide not talked to yet
+      
+      // ✅ ENABLE DECISION MODE when Round 2 is complete
+      setShowDecisionMode(true);
+      
       console.log('✅ Round 2 completed! Talk to The Guide to make final decisions');
       console.log('📱 PDA populated with Round 1 and Round 2 information');
+      console.log('⚖️ Decision mode enabled - players can now make final choices');
     }
 
     (window as any).resetToRound1 = () => {
