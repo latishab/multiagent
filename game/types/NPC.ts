@@ -100,33 +100,33 @@ function calculateStartFrame(charIndex: number): number {
 export const NPC_TYPES: NPCType[] = [
   // First row characters (0-2)
   { 
-    name: 'white', 
+    name: 'mr-dai', 
     startFrame: calculateStartFrame(0),
     areaBounds: { x: 100, y: 100, width: 300, height: 200 }  // Top-left area
   },
   { 
-    name: 'brown', 
+    name: 'ms-moss', 
     startFrame: calculateStartFrame(1),
     areaBounds: { x: 500, y: 100, width: 300, height: 200 }  // Top-middle area
   },
   { 
-    name: 'blue', 
+    name: 'chief-oskar', 
     startFrame: calculateStartFrame(2),
     areaBounds: { x: 900, y: 100, width: 300, height: 200 }  // Top-right area
   },
   // Second row characters (3-5)
   { 
-    name: 'teal', 
+    name: 'ms-kira', 
     startFrame: calculateStartFrame(3),
     areaBounds: { x: 100, y: 400, width: 300, height: 200 }  // Bottom-left area
   },
   { 
-    name: 'dark', 
+    name: 'mr-aria', 
     startFrame: calculateStartFrame(4),
     areaBounds: { x: 500, y: 400, width: 300, height: 200 }  // Bottom-middle area
   },
   { 
-    name: 'military', 
+    name: 'mrs-han', 
     startFrame: calculateStartFrame(5),
     areaBounds: { x: 900, y: 400, width: 300, height: 200 }  // Bottom-right area
   }
