@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { vectorStore } from '../../utils/vectorStore';
+import { upstashStore } from '../../utils/upstashStore';
 import { getEffectiveRound, validateConversationParams } from '../../utils/conversationUtils';
 
 export default async function handler(
@@ -37,7 +37,7 @@ export default async function handler(
     const effectiveRound = getEffectiveRound(npcIdNumber, roundNumber);
 
     // Clear conversation history
-    vectorStore.clearConversationHistory(npcIdNumber, effectiveRound, sessionId as string);
+    await upstashStore.clearConversationHistory(npcIdNumber, effectiveRound, sessionId as string);
 
     // Set CORS headers for the response
     res.setHeader('Access-Control-Allow-Origin', '*');

@@ -1,24 +1,12 @@
 import { Pinecone } from '@pinecone-database/pinecone';
 
-interface Message {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
-interface ConversationHistory {
-  messages: Message[];
-  lastUpdated: number;
-}
-
 class VectorStore {
   private static instance: VectorStore;
-  private conversations: Map<string, ConversationHistory>;
   private pinecone: Pinecone;
   private index: any;
   private readonly indexName = 'multiagent';
 
   private constructor() {
-    this.conversations = new Map();
     this.pinecone = new Pinecone({
       apiKey: process.env.PINECONE_API_KEY || '',
     });
@@ -32,77 +20,6 @@ class VectorStore {
       VectorStore.instance = new VectorStore();
     }
     return VectorStore.instance;
-  }
-
-  public getConversationKey(npcId: number, round: number, sessionId?: string): string {
-    // Special handling for The Guide (npcId: -1) - preserve conversation across rounds
-    if (npcId === -1) {
-      if (sessionId) {
-        return `guide_session_${sessionId}`;
-      }
-      return 'guide';
-    }
-    
-    if (sessionId) {
-      return `npc_${npcId}_round_${round}_session_${sessionId}`;
-    }
-    return `npc_${npcId}_round_${round}`;
-  }
-
-  public getConversationHistory(npcId: number, round: number, sessionId?: string): Message[] {
-    const key = this.getConversationKey(npcId, round, sessionId);
-    const history = this.conversations.get(key)?.messages || [];
-    console.log('Getting conversation history:', {
-      key,
-      npcId,
-      round,
-      sessionId,
-      messageCount: history.length,
-      messages: history.map(msg => ({ role: msg.role, content: msg.content.slice(0, 50) + '...' }))
-    });
-    return history;
-  }
-
-  public addToConversationHistory(npcId: number, round: number, message: Message, sessionId?: string) {
-    const key = this.getConversationKey(npcId, round, sessionId);
-    const history = this.conversations.get(key) || { messages: [], lastUpdated: Date.now() };
-    
-    history.messages.push(message);
-    history.lastUpdated = Date.now();
-    
-    this.conversations.set(key, history);
-
-    console.log('Added to conversation history:', {
-      key,
-      npcId,
-      round,
-      sessionId,
-      messageRole: message.role,
-      messageContent: message.content.slice(0, 50) + '...',
-      totalMessages: history.messages.length,
-      isGuide: npcId === -1
-    });
-
-    // Cleanup old conversations after 1 hour (but preserve The Guide's conversation)
-    if (npcId !== -1) {
-      this.cleanupOldConversations();
-    }
-  }
-
-  private cleanupOldConversations() {
-    const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
-    const now = Date.now();
-
-    Array.from(this.conversations.entries()).forEach(([key, history]) => {
-      if (now - history.lastUpdated > oneHour) {
-        this.conversations.delete(key);
-      }
-    });
-  }
-
-  public clearConversationHistory(npcId: number, round: number, sessionId?: string) {
-    const key = this.getConversationKey(npcId, round, sessionId);
-    this.conversations.delete(key);
   }
 
   // Store text in Pinecone with automatic embedding

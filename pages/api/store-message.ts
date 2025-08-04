@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { vectorStore } from '../../utils/vectorStore';
 import { getEffectiveRound, validateConversationParams } from '../../utils/conversationUtils';
+import { upstashStore } from '../../utils/upstashStore';
 
 export default async function handler(
   req: NextApiRequest,
@@ -36,7 +36,7 @@ export default async function handler(
     // Get effective round for conversation storage
     const effectiveRound = getEffectiveRound(npcIdNumber, roundNumber);
     // Add the message directly to conversation history
-    vectorStore.addToConversationHistory(npcIdNumber, effectiveRound, {
+    await upstashStore.addToConversationHistory(npcIdNumber, effectiveRound, {
       role: role as 'system' | 'user' | 'assistant',
       content: message
     }, sessionId);
