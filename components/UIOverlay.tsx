@@ -718,8 +718,8 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 2,
           sustainableOption: NPCOptions[1].sustainable,
           unsustainableOption: NPCOptions[1].unsustainable,
-          npcOpinion: 'I recommend the Constructed Wetlands. While they take longer to purify water, they work with nature rather than against it. The chemical tanks might be faster, but they introduce toxins that could harm the ecosystem for generations. We need to think long-term about our water quality.',
-          npcReasoning: 'Environmental sustainability and long-term ecosystem health',
+          npcOpinion: 'I recommend the Urban Agriculture Zones. They create community spaces and improve food security. The industrial expansion might bring more tax revenue, but it eliminates green spaces and increases pollution. We need to balance economic growth with community wellbeing.',
+          npcReasoning: 'Community wellbeing and food security',
           timestamp: Date.now()
         },
         {
@@ -729,8 +729,8 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 2,
           sustainableOption: NPCOptions[2].sustainable,
           unsustainableOption: NPCOptions[2].unsustainable,
-          npcOpinion: 'I recommend the Gas Power Hub. Stability comes first in energy systems. The solar microgrids are promising but require massive battery storage for reliability. Right now, we need guaranteed power to keep the city running. The Hub integrates smoothly with existing infrastructure.',
-          npcReasoning: 'System stability and reliability over innovation',
+          npcOpinion: 'I recommend the Diesel Supply Contracts. Reliability is crucial for fuel systems. The biofuel cooperative is innovative but has limited production capacity. Right now, we need guaranteed fuel availability to keep the city running. The contracts provide stable pricing and supply.',
+          npcReasoning: 'System reliability and guaranteed supply',
           timestamp: Date.now()
         },
         {
@@ -740,8 +740,8 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 2,
           sustainableOption: NPCOptions[3].sustainable,
           unsustainableOption: NPCOptions[3].unsustainable,
-          npcOpinion: 'I recommend the Biofuel Cooperative. It creates local jobs and reduces our carbon footprint. The diesel contracts might be cheaper upfront, but they lock us into fossil fuel dependency. We need to invest in sustainable alternatives now, even if it costs more initially.',
-          npcReasoning: 'Local economic development and sustainability',
+          npcOpinion: 'I recommend the Local Solar Microgrids. They reduce carbon emissions and create energy independence. The gas power hub might be more reliable, but it locks us into fossil fuel dependency. We need to invest in renewable energy now for a sustainable future.',
+          npcReasoning: 'Environmental sustainability and energy independence',
           timestamp: Date.now()
         },
         {
@@ -751,8 +751,8 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 2,
           sustainableOption: NPCOptions[4].sustainable,
           unsustainableOption: NPCOptions[4].unsustainable,
-          npcOpinion: 'I recommend the Urban Agriculture Zones. They create community spaces and improve food security. The industrial expansion might bring more tax revenue, but it eliminates green spaces and increases pollution. We need to balance economic growth with community wellbeing.',
-          npcReasoning: 'Community wellbeing and food security',
+          npcOpinion: 'I recommend the Public Shared Reservoir. Water is a basic human right that shouldn\'t be privatized. The tiered contracts might encourage conservation, but they could create water poverty for low-income families. Equal access ensures no one goes thirsty.',
+          npcReasoning: 'Water justice and equal access',
           timestamp: Date.now()
         },
         {
@@ -762,8 +762,8 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 2,
           sustainableOption: NPCOptions[5].sustainable,
           unsustainableOption: NPCOptions[5].unsustainable,
-          npcOpinion: 'I recommend the Public Shared Reservoir. Water is a basic human right that shouldn\'t be privatized. The tiered contracts might encourage conservation, but they could create water poverty for low-income families. Equal access ensures no one goes thirsty.',
-          npcReasoning: 'Water justice and equal access',
+          npcOpinion: 'I recommend the Constructed Wetlands. While they take longer to purify water, they work with nature rather than against it. The chemical tanks might be faster, but they introduce toxins that could harm the ecosystem for generations. We need to think long-term about our water quality.',
+          npcReasoning: 'Environmental sustainability and long-term ecosystem health',
           timestamp: Date.now()
         },
         {
