@@ -8,10 +8,15 @@ interface TypewriterEndingProps {
 
 export default function TypewriterEnding({ endingType, onComplete }: TypewriterEndingProps) {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
-  const [currentText, setCurrentText] = useState('');
-  const [isTyping, setIsTyping] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
   const [showContinueButton, setShowContinueButton] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Sound effect durations in milliseconds (exact from audio files)
+  const soundDurations = {
+    good: [16196, 18442, 16274, 3004], // good_ending_1.mp3 (16.2s), good_ending_2.mp3 (18.4s), good_ending_3.mp3 (16.3s), good_ending_4.mp3 (3.0s)
+    bad: [11886, 16431, 10762] // bad_ending_1.mp3 (11.9s), bad_ending_2.mp3 (16.4s), bad_ending_3.mp3 (10.8s)
+  };
 
   // Get the appropriate ending messages based on ending type
   const getEndingMessages = useCallback(() => {
@@ -25,83 +30,66 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
 
   const messages = useMemo(() => getEndingMessages(), [getEndingMessages]);
   const currentMessage = messages[currentMessageIndex];
+  const currentDurations = soundDurations[endingType];
   
   console.log('TypewriterEnding Debug:', {
     endingType,
     messagesCount: messages.length,
     currentMessageIndex,
     currentMessage: currentMessage?.text,
-    currentText,
-    isTyping
+    isVisible
   });
 
+  // Play sound effect for current message
   useEffect(() => {
-    if (!currentMessage) {
-      console.log('No current message available');
-      return;
+    if (!currentMessage) return;
+
+    const soundIndex = currentMessageIndex;
+    const soundFile = `${endingType}_ending_${soundIndex + 1}.mp3`;
+    
+    // Stop any currently playing audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
     }
+    
+    // Create and play audio
+    audioRef.current = new Audio(`/assets/sound_effects/${soundFile}`);
+    audioRef.current.loop = false; // Ensure no looping
+    audioRef.current.play().catch(err => {
+      console.log('Audio play failed:', err);
+    });
 
-    console.log('Starting typewriter effect for message:', currentMessage.text);
-    let index = 0;
-    const typeSpeed = 40; // Slow but steady speed
-    let isActive = true; 
+    // Fade in the message
+    setIsVisible(true);
 
-    const typeText = () => {
-      if (!isActive) return;
-      
-      if (index < currentMessage.text.length) {
-        const newText = currentMessage.text.slice(0, index + 1);
-        setCurrentText(newText);
-        console.log('Typing:', newText);
-        index++;
-        setTimeout(typeText, typeSpeed);
-      } else {
-        setIsTyping(false);
-        console.log('Finished typing message');
-        // Wait a bit before showing continue button or moving to next message
-        setTimeout(() => {
-          if (isActive && currentMessageIndex < messages.length - 1) {
-            // Add a 2-second delay before starting the next message
-            setTimeout(() => {
-              if (isActive) {
-                setCurrentMessageIndex(prev => prev + 1);
-                setCurrentText('');
-                setIsTyping(true);
-              }
-            }, 2000); // 2 second delay between messages
-          } else if (isActive) {
-            setShowContinueButton(true);
-          }
-        }, 1000);
-      }
-    };
-
-    // Add a timeout to prevent getting stuck
+    // Set timeout based on sound duration
+    const duration = currentDurations[soundIndex] || 5000;
     const timeoutId = setTimeout(() => {
-      if (isActive) {
-        console.log('Typewriter timeout - showing full message');
-        setCurrentText(currentMessage.text);
-        setIsTyping(false);
-      }
-    }, 5000); // 5 second timeout
-
-    typeText();
+      setIsVisible(false);
+      
+      // Wait for fade out, then move to next message or show continue button
+      setTimeout(() => {
+        if (currentMessageIndex < messages.length - 1) {
+          setCurrentMessageIndex(prev => prev + 1);
+        } else {
+          setShowContinueButton(true);
+        }
+      }, 500); // 500ms fade out duration
+    }, duration);
 
     return () => {
-      isActive = false;
       clearTimeout(timeoutId);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
     };
-  }, [currentMessageIndex, currentMessage?.text]); // Only depend on the text content, not the entire message object
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [currentText]);
+  }, [currentMessageIndex, endingType, messages.length, currentDurations]); 
 
   const handleContinue = () => {
     if (currentMessageIndex < messages.length - 1) {
       setCurrentMessageIndex(prev => prev + 1);
-      setCurrentText('');
-      setIsTyping(true);
       setShowContinueButton(false);
     } else {
       onComplete();
@@ -130,11 +118,9 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
 
       {/* Dialogue Overlay - Bottom */}
       <div className="dialogue-overlay">
-        <div className="dialogue-content">
-          {currentText || currentMessage?.text || 'Loading message...'}
-          {isTyping && <span className="cursor">|</span>}
+        <div className={`dialogue-content ${isVisible ? 'fade-in' : 'fade-out'}`}>
+          {currentMessage?.text || 'Loading message...'}
         </div>
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Continue Button - Top Right */}
@@ -189,17 +175,16 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
           max-width: clamp(400px, 80vw, 800px);
           margin: 0 auto;
           text-align: left;
+          opacity: 0;
+          transition: opacity 0.5s ease-in-out;
         }
 
-        .cursor {
-          color: #3b82f6;
-          font-weight: bold;
-          animation: blink 1s infinite;
+        .dialogue-content.fade-in {
+          opacity: 1;
         }
 
-        @keyframes blink {
-          0%, 50% { opacity: 1; }
-          51%, 100% { opacity: 0; }
+        .dialogue-content.fade-out {
+          opacity: 0;
         }
 
         .continue-section {
