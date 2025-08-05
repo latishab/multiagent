@@ -60,14 +60,12 @@ export default function GuideDialog({
 
         // State A: First time ever opening the dialog
         if (round === 1 && existingMessages.length === 0) {
-          console.log('📖 History is empty. Initializing Round 1.');
           const initialMessages = narrativesToMessages(getInitialGuideMessages());
           
           // Add to the messages to be displayed
           messagesToDisplay.push(...initialMessages);
           needsDBUpdate = true;
         
-        // ✅ NEW: State B - Player has completed Round 2, start the Decision Phase
         // We check this condition BEFORE checking for the start of Round 2.
         } else if (round === 2 && spokenNPCs.round2.size >= 6) {
           const decisionPhaseMessages = narrativesToMessages(getDecisionPhaseMessages());
@@ -78,7 +76,6 @@ export default function GuideDialog({
           );
 
           if (!initialDecisionMessageAlreadyExists) {
-            console.log('📖 Injecting messages for the Decision Phase.');
             messagesToDisplay.push(...decisionPhaseMessages);
             needsDBUpdate = true;
           }
@@ -94,7 +91,6 @@ export default function GuideDialog({
           );
 
           if (!initialRound2MessageAlreadyExists) {
-            console.log('📖 Injecting initial messages for Round 2.');
             messagesToDisplay.push(...round2IntroMessages);
             needsDBUpdate = true;
           }
@@ -126,7 +122,6 @@ export default function GuideDialog({
         
         // If we have new messages to add, display them one by one with delays
         if (needsDBUpdate && newMessages.length > 0) {
-          console.log('📝 Displaying new messages one by one...');
           let currentMessages = existingMessages;
           
           for (let i = 0; i < newMessages.length; i++) {

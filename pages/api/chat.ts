@@ -163,11 +163,11 @@ async function analyzeGuideConversation(
     };
   } else if (round === 1 && !round1Complete) {
     return {
-      response: "I understand you'd like to chat, but I need you to focus on your mission first. Please speak with all 6 specialists to learn about their systems and the available options. Once you've consulted everyone, I'll be here to help you advance to the next phase."
+      response: "Perfect! I can see you're ready to begin your mission. The 6 specialists are waiting for you throughout the facility. Each one will teach you about their system and the available options. Once you've learned from all of them, come back and I'll help you move to the next phase. Good luck!"
     };
   } else {
     return {
-      response: "Welcome! I'm Michael, your guide for this recovery mission. Before we can proceed, I need you to consult with all 6 specialists in the facility. They'll teach you about their systems and the options available. Once you've spoken with everyone, come back and I'll help you move forward."
+      response: "Welcome! I'm Michael, your guide for this recovery mission. You'll need to consult with all 6 specialists in the facility to learn about their systems and the available options. Each specialist has valuable knowledge that will help you make informed decisions. Once you've spoken with everyone, come back and I'll help you move forward. You can start by approaching any of the specialists you see in the facility."
     };
   }
 }

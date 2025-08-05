@@ -128,7 +128,7 @@ export const guideNarratives: GuideNarrative[] = [
     text: "This isn't just the end of a city. It's the consequence of choices made when we had a chance to change course, and didn't. Thank you for trying.",
     context: 'completion',
     phase: 'final'
-  }
+  },
 ];
 
 export function getGuideNarratives(context: GuideNarrative['context'], phase: GuideNarrative['phase']): GuideNarrative[] {

@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { getCompletionMessages, narrativesToMessages } from '../utils/guideNarratives';
 
 interface TypewriterEndingProps {
-  endingType: 'good' | 'bad' | 'medium';
+  endingType: 'good' | 'bad';
   onComplete: () => void;
 }
 
@@ -14,68 +14,84 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Get the appropriate ending messages based on ending type
-  const getEndingMessages = () => {
+  const getEndingMessages = useCallback(() => {
     const completionMessages = getCompletionMessages();
     if (endingType === 'good') {
       return completionMessages.filter(msg => msg.id.startsWith('good_ending'));
-    } else if (endingType === 'bad') {
-      return completionMessages.filter(msg => msg.id.startsWith('bad_ending'));
     } else {
-      // For medium ending, we'll create a custom message
-      return [
-        {
-          id: 'medium_ending_1',
-          text: "You've taken a balanced approach to the recovery mission. Some systems will thrive while others may struggle. The facility's future remains uncertain, but you've shown that compromise is possible even in the most challenging circumstances.",
-          context: 'completion' as const,
-          phase: 'final' as const
-        },
-        {
-          id: 'medium_ending_2',
-          text: "Your choices reflect the complexity of rebuilding after centuries of neglect. Not every system can be optimized, and sometimes the best we can do is find a middle ground that prevents total collapse while acknowledging our limitations.",
-          context: 'completion' as const,
-          phase: 'final' as const
-        },
-        {
-          id: 'medium_ending_3',
-          text: "The path forward will be challenging, but you've given us a chance. Thank you for your efforts, Commander. The work continues.",
-          context: 'completion' as const,
-          phase: 'final' as const
-        }
-      ];
+      return completionMessages.filter(msg => msg.id.startsWith('bad_ending'));
     }
-  };
+  }, [endingType]);
 
-  const messages = getEndingMessages();
+  const messages = useMemo(() => getEndingMessages(), [getEndingMessages]);
   const currentMessage = messages[currentMessageIndex];
+  
+  console.log('TypewriterEnding Debug:', {
+    endingType,
+    messagesCount: messages.length,
+    currentMessageIndex,
+    currentMessage: currentMessage?.text,
+    currentText,
+    isTyping
+  });
 
   useEffect(() => {
-    if (!currentMessage) return;
+    if (!currentMessage) {
+      console.log('No current message available');
+      return;
+    }
 
+    console.log('Starting typewriter effect for message:', currentMessage.text);
     let index = 0;
-    const typeSpeed = 30; // milliseconds per character
+    const typeSpeed = 40; // Slow but steady speed
+    let isActive = true; 
 
     const typeText = () => {
+      if (!isActive) return;
+      
       if (index < currentMessage.text.length) {
-        setCurrentText(currentMessage.text.slice(0, index + 1));
+        const newText = currentMessage.text.slice(0, index + 1);
+        setCurrentText(newText);
+        console.log('Typing:', newText);
         index++;
         setTimeout(typeText, typeSpeed);
       } else {
         setIsTyping(false);
+        console.log('Finished typing message');
         // Wait a bit before showing continue button or moving to next message
         setTimeout(() => {
-          if (currentMessageIndex < messages.length - 1) {
-            setCurrentMessageIndex(prev => prev + 1);
-            setCurrentText('');
-            setIsTyping(true);
-          } else {
+          if (isActive && currentMessageIndex < messages.length - 1) {
+            // Add a 2-second delay before starting the next message
+            setTimeout(() => {
+              if (isActive) {
+                setCurrentMessageIndex(prev => prev + 1);
+                setCurrentText('');
+                setIsTyping(true);
+              }
+            }, 2000); // 2 second delay between messages
+          } else if (isActive) {
             setShowContinueButton(true);
           }
         }, 1000);
       }
     };
 
+    // Add a timeout to prevent getting stuck
+    const timeoutId = setTimeout(() => {
+      if (isActive) {
+        console.log('Typewriter timeout - showing full message');
+        setCurrentText(currentMessage.text);
+        setIsTyping(false);
+      }
+    }, 5000); // 5 second timeout
+
     typeText();
-  }, [currentMessageIndex, currentMessage, messages.length]);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timeoutId);
+    };
+  }, [currentMessageIndex, currentMessage?.text]); // Only depend on the text content, not the entire message object
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -98,8 +114,6 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
         return 'Good Ending';
       case 'bad':
         return 'Bad Ending';
-      case 'medium':
-        return 'Neutral Ending';
       default:
         return '';
     }
@@ -107,38 +121,30 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
 
   return (
     <div className="typewriter-ending">
-      <div className="ending-container">
-        <div className="ending-header">
-          <div className="michael-profile">
-            <img 
-              src="/assets/characters/tourguide.png" 
-              alt="Michael" 
-              className="michael-avatar"
-            />
-            <div className="michael-info">
-              <h3 className="michael-name">Michael</h3>
-              <span className="michael-title">Global Recovery Authority</span>
-            </div>
-          </div>
-          <h1 className="ending-title">{getEndingTitle()}</h1>
-        </div>
+      {/* Ending Image - Full Screen */}
+      <img 
+        src={`/assets/Engding/${endingType === 'good' ? 'good ending.jpg' : 'bad ending.jpg'}`}
+        alt="Ending Scene"
+        className="ending-image"
+      />
 
-        <div className="message-container">
-          <div className="message-content">
-            {currentText}
-            {isTyping && <span className="cursor">|</span>}
-          </div>
-          <div ref={messagesEndRef} />
+      {/* Dialogue Overlay - Bottom */}
+      <div className="dialogue-overlay">
+        <div className="dialogue-content">
+          {currentText || currentMessage?.text || 'Loading message...'}
+          {isTyping && <span className="cursor">|</span>}
         </div>
-
-        {showContinueButton && (
-          <div className="continue-section">
-            <button className="continue-button" onClick={handleContinue}>
-              {currentMessageIndex < messages.length - 1 ? 'Continue' : 'Return to Menu'}
-            </button>
-          </div>
-        )}
+        <div ref={messagesEndRef} />
       </div>
+
+      {/* Continue Button - Top Right */}
+      {showContinueButton && (
+        <div className="continue-section">
+          <button className="continue-button" onClick={handleContinue}>
+            {currentMessageIndex < messages.length - 1 ? 'Continue' : 'Return to Menu'}
+          </button>
+        </div>
+      )}
 
       <style jsx>{`
         .typewriter-ending {
@@ -147,96 +153,42 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
           left: 0;
           width: 100vw;
           height: 100vh;
-          background: linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(31, 41, 55, 0.95));
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          background: #000000;
           z-index: 10000;
-          padding: clamp(1rem, 4vw, 2rem);
+          overflow: hidden;
         }
 
-        .ending-container {
-          background: rgba(17, 24, 39, 0.95);
-          border: 2px solid #374151;
-          border-radius: 16px;
-          padding: clamp(1.5rem, 4vw, 3rem);
-          max-width: clamp(400px, 80vw, 800px);
+        .ending-image {
           width: 100%;
-          max-height: clamp(300px, 70vh, 600px);
-          display: flex;
-          flex-direction: column;
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-          backdrop-filter: blur(8px);
+          height: 100%;
+          object-fit: contain;
+          object-position: center;
+          max-height: 80vh;
+          padding-top: clamp(2rem, 6vw, 4rem);
         }
 
-        .ending-header {
-          text-align: center;
-          margin-bottom: clamp(1.5rem, 4vw, 2.5rem);
-        }
-
-        .michael-profile {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: clamp(0.75rem, 2vw, 1rem);
-          margin-bottom: clamp(1rem, 3vw, 1.5rem);
-        }
-
-        .michael-avatar {
-          width: clamp(3rem, 8vw, 4rem);
-          height: clamp(3rem, 8vw, 4rem);
-          border-radius: 50%;
-          object-fit: cover;
-          object-position: center top;
-          border: 2px solid #374151;
-        }
-
-        .michael-info {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 0.25rem;
-        }
-
-        .michael-name {
-          color: #3b82f6;
-          font-size: clamp(1rem, 3vw, 1.25rem);
-          font-weight: bold;
-          margin: 0;
-        }
-
-        .michael-title {
-          color: #9ca3af;
-          font-size: clamp(0.75rem, 2vw, 0.875rem);
-          font-style: italic;
-        }
-
-        .ending-title {
-          color: #f9fafb;
-          font-size: clamp(1.5rem, 5vw, 2.5rem);
-          font-weight: bold;
-          margin: 0;
-          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-        }
-
-        .message-container {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          min-height: clamp(120px, 30vh, 200px);
-        }
-
-        .message-content {
-          color: #e5e7eb;
+        .dialogue-overlay {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: rgba(0, 0, 0, 0.8);
+          padding: clamp(1rem, 4vw, 2rem);
+          color: white;
           font-size: clamp(1rem, 3vw, 1.25rem);
           line-height: 1.6;
-          text-align: center;
-          padding: clamp(1rem, 3vw, 1.5rem);
-          background: rgba(31, 41, 55, 0.5);
-          border-radius: 12px;
-          border: 1px solid #374151;
-          position: relative;
+          text-align: left;
+          display: flex;
+          flex-direction: column;
+          justify-content: flex-start;
+          height: clamp(120px, 25vh, 200px);
+          overflow-y: auto;
+        }
+
+        .dialogue-content {
+          max-width: clamp(400px, 80vw, 800px);
+          margin: 0 auto;
+          text-align: left;
         }
 
         .cursor {
@@ -251,25 +203,24 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
         }
 
         .continue-section {
-          display: flex;
-          justify-content: center;
-          margin-top: clamp(1rem, 3vw, 1.5rem);
+          position: absolute;
+          top: clamp(1rem, 4vw, 2rem);
+          right: clamp(1rem, 4vw, 2rem);
         }
 
         .continue-button {
           background: linear-gradient(135deg, #2563eb, #1d4ed8);
           color: white !important;
           border: none;
-          padding: clamp(1rem, 3vw, 1.5rem) clamp(2rem, 6vw, 3rem);
-          font-size: clamp(1rem, 2.5vw, 1.125rem);
+          padding: clamp(0.75rem, 2vw, 1rem) clamp(1.5rem, 4vw, 2rem);
+          font-size: clamp(0.875rem, 2vw, 1rem);
           font-weight: bold;
-          border-radius: 16px;
+          border-radius: 12px;
           cursor: pointer;
           transition: all 0.3s ease;
           box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
           text-transform: uppercase;
           letter-spacing: 1px;
-          min-width: clamp(120px, 25vw, 200px);
         }
 
         .continue-button:hover {
@@ -284,36 +235,17 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
         }
 
         @media (max-width: 768px) {
-          .ending-container {
-            margin: 1rem;
-            padding: 1.5rem;
+          .dialogue-overlay {
+            padding: 1rem;
           }
 
-          .michael-profile {
-            flex-direction: column;
-            text-align: center;
+          .dialogue-content {
+            font-size: clamp(0.875rem, 2.5vw, 1rem);
           }
 
-          .michael-info {
-            align-items: center;
-          }
-
-          .message-content {
-            text-align: left;
-          }
-        }
-
-        @media (max-height: 600px) {
-          .ending-container {
-            max-height: 90vh;
-          }
-
-          .ending-header {
-            margin-bottom: 1rem;
-          }
-
-          .message-container {
-            min-height: 100px;
+          .continue-button {
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
           }
         }
       `}</style>

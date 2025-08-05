@@ -117,7 +117,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   // Track final decisions for ending calculation
   const [finalDecisions, setFinalDecisions] = useState<{ [npcId: number]: 'sustainable' | 'unsustainable' }>({});
   const [showEnding, setShowEnding] = useState(false);
-  const [endingType, setEndingType] = useState<'good' | 'bad' | 'medium' | null>(null);
+  const [endingType, setEndingType] = useState<'good' | 'bad' | null>(null);
   const [showPDA, setShowPDA] = useState(false);
   const [showDecisionMode, setShowDecisionMode] = useState(false);
   const [pdaNotification, setPdaNotification] = useState(false);
@@ -389,10 +389,8 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     
     console.log('Calculating ending:', { sustainableCount, unsustainableCount, finalDecisions });
     
-    let ending: 'good' | 'bad' | 'medium';
-    if (sustainableCount === unsustainableCount) {
-      ending = 'medium';
-    } else if (sustainableCount > unsustainableCount) {
+    let ending: 'good' | 'bad';
+    if (sustainableCount >= 5) {
       ending = 'good';
     } else {
       ending = 'bad';

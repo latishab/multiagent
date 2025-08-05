@@ -3,7 +3,7 @@ import TypewriterEnding from './TypewriterEnding'
 
 interface EndingOverlayProps {
   isVisible: boolean;
-  endingType: 'good' | 'bad' | 'medium' | null;
+  endingType: 'good' | 'bad' | null;
   onClose: () => void;
 }
 
