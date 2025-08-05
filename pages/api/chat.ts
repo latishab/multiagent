@@ -146,127 +146,29 @@ async function analyzeGuideConversation(
   const round1Complete = spokenNPCs.round1.length === 6;
   const round2Complete = spokenNPCs.round2.length === 6;
   
-  // Create context for LLM analysis
-  const context = {
-    currentRound: round,
-    round1Complete,
-    round2Complete,
-    round1Progress: spokenNPCs.round1.length,
-    round2Progress: spokenNPCs.round2.length,
-    playerMessage: message,
-    conversationLength: conversationHistory.length
-  };
-  
-  // Use LLM to analyze the conversation and determine appropriate response
-  const analysisPrompt = `You are The Guide, a helpful coordinator for a city reconstruction project. Analyze this conversation context and provide an appropriate response.
-
-Context:
-- Current round: ${round}
-- Round 1 progress: ${spokenNPCs.round1.length}/6 specialists consulted
-- Round 2 progress: ${spokenNPCs.round2.length}/6 specialists consulted
-- Round 1 complete: ${round1Complete}
-- Round 2 complete: ${round2Complete}
-- Player message: "${message}"
-- Conversation length: ${conversationHistory.length} messages
-
-Your role:
-- Be helpful and encouraging
-- Respond naturally to acknowledgments (okay, yes, got it, etc.)
-- Only advance to Round 2 if Round 1 is complete AND player seems ready
-- Only open PDA decision mode if Round 2 is complete AND player seems ready
-- Encourage continued learning if rounds are not complete
-- Keep responses concise and natural
-
-Respond with a JSON object containing:
-{
-  "response": "Your natural response to the player",
-  "shouldAdvanceRound": true/false (only if Round 1 complete and appropriate),
-  "shouldOpenPDA": true/false (only if Round 2 complete and appropriate)
-}`;
-
-  try {
-    const response = await fetch('https://api.deepinfra.com/v1/openai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.DEEPINFRA_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are The Guide, a helpful and encouraging coordinator. Respond naturally and analyze conversation context to determine appropriate game progression.'
-          },
-          {
-            role: 'user',
-            content: analysisPrompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 200,
-        top_p: 1,
-        frequency_penalty: 0.5,
-        presence_penalty: 0.5
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to analyze conversation');
-    }
-
-    const data = await response.json();
-    const analysis = data.choices?.[0]?.message?.content;
-    
-    if (!analysis) {
-      throw new Error('Invalid analysis response');
-    }
-
-    // Parse the JSON response (handle markdown formatting)
-    let cleanAnalysis = analysis.trim();
-    
-    // Remove markdown code blocks if present
-    if (cleanAnalysis.startsWith('```json')) {
-      cleanAnalysis = cleanAnalysis.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-    } else if (cleanAnalysis.startsWith('```')) {
-      cleanAnalysis = cleanAnalysis.replace(/^```\s*/, '').replace(/\s*```$/, '');
-    }
-    
-    const result = JSON.parse(cleanAnalysis);
-    
+  // Simple fallback-based responses
+  if (round === 1 && round1Complete) {
     return {
-      response: result.response,
-      shouldAdvanceRound: result.shouldAdvanceRound || false,
-      shouldOpenPDA: result.shouldOpenPDA || false
+      response: "Great! You've learned about all the systems. Now let's move to Round 2 where you'll discover what each specialist thinks about their options.",
+      shouldAdvanceRound: true
     };
-    
-  } catch (error) {
-    console.error('Error analyzing conversation:', error);
-    
-    // Fallback response
-    if (round === 1 && round1Complete) {
-      return {
-        response: "Great! You've learned about all the systems. Now let's move to Round 2 where you'll discover what each specialist thinks about their options.",
-        shouldAdvanceRound: true
-      };
-    } else if (round === 2 && round2Complete) {
-      return {
-        response: "Perfect! You've gathered all the information you need. Now it's time to make your final decisions. Check your PDA to review all systems and make your choices.",
-        shouldOpenPDA: true
-      };
-    } else if (round === 2 && !round2Complete) {
-      return {
-        response: "You're making good progress! Continue talking to the specialists to get their recommendations. You need to consult all 6 specialists before making final decisions."
-      };
-    } else if (round === 1 && !round1Complete) {
-      return {
-        response: "Keep talking to the specialists to learn about their systems and the available options. Make sure to speak with all 6 specialists before returning to me."
-      };
-    } else {
-      return {
-        response: "Hello! I'm The Guide. I'm here to help you navigate the city's development challenges. Talk to the specialists to learn about their systems and options."
-      };
-    }
+  } else if (round === 2 && round2Complete) {
+    return {
+      response: "Perfect! You've gathered all the information you need. Now it's time to make your final decisions. Check your PDA to review all systems and make your choices.",
+      shouldOpenPDA: true
+    };
+  } else if (round === 2 && !round2Complete) {
+    return {
+      response: "You're making good progress in Round 2! Continue talking to the specialists to get their recommendations. You need to consult all 6 specialists before making final decisions."
+    };
+  } else if (round === 1 && !round1Complete) {
+    return {
+      response: "I understand you'd like to chat, but I need you to focus on your mission first. Please speak with all 6 specialists to learn about their systems and the available options. Once you've consulted everyone, I'll be here to help you advance to the next phase."
+    };
+  } else {
+    return {
+      response: "Welcome! I'm Michael, your guide for this recovery mission. Before we can proceed, I need you to consult with all 6 specialists in the facility. They'll teach you about their systems and the options available. Once you've spoken with everyone, come back and I'll help you move forward."
+    };
   }
 }
 

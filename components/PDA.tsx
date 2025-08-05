@@ -131,17 +131,17 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                                 <h4>Available Options:</h4>
                                 <div className="options-grid">
                                   <div className="option sustainable">
-                                    <span className="option-icon">🌱</span>
+                                    <span className="option-icon">📋</span>
                                     <div className="option-info">
-                                      <strong>Sustainable:</strong>
+                                      <strong>Proposal A:</strong>
                                       <p>{NPCOptions[npcId].sustainable}</p>
                                       <p className="option-description">{OptionDescriptions[npcId].sustainable}</p>
                                     </div>
                                   </div>
                                   <div className="option unsustainable">
-                                    <span className="option-icon">💰</span>
+                                    <span className="option-icon">📄</span>
                                     <div className="option-info">
-                                      <strong>Economic:</strong>
+                                      <strong>Proposal B:</strong>
                                       <p>{NPCOptions[npcId].unsustainable}</p>
                                       <p className="option-description">{OptionDescriptions[npcId].unsustainable}</p>
                                     </div>
@@ -230,9 +230,9 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                                 onClick={() => handleDecision(npcId, 'sustainable')}
                                 disabled={isSystemComplete(npcId)}
                               >
-                                <span className="option-icon">🌱</span>
+                                <span className="option-icon">📋</span>
                                 <div className="option-content">
-                                  <h4>Sustainable</h4>
+                                  <h4>Proposal A</h4>
                                   <p>{NPCOptions[npcId].sustainable}</p>
                                 </div>
                               </button>
@@ -242,9 +242,9 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                                 onClick={() => handleDecision(npcId, 'unsustainable')}
                                 disabled={isSystemComplete(npcId)}
                               >
-                                <span className="option-icon">💰</span>
+                                <span className="option-icon">📄</span>
                                 <div className="option-content">
-                                  <h4>Economic</h4>
+                                  <h4>Proposal B</h4>
                                   <p>{NPCOptions[npcId].unsustainable}</p>
                                 </div>
                               </button>
