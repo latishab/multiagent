@@ -101,9 +101,10 @@ export default function GuideDialog({
         }
 
         // --- 3. Update the database if new messages were added ---
+        let newMessages: Message[] = [];
         if (needsDBUpdate) {
           // We only need to store the newly added messages
-          const newMessages = messagesToDisplay.slice(existingMessages.length);
+          newMessages = messagesToDisplay.slice(existingMessages.length);
 
           for (const msg of newMessages) {
             await fetch('/api/store-message', {
@@ -122,7 +123,20 @@ export default function GuideDialog({
 
         // --- 4. Set the final state for the UI ---
         console.log('🔍 Final messages to display:', messagesToDisplay);
-        setMessages(messagesToDisplay);
+        
+        // If we have new messages to add, display them one by one with delays
+        if (needsDBUpdate && newMessages.length > 0) {
+          console.log('📝 Displaying new messages one by one...');
+          let currentMessages = existingMessages;
+          
+          for (let i = 0; i < newMessages.length; i++) {
+            await new Promise(resolve => setTimeout(resolve, 800)); // Delay between messages
+            currentMessages = [...currentMessages, newMessages[i]];
+            setMessages(currentMessages);
+          }
+        } else {
+          setMessages(messagesToDisplay);
+        }
 
       } catch (error) {
         console.error('Error loading guide conversation history:', error);

@@ -728,20 +728,26 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
         }
 
         .complete-button {
-          padding: 1rem 2rem;
-          background: #10b981;
-          color: white;
+          background: linear-gradient(135deg, #2563eb, #1d4ed8);
+          color: white !important;
           border: none;
-          border-radius: 8px;
-          font-size: 1.1rem;
+          padding: clamp(1rem, 3vw, 1.5rem) clamp(2rem, 6vw, 3rem);
+          font-size: clamp(1rem, 2.5vw, 1.125rem);
           font-weight: bold;
+          border-radius: 16px;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          min-width: clamp(200px, 30vw, 300px);
         }
 
         .complete-button:hover {
-          background: #059669;
+          background: linear-gradient(135deg, #1d4ed8, #1e40af);
           transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+          color: white !important;
         }
 
         /* Empty State Styles */
