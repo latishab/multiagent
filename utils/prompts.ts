@@ -1,3 +1,5 @@
+import { NPCNames, NPCSystems, NPCOptions } from './npcData';
+
 export interface NPCInfo {
   name: string;
   career: string;
@@ -14,87 +16,87 @@ export interface NPCInfo {
 export const NPCData: { [key: number]: NPCInfo } = {
   // Main NPC (The Guide) - uses ID -1
   [-1]: {
-    name: 'The Guide',
+    name: NPCNames[-1],
     career: 'City Coordinator',
-    system: 'City Planning',
+    system: NPCOptions[-1].system,
     personality: 'Wise, helpful, guiding',
     communicationStyle: 'Clear, encouraging, provides guidance and context for the player\'s mission.',
     workPhilosophy: 'Balanced development that considers both sustainability and economic viability.',
     options: {
-      sustainable: 'Sustainable Development',
-      unsustainable: 'Economic Development'
+      sustainable: NPCOptions[-1].sustainable,
+      unsustainable: NPCOptions[-1].unsustainable
     }
   },
   1: {
-    name: 'Mrs. Aria',
+    name: NPCNames[1],
     career: 'Retired Ecologist',
-    system: 'Water Cycle',
+    system: NPCSystems[1],
     personality: 'Quiet, philosophical',
     communicationStyle: 'Slow, gentle, referring to natural laws and ecological cases, likes describing her previous experience.',
     workPhilosophy: 'System view and ecological restoration priority. Infrastructure should work with nature, not against it.',
     options: {
-      sustainable: 'Constructed Wetlands',
-      unsustainable: 'Chemical Filtration Tanks'
+      sustainable: NPCOptions[1].sustainable,
+      unsustainable: NPCOptions[1].unsustainable
     }
   },
   2: {
-    name: 'Chief Oskar',
+    name: NPCNames[2],
     career: 'Infrastructure Engineer',
-    system: 'Energy Grid',
+    system: NPCSystems[2],
     personality: 'Calm, efficient, technically oriented',
     communicationStyle: 'Concise, efficient, slightly impatient, often speaks in terms of data.',
     workPhilosophy: 'Prioritize stability and system safety over idealism.',
     options: {
-      sustainable: 'Local Solar Microgrids',
-      unsustainable: 'Gas Power Hub'
+      sustainable: NPCOptions[2].sustainable,
+      unsustainable: NPCOptions[2].unsustainable
     }
   },
   3: {
-    name: 'Mr. Moss',
+    name: NPCNames[3],
     career: 'Fuel Supplier',
-    system: 'Fuel Acquisition',
+    system: NPCSystems[3],
     personality: 'Market sensitive, pragmatic, smart',
     communicationStyle: 'Enthusiastic, with a bit of salesmanship. Good use of analogies and risk language.',
     workPhilosophy: 'Supply chain efficiency and cost control. Focused on closing the deal today.',
     options: {
-      sustainable: 'Biofuel Cooperative',
-      unsustainable: 'Diesel Supply Contracts'
+      sustainable: NPCOptions[3].sustainable,
+      unsustainable: NPCOptions[3].unsustainable
     }
   },
   4: {
-    name: 'Miss Dai',
+    name: NPCNames[4],
     career: 'Volunteer Teacher',
-    system: 'Land Use',
+    system: NPCSystems[4],
     personality: 'Idealistic, caring, inspiring',
     communicationStyle: 'Sincere, warm, emotional. Focuses on people and life stories.',
     workPhilosophy: 'Human-centered. Cares about the meaning of life behind the land rather than economic output.',
     options: {
-      sustainable: 'Urban Agriculture Zones',
-      unsustainable: 'Industrial Expansion'
+      sustainable: NPCOptions[4].sustainable,
+      unsustainable: NPCOptions[4].unsustainable
     }
   },
   5: {
-    name: 'Ms. Kira',
+    name: NPCNames[5],
     career: 'Water Distribution Manager',
-    system: 'Water Distribution',
+    system: NPCSystems[5],
     personality: 'Sharp, analytical, community-focused',
     communicationStyle: 'Fast, firm, data-driven. Cites community impact and distribution efficiency.',
     workPhilosophy: 'Efficient resource distribution and community access. Balance technical solutions with social needs.',
     options: {
-      sustainable: 'Public Shared Reservoir',
-      unsustainable: 'Tiered Access Contracts'
+      sustainable: NPCOptions[5].sustainable,
+      unsustainable: NPCOptions[5].unsustainable
     }
   },
   6: {
-    name: 'Mr. Han',
+    name: NPCNames[6],
     career: 'Builder/Constructor',
-    system: 'Housing & Shelter',
+    system: NPCSystems[6],
     personality: 'Simple, honest, pragmatic, responsible',
     communicationStyle: 'Direct, friendly, often using slang. Likes construction site analogies, emphasizes "can we do it".',
     workPhilosophy: 'Construction feasibility and maintenance realism.',
     options: {
-      sustainable: 'Modular Eco-Pods',
-      unsustainable: 'Smart Concrete Complex'
+      sustainable: NPCOptions[6].sustainable,
+      unsustainable: NPCOptions[6].unsustainable
     }
   }
 };
