@@ -248,7 +248,9 @@ export default function GuideDialog({
                       width: '100%', 
                       height: '100%', 
                       objectFit: 'cover',
-                      borderRadius: '50%'
+                      objectPosition: 'center top',
+                      borderRadius: '50%',
+                      border: '2px solid #374151'
                     }} 
                   />
                 </div>

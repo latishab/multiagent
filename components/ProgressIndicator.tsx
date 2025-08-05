@@ -146,7 +146,9 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
                     width: '24px', 
                     height: '24px', 
                     objectFit: 'cover',
-                    borderRadius: '50%'
+                    objectPosition: 'center top',
+                    borderRadius: '50%',
+                    border: '2px solid #374151'
                   }} 
                 />
                 <span className="guide-title">Michael</span>
@@ -162,7 +164,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
                     <span className="checklist-checkbox">
                       {!hasTalkedToGuide ? '☐' : '☑'}
                     </span>
-                    <span className="checklist-text">Find Michael in the city</span>
+                    <span className="checklist-text">Find Michael in the facility</span>
                   </div>
                   <div className="checklist-item">
                     <span className="checklist-checkbox">
@@ -202,7 +204,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
                         <span className="checklist-checkbox">
                           {!hasTalkedToGuide ? '☐' : '☑'}
                         </span>
-                        <span className="checklist-text">Make final decisions for the city's future</span>
+                        <span className="checklist-text">Make final decisions for the facility's future</span>
                       </div>
                     </>
                   )}

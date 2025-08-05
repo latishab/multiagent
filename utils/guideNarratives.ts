@@ -21,7 +21,7 @@ export const guideNarratives: GuideNarrative[] = [
   },
   {
     id: 'pda_intro',
-    text: "You'll go through two rounds of conversation with each expert. These discussions are crucial to shaping your final decisions. I'll be here throughout the entire process to guide you. In our conference room, you will see these 6 experts and be able to talk to them as you approach them. You can use these commands to do so. You can click hotbar slot 1 to open the PDA.",
+    text: "You'll go through two rounds of conversation with each expert. These discussions are crucial to shaping your final decisions. I'll be here throughout the entire process to guide you. In our facility, you will see these 6 experts and be able to talk to them as you approach them. You can use these commands to do so. You can click hotbar slot 1 to open the PDA.",
     context: 'pda_intro',
     phase: 'start'
   },
