@@ -7,6 +7,7 @@ export default class MainScene extends Scene {
   private map!: Phaser.Tilemaps.Tilemap
   private groundLayer!: Phaser.Tilemaps.TilemapLayer
   private levelLayer!: Phaser.Tilemaps.TilemapLayer
+  private wallLayer!: Phaser.Tilemaps.TilemapLayer
   private tilesets!: Phaser.Tilemaps.Tileset[]
   
   // Managers
@@ -92,7 +93,7 @@ export default class MainScene extends Scene {
     })
     
     // Load map and separate tilesets
-    this.load.tilemapTiledJSON('worldMap', '/assets/tilesets/map.json')
+    this.load.tilemapTiledJSON('worldMap', '/assets/tilesets/map0803.json')
     this.load.image('Low-TownA5', '/assets/tilesets/Low-TownA5.png')
     this.load.image('Mid-TownA5', '/assets/tilesets/Mid-TownA5.png')
     this.load.image('Low-TownD', '/assets/tilesets/Low-TownD.png')
@@ -132,7 +133,8 @@ export default class MainScene extends Scene {
       const player = this.playerManager.createPlayer(
         this.map.widthInPixels / 2,
         this.map.heightInPixels / 2,
-        this.levelLayer
+        this.levelLayer,
+        this.wallLayer
       )
       
       // Spawn NPCs in their designated areas
@@ -140,11 +142,12 @@ export default class MainScene extends Scene {
         this.map.widthInPixels,
         this.map.heightInPixels,
         this.levelLayer,
+        this.wallLayer,
         player
       )
       
       // Spawn main NPC
-      this.npcManager.spawnMainNPC(this.levelLayer, player)
+      this.npcManager.spawnMainNPC(this.levelLayer, this.wallLayer, player)
       
       // Setup NPC chat interaction
       this.npcManager.setInteractionCallback((npcId: string, personality: string) => {
@@ -190,11 +193,26 @@ export default class MainScene extends Scene {
       this.map.addTilesetImage('Mid-TownC', 'Mid-TownC')!
     ]
     
+    // Create layers in proper rendering order (bottom to top)
     this.groundLayer = this.map.createLayer('ground', this.tilesets, 0, 0)!
+    this.wallLayer = this.map.createLayer('wall', this.tilesets, 0, 0)!
     this.levelLayer = this.map.createLayer('item', this.tilesets, 0, 0)!
     
+    // Set up collision detection
+    // Use the wall layer for solid collision
+    this.wallLayer.setCollisionByExclusion([-1]) // Exclude empty tiles (-1) from collision
+    
+    // Also check for collision properties on the item layer
     this.levelLayer.setCollisionByProperty({ collides: true })
+    
+    // Set world bounds
     this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels)
+    
+    console.log('Map layers created:', {
+      ground: this.groundLayer,
+      item: this.levelLayer,
+      wall: this.wallLayer
+    })
   }
 
   private setupCamera() {
