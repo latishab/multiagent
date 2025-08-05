@@ -58,7 +58,7 @@ export class PlayerManager {
     })
   }
 
-  createPlayer(x: number, y: number, levelLayer: Phaser.Tilemaps.TilemapLayer) {
+  createPlayer(x: number, y: number, levelLayer: Phaser.Tilemaps.TilemapLayer, wallLayer?: Phaser.Tilemaps.TilemapLayer) {
     this.player = this.scene.physics.add.sprite(x, y, 'playerIdle', 0)
     this.player.setName('player')
     this.player.setCollideWorldBounds(true)
@@ -68,7 +68,13 @@ export class PlayerManager {
     
     this.player.play('idle-down')
     
+    // Set up collision with item layer
     this.scene.physics.add.collider(this.player, levelLayer)
+    
+    // Set up collision with wall layer if provided
+    if (wallLayer) {
+      this.scene.physics.add.collider(this.player, wallLayer)
+    }
 
     return this.player
   }
