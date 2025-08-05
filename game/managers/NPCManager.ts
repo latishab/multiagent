@@ -15,7 +15,7 @@ export class NPCManager {
     {
       id: "1",
       personality: "A retired ecologist with a deep understanding of natural systems",
-      name: "Mrs. Aria"
+      name: "Mr. Aria"
     },
     {
       id: "2",
@@ -25,12 +25,12 @@ export class NPCManager {
     {
       id: "3",
       personality: "A forward-thinking fuel supplier interested in sustainable options",
-      name: "Mr. Moss"
+      name: "Ms. Moss"
     },
     {
       id: "4",
       personality: "A passionate teacher advocating for community-focused development",
-      name: "Miss Dai"
+      name: "Mr. Dai"
     },
     {
       id: "5",
@@ -40,7 +40,7 @@ export class NPCManager {
     {
       id: "6",
       personality: "An innovative builder exploring eco-friendly construction methods",
-      name: "Mr. Han"
+      name: "Mrs. Han"
     }
   ];
 

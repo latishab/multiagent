@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { sessionManager } from '../utils/sessionManager'
 import { getInitialGuideMessages, getRoundAdvancementMessages, getDecisionPhaseMessages, GuideNarrative, narrativesToMessages } from '../utils/guideNarratives'
+import { NPCNames, NPCOptions, getNPCImage } from '../utils/npcData'
 
 interface ChatDialogProps {
   isOpen: boolean;
@@ -18,54 +19,6 @@ interface ChatDialogProps {
 interface Message {
   text: string;
   sender: 'player' | 'npc';
-}
-
-const NPCNames: { [key: number]: string } = {
-  [-1]: 'The Guide',
-  1: 'Mrs. Aria',
-  2: 'Chief Oskar',
-  3: 'Mr. Moss',
-  4: 'Miss Dai',
-  5: 'Ms. Kira',
-  6: 'Mr. Han'
-}
-
-const NPCOptions: { [key: number]: { sustainable: string; unsustainable: string; system: string } } = {
-  [-1]: { 
-    sustainable: 'Sustainable Development', 
-    unsustainable: 'Economic Growth',
-    system: 'City Planning'
-  },
-  1: { 
-    sustainable: 'Constructed Wetlands', 
-    unsustainable: 'Chemical Filtration Tanks',
-    system: 'Water Cycle'
-  },
-  2: { 
-    sustainable: 'Local Solar Microgrids', 
-    unsustainable: 'Gas Power Hub',
-    system: 'Energy Grid'
-  },
-  3: { 
-    sustainable: 'Biofuel Cooperative', 
-    unsustainable: 'Diesel Supply Contracts',
-    system: 'Fuel Acquisition'
-  },
-  4: { 
-    sustainable: 'Urban Agriculture Zones', 
-    unsustainable: 'Industrial Expansion',
-    system: 'Land Use'
-  },
-  5: { 
-    sustainable: 'Public Shared Reservoir', 
-    unsustainable: 'Tiered Access Contracts',
-    system: 'Water Distribution'
-  },
-  6: { 
-    sustainable: 'Modular Eco-Pods', 
-    unsustainable: 'Smart Concrete Complex',
-    system: 'Housing & Shelter'
-  }
 }
 
 // List of common titles that shouldn't be split
@@ -520,12 +473,12 @@ export default function ChatDialog({
                     <div className="guide-icon">👤</div>
                   ) : (
                     <img 
-                      src={`/assets/characters/${npcId}.1.png`} 
+                      src={`/assets/characters/${getNPCImage(npcId)}`} 
                       alt={`${NPCNames[npcId] || 'NPC'}`}
                       onError={(e) => {
                         // Fallback to jpeg if png doesn't exist
                         const target = e.target as HTMLImageElement;
-                        target.src = `/assets/characters/${npcId}.jpeg`;
+                        target.src = `/assets/characters/${getNPCImage(npcId)}`;
                       }}
                     />
                   )}
@@ -645,6 +598,7 @@ export default function ChatDialog({
           width: 100%;
           height: 100%;
           object-fit: cover;
+          object-position: center top;
           border-radius: 50%;
         }
 
