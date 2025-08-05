@@ -241,11 +241,20 @@ export default function GuideDialog({
             <div className="header-content">
               <div className="npc-profile">
                 <div className="profile-picture">
-                  <div className="guide-icon">👤</div>
+                  <img 
+                    src="/assets/characters/tourguide.png" 
+                    alt="Michael" 
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      objectFit: 'cover',
+                      borderRadius: '50%'
+                    }} 
+                  />
                 </div>
                 <div className="npc-info">
-                  <h2>The Guide</h2>
-                  <span className="npc-system">City Planning</span>
+                  <h2>Michael</h2>
+                  <span className="npc-system">Global Recovery Authority</span>
                 </div>
               </div>
               <button onClick={onClose} className="close-button">✕</button>

@@ -54,12 +54,12 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
   // Determine what guidance to show
   const getGuidanceMessage = () => {
     if (!hasGameStarted) {
-      return "Talk to The Guide to start your mission";
+      return "Talk to Michael to start your mission";
     }
     
     if (actualCurrentRound === 1) {
       if (round1Complete && !hasTalkedToGuide) {
-        return "Round 1 complete! Talk to The Guide to advance to Round 2";
+        return "Round 1 complete! Talk to Michael to advance to Round 2";
       } else if (round1Complete && hasTalkedToGuide) {
         return "Round 2: Talk to all specialists to get their recommendations";
       } else {
@@ -67,7 +67,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
       }
     } else if (actualCurrentRound === 2) {
       if (round2Complete && !hasTalkedToGuide) {
-        return "Round 2 complete! Talk to The Guide to make final decisions";
+        return "Round 2 complete! Talk to Michael to make final decisions";
       } else if (round2Complete && hasTalkedToGuide) {
         return "Open your PDA to review all systems and make final decisions";
       } else {
@@ -139,8 +139,17 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
           <div className="initial-state">
             <div className="guide-checklist">
               <div className="guide-header">
-                <span className="guide-icon">👤</span>
-                <span className="guide-title">The Guide</span>
+                <img 
+                  src="/assets/characters/tourguide.png" 
+                  alt="Michael" 
+                  style={{ 
+                    width: '24px', 
+                    height: '24px', 
+                    objectFit: 'cover',
+                    borderRadius: '50%'
+                  }} 
+                />
+                <span className="guide-title">Michael</span>
               </div>
               <div className="guide-mission">
                 <div className="mission-title">
@@ -153,16 +162,16 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
                     <span className="checklist-checkbox">
                       {!hasTalkedToGuide ? '☐' : '☑'}
                     </span>
-                    <span className="checklist-text">Find The Guide in the city</span>
+                    <span className="checklist-text">Find Michael in the city</span>
                   </div>
                   <div className="checklist-item">
                     <span className="checklist-checkbox">
                       {!hasTalkedToGuide ? '☐' : '☑'}
                     </span>
                     <span className="checklist-text">
-                      {!hasGameStarted ? "Talk to The Guide to understand your mission" : 
-                       round1Complete && !round2Complete ? "Talk to The Guide to advance to Round 2" :
-                       round2Complete ? "Talk to The Guide to make final decisions" : "Talk to The Guide"}
+                      {!hasGameStarted ? "Talk to Michael to understand your mission" : 
+                       round1Complete && !round2Complete ? "Talk to Michael to advance to Round 2" :
+                       round2Complete ? "Talk to Michael to make final decisions" : "Talk to Michael"}
                     </span>
                   </div>
                   {!hasGameStarted && (
@@ -171,7 +180,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
                         <span className="checklist-checkbox">
                           {!hasTalkedToGuide ? '☐' : '☑'}
                         </span>
-                        <span className="checklist-text">Learn about the 6 specialists you need to consult</span>
+                        <span className="checklist-text">Learn about the 6 experts you need to consult</span>
                       </div>
                       <div className="checklist-item">
                         <span className="checklist-checkbox">

@@ -9,39 +9,51 @@ export const guideNarratives: GuideNarrative[] = [
   // Initial greeting and introduction
   {
     id: 'initial_greeting',
-    text: "Hello! I'm The Guide. The city needs your help to make important rebuilding decisions.",
+    text: "Welcome. I'm Michael, a civic officer with the Global Recovery Authority. It's good to finally have you here. After centuries away from Earth, the time has come for us to return. Our mission is simple but urgent: to rebuild our home.",
     context: 'initial',
     phase: 'start'
   },
   {
     id: 'initial_mission',
-    text: "Talk to 6 specialists to learn about their systems and options. Come back to me when you've spoken to everyone.",
+    text: "You've been chosen to lead the recovery mission. And you're not alone. Six experts are already waiting. Each of them is responsible for a core part of the Earth's recovery. You'll need to talk to all of them. Understand the crises they face, explore their proposals, and weigh your options carefully.",
     context: 'initial',
     phase: 'start'
   },
   {
     id: 'pda_intro',
-    text: "Use your PDA (hotbar slot 1) to track what you learn. The Information tab stores your research, and Make Decisions will unlock later.",
+    text: "You'll go through two rounds of conversation with each expert. These discussions are crucial to shaping your final decisions. I'll be here throughout the entire process to guide you. In our conference room, you will see these 6 experts and be able to talk to them as you approach them. You can use these commands to do so. You can click hotbar slot 1 to open the PDA.",
     context: 'pda_intro',
+    phase: 'start'
+  },
+  {
+    id: 'initial_start',
+    text: "Let's get started. Earth is waiting.",
+    context: 'initial',
     phase: 'start'
   },
 
   // Round advancement
   {
     id: 'round_advance_1',
-    text: "Excellent work! You've spoken to all the specialists and learned about their systems.",
+    text: "Well done. You've just completed the first round of conversations. Now, you have a solid understanding of each system's current condition and the available recovery strategies.",
     context: 'round_advance',
     phase: 'round1'
   },
   {
     id: 'round_advance_2',
-    text: "Now it's time to dive deeper. Return to each specialist to learn about their specific recommendations and reasoning.",
+    text: "But choosing a final plan for each system is not a simple decision. Each choice involves difficult trade-offs: technical feasibility, financial cost, policy alignment, and long-term impact. That's why the next step is critical.",
     context: 'round_advance',
     phase: 'round1'
   },
   {
     id: 'round_advance_3',
-    text: "This is the discovery phase - focus on understanding their perspectives and the trade-offs between sustainable and economic options.",
+    text: "You'll now enter a second round of discussion with all six experts. This time, dig deeper. Ask hard questions. Challenge assumptions. Make sure you understand not just the solutions, but their consequences.",
+    context: 'round_advance',
+    phase: 'round1'
+  },
+  {
+    id: 'round_advance_4',
+    text: "Ready to continue?",
     context: 'round_advance',
     phase: 'round1'
   },
@@ -49,33 +61,71 @@ export const guideNarratives: GuideNarrative[] = [
   // Decision phase
   {
     id: 'decision_phase_1',
-    text: "Perfect! You've completed your research and now have all the information you need.",
+    text: "You've done an excellent job. You've just completed in-depth discussions with all six system leaders. These weren't easy conversations. Thanks to your effort, we now have a clearer view of the possibilities ahead.",
     context: 'decision_phase',
     phase: 'round2'
   },
   {
     id: 'decision_phase_2',
-    text: "It's time to make the final decisions for the city's future. Open your PDA and go to the Make Decisions tab.",
+    text: "But now comes the moment we've all been preparing for. It's time to make the most important decision that will shape the future of Earth's revival and human survival.",
     context: 'decision_phase',
     phase: 'round2'
   },
   {
     id: 'decision_phase_3',
-    text: "Review all the information you've collected and choose between sustainable and economic options for each system. The future of the city depends on your choices!",
+    text: "Your choices will determine how we rebuild. There are no perfect solutions, only the ones you believe in.",
+    context: 'decision_phase',
+    phase: 'round2'
+  },
+  {
+    id: 'decision_phase_4',
+    text: "Are you ready to choose the future? Click \"Continue\" to make the final decision.",
     context: 'decision_phase',
     phase: 'round2'
   },
 
-  // Completion
+  // Good ending
   {
-    id: 'completion_1',
-    text: "Congratulations! You've made all the decisions for the city's reconstruction.",
+    id: 'good_ending_1',
+    text: "Congratulations. You've made bold, thoughtful decisions and your efforts have paid off. By choosing sustainable solutions in most key systems, you've laid the foundation for a city that can thrive long into the future.",
     context: 'completion',
     phase: 'final'
   },
   {
-    id: 'completion_2',
-    text: "Your choices will shape the future of this city. Thank you for your careful consideration of all the factors involved.",
+    id: 'good_ending_2',
+    text: "The systems you rebuilt now work with nature, not against it. Water flows clean. Energy is resilient. Life is returning to the soil. For the first time in a thousand years, Earth breathes again. And it's because of your courage, your wisdom, your vision.",
+    context: 'completion',
+    phase: 'final'
+  },
+  {
+    id: 'good_ending_3',
+    text: "Of course, challenges will remain. But you've proven that human civilization can adapt and that we can still choose the right path, even at the edge of collapse. You didn't just save a city. You sparked a new beginning for Earth, and for all of us.",
+    context: 'completion',
+    phase: 'final'
+  },
+  {
+    id: 'good_ending_4',
+    text: "Thank you, Commander. Welcome home.",
+    context: 'completion',
+    phase: 'final'
+  },
+
+  // Bad ending
+  {
+    id: 'bad_ending_1',
+    text: "It's over. The final systems have collapsed. The city is no longer salvageable. Despite your efforts, the choices made didn't provide the resilience we needed. Short-term fixes gave way to long-term failures.",
+    context: 'completion',
+    phase: 'final'
+  },
+  {
+    id: 'bad_ending_2',
+    text: "The soil turned to dust. The air grew toxic. Energy faltered. Water ran out. The systems fell, one after another. We can't blame one decision. But together, they weren't enough to steer us away from destruction.",
+    context: 'completion',
+    phase: 'final'
+  },
+  {
+    id: 'bad_ending_3',
+    text: "This isn't just the end of a city. It's the consequence of choices made when we had a chance to change course, and didn't. Thank you for trying.",
     context: 'completion',
     phase: 'final'
   }
