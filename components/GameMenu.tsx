@@ -159,12 +159,12 @@ export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame }: 
 
         <h4>NPCs</h4>
         <ul>
-          <li><strong>Mrs. Aria</strong> - Water Cycle (Retired Ecologist)</li>
+          <li><strong>Mr. Aria</strong> - Water Cycle (Retired Ecologist)</li>
           <li><strong>Chief Oskar</strong> - Energy Grid (Infrastructure Engineer)</li>
-          <li><strong>Mr. Moss</strong> - Fuel Acquisition (Fuel Supplier)</li>
-          <li><strong>Miss Dai</strong> - Land Use (Volunteer Teacher)</li>
+          <li><strong>Ms. Moss</strong> - Fuel Acquisition (Fuel Supplier)</li>
+          <li><strong>Mr. Dai</strong> - Land Use (Volunteer Teacher)</li>
           <li><strong>Ms. Kira</strong> - Water Distribution (Water Justice Activist)</li>
-          <li><strong>Mr. Han</strong> - Housing & Shelter (Builder/Constructor)</li>
+          <li><strong>Mrs. Han</strong> - Housing & Shelter (Builder/Constructor)</li>
         </ul>
 
         <div className={styles.versionInfo}>
