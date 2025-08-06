@@ -55,12 +55,7 @@ interface GuideAnalysis {
 // ============================================================================
 
 /**
- * Stores a turn (user message + assistant response) in a single conversation document.
- * Creates the document if it's the first turn, otherwise appends to it.
- * @param sessionId The user's session ID.
- * @param npcId The NPC's ID.
- * @param round The current game round.
- * @param turnMessages An array containing the user's message and the assistant's response.
+ * Stores a conversation turn (user + assistant messages) in Supabase
  */
 async function storeConversationTurn(
   sessionId: string,
@@ -71,9 +66,6 @@ async function storeConversationTurn(
   if (!isSupabaseConfigured()) return;
 
   try {
-    // Upsert the conversation document.
-    // RPC (Remote Procedure Call) is the cleanest way to do an append/upsert in Supabase.
-    // You'll need to create this function in your Supabase SQL editor.
     const { error } = await supabase.rpc('append_to_conversation', {
       p_session_id: sessionId,
       p_npc_id: npcId,
@@ -83,8 +75,6 @@ async function storeConversationTurn(
 
     if (error) {
       console.error('Error in storeConversationTurn RPC:', error);
-      // Fallback to client-side logic if RPC fails or is not set up yet
-      // This part is for safety, but the RPC is preferred.
       await storeConversationTurnFallback(sessionId, npcId, round, turnMessages);
     } else {
       console.log('Stored conversation turn successfully via RPC.');
@@ -104,7 +94,6 @@ async function storeConversationTurnFallback(
   turnMessages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: number }>
 ) {
   try {
-    // First, try to get existing conversation
     const { data: existingConversation, error: fetchError } = await supabase
       .from('conversations')
       .select('messages')
@@ -113,13 +102,12 @@ async function storeConversationTurnFallback(
       .eq('round', round)
       .single();
 
-    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = no rows returned
+    if (fetchError && fetchError.code !== 'PGRST116') {
       console.error('Error fetching existing conversation:', fetchError);
       return;
     }
 
     if (existingConversation) {
-      // Update existing conversation by appending new messages
       const updatedMessages = [...(existingConversation.messages || []), ...turnMessages];
       
       const { error: updateError } = await supabase
@@ -138,7 +126,6 @@ async function storeConversationTurnFallback(
         console.log('Updated existing conversation with new turn.');
       }
     } else {
-      // Insert new conversation
       const { error: insertError } = await supabase
         .from('conversations')
         .insert({
@@ -169,23 +156,17 @@ async function storeConversationTurnFallback(
 function cleanIncompleteResponse(response: string): string {
   let cleanedResponse = response.trim();
   
-  // If the response ends with incomplete words (like "what's on your"), clean it up
   if (cleanedResponse && !cleanedResponse.match(/[.!?]$/)) {
-    // Find the last complete sentence
     const sentences = cleanedResponse.split(/(?<=[.!?])\s+/);
     
     if (sentences.length > 1) {
-      // Keep all complete sentences
       cleanedResponse = sentences.slice(0, -1).join(' ').trim();
     } else {
-      // If there's only one sentence and it's incomplete, try to complete it naturally
       const words = cleanedResponse.split(' ');
       if (words.length > 2) {
-        // Remove the last incomplete word and add a period
         words.pop();
         cleanedResponse = words.join(' ') + '.';
       } else {
-        // If it's very short, just add a period
         cleanedResponse += '.';
       }
     }
@@ -202,7 +183,6 @@ function detectNPCOpinion(response: string, npc: NPCInfo): { opinion: string; re
   const sustainableOption = npc.options.sustainable.toLowerCase();
   const unsustainableOption = npc.options.unsustainable.toLowerCase();
   
-  // Check for clear opinion indicators
   const opinionIndicators = [
     'i support', 'i prefer', 'i recommend', 'i believe', 'i think we should',
     'i would choose', 'i favor', 'i advocate for', 'i suggest', 'i recommend we',
@@ -211,7 +191,6 @@ function detectNPCOpinion(response: string, npc: NPCInfo): { opinion: string; re
     'i\'m supporting', 'i\'m choosing', 'i\'m recommending'
   ];
   
-  // Check if response contains opinion indicators
   const hasOpinionIndicator = opinionIndicators.some(indicator => 
     responseLower.includes(indicator)
   );
@@ -220,7 +199,6 @@ function detectNPCOpinion(response: string, npc: NPCInfo): { opinion: string; re
     return null;
   }
   
-  // Determine which option they support
   const supportsSustainable = responseLower.includes(sustainableOption);
   const supportsUnsustainable = responseLower.includes(unsustainableOption);
   
@@ -256,7 +234,6 @@ async function analyzeGuideConversation(
   const round1Complete = spokenNPCs.round1.length === 6;
   const round2Complete = spokenNPCs.round2.length === 6;
   
-  // Simple fallback-based responses
   if (round === 1 && round1Complete) {
     return {
       response: "Great! You've learned about all the systems. Now let's move to Round 2 where you'll discover what each specialist thinks about their options.",
@@ -298,7 +275,6 @@ async function analyzeConversationCompleteness(
   console.log('Analyzing conversation for', npc.name, 'Round', round);
   console.log('Conversation text:', conversationText);
   
-  // Debug: Check if key information is present
   const conversationLower = conversationText.toLowerCase();
   const hasName = conversationLower.includes(npc.name.toLowerCase()) || 
                   conversationLower.includes('mr.') || 
@@ -411,7 +387,6 @@ Example responses for Round 2:
 async function setupConversationHistory(npcId: number, round: number, sessionId: string, npc: NPCInfo, isSustainable: boolean): Promise<void> {
   const history = await upstashStore.getConversationHistory(npcId, round, sessionId);
 
-  // Add system prompt to history if it's empty
   if (history.length === 0) {
     const systemPrompt = getSystemPrompt(npc, round, isSustainable);
     await upstashStore.addToConversationHistory(npcId, round, {
@@ -419,7 +394,6 @@ async function setupConversationHistory(npcId: number, round: number, sessionId:
       content: systemPrompt
     }, sessionId);
   } else {
-    // Check if there's already a system message in the history
     const hasSystemMessage = history.some((msg: any) => msg.role === 'system');
     if (!hasSystemMessage) {
       const systemPrompt = getSystemPrompt(npc, round, isSustainable);
@@ -442,13 +416,10 @@ async function addConversationContext(
 ): Promise<string> {
   let contextPrompt = '';
   
-  // Only add context from similar conversations if this is not the first message
-  if (updatedHistory.length > 2) { // More than just system + user message
-    // Use Pinecone for long-term memory (semantic search)
+  if (updatedHistory.length > 2) {
     const similarMessages = await vectorStore.querySimilar(message, npcId, 2, sessionId) as PineconeMatch[];
     
     if (similarMessages && similarMessages.length > 0) {
-      // Filter out introduction-related messages to avoid repetition
       const filteredMessages = similarMessages.filter(match => 
         !match.text.toLowerCase().includes('i\'m') && 
         !match.text.toLowerCase().includes('i am') &&
@@ -466,7 +437,6 @@ async function addConversationContext(
       }
     }
 
-    // Add context to the last system message if it exists
     const systemMessages = updatedHistory.filter((msg: Message) => msg.role === 'system');
     const lastSystemMessage = systemMessages[systemMessages.length - 1];
     if (lastSystemMessage && contextPrompt) {
@@ -486,19 +456,15 @@ async function handleGuideConversation(
   sessionId: string,
   spokenNPCs: { round1: number[]; round2: number[] }
 ): Promise<any> {
-  const effectiveRound = 1; // Guide conversation is always stored in round 1
+  const effectiveRound = 1;
   
-  // Get history and add user message to Upstash (short-term memory)
   const history = await upstashStore.getConversationHistory(-1, effectiveRound, sessionId);
   await upstashStore.addToConversationHistory(-1, effectiveRound, { role: 'user', content: message }, sessionId);
 
-  // --- (No change to this part) ---
   const analysis = await analyzeGuideConversation(message, round, history, spokenNPCs);
   
-  // Add assistant response to Upstash (short-term memory)
   await upstashStore.addToConversationHistory(-1, effectiveRound, { role: 'assistant', content: analysis.response }, sessionId);
 
-  // Store the entire turn (user message + assistant response) in Supabase in one go.
   await storeConversationTurn(sessionId, -1, effectiveRound, [
     { role: 'user', content: message, timestamp: Date.now() },
     { role: 'assistant', content: analysis.response, timestamp: Date.now() }
@@ -516,8 +482,6 @@ async function handleGuideConversation(
   };
 }
 
-
-
 /**
  * Handles regular NPC conversation logic
  */
@@ -529,15 +493,11 @@ async function handleRegularNPCConversation(
   npc: NPCInfo,
   isSustainable: boolean
 ): Promise<any> {
-  // Setup conversation history (Redis for short-term memory)
   await setupConversationHistory(npcId, round, sessionId, npc, isSustainable);
   await upstashStore.addToConversationHistory(npcId, round, { role: 'user', content: message }, sessionId);
   
-  // Pinecone, context, and DeepInfra call remain the same...
-  // Get updated history from Upstash (short-term memory)
   const updatedHistory = await upstashStore.getConversationHistory(npcId, round, sessionId);
 
-  // Store the message in Pinecone
   const messageId = `${npcId}_${round}_${Date.now()}`;
   await vectorStore.storeMemory(messageId, message, {
     npcId: npcId.toString(),
@@ -546,10 +506,8 @@ async function handleRegularNPCConversation(
     sessionId: sessionId || 'default'
   });
 
-  // Add conversation context
   const contextPrompt = await addConversationContext(updatedHistory, message, npcId, sessionId);
 
-  // Log the request
   console.log('Sending request to DeepInfra:', {
     model: 'Qwen/Qwen3-235B-A22B-Instruct-2507',
     npcId,
@@ -562,7 +520,6 @@ async function handleRegularNPCConversation(
     historyMessages: updatedHistory.map(msg => ({ role: msg.role, content: msg.content.slice(0, 100) + '...' }))
   });
 
-  // Get AI response
   const response = await fetch('https://api.deepinfra.com/v1/openai/chat/completions', {
     method: 'POST',
     headers: {
@@ -593,7 +550,6 @@ async function handleRegularNPCConversation(
     throw new Error('Invalid response format from API');
   }
 
-  // Clean up incomplete responses
   const originalResponse = aiResponse;
   aiResponse = cleanIncompleteResponse(aiResponse);
   
@@ -604,13 +560,11 @@ async function handleRegularNPCConversation(
     });
   }
 
-  // Detect if NPC revealed their opinion (only in round 2)
   let detectedOpinion = null;
   if (round === 2) {
     detectedOpinion = detectNPCOpinion(aiResponse, npc);
   }
 
-  // Store the AI response in Pinecone
   const responseId = `${npcId}_${round}_${Date.now()}_response`;
   await vectorStore.storeMemory(responseId, aiResponse, {
     npcId: npcId.toString(),
@@ -619,10 +573,8 @@ async function handleRegularNPCConversation(
     sessionId: sessionId || 'default'
   });
 
-  // Add assistant response to Upstash
   await upstashStore.addToConversationHistory(npcId, round, { role: 'assistant', content: aiResponse }, sessionId);
 
-  // Store the entire turn in Supabase in one go.
   await storeConversationTurn(sessionId, npcId, round, [
       { role: 'user', content: message, timestamp: Date.now() },
       { role: 'assistant', content: aiResponse, timestamp: Date.now() }
@@ -653,7 +605,6 @@ export default async function handler(
     body: req.body
   });
 
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -666,7 +617,6 @@ export default async function handler(
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  // Check for required environment variables
   if (!process.env.DEEPINFRA_API_KEY) {
     console.error('Missing DEEPINFRA_API_KEY environment variable');
     return res.status(500).json({ 
@@ -690,15 +640,12 @@ export default async function handler(
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    // Convert string npcId to number for NPCData lookup
     const npcIdNumber = parseInt(npcId as string);
     
-    // Special handling for main NPC (The Guide)
     if (npcIdNumber === -1) {
       const spokenNPCs = req.body.spokenNPCs || { round1: new Set(), round2: new Set() };
       const result = await handleGuideConversation(message, round, sessionId, spokenNPCs);
       
-      // Set CORS headers for the response
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -706,7 +653,6 @@ export default async function handler(
       return res.status(200).json(result);
     }
     
-    // Handle regular NPCs
     const npc = NPCData[npcIdNumber];
     if (!npc) {
       return res.status(400).json({ 
@@ -717,7 +663,6 @@ export default async function handler(
 
     const result = await handleRegularNPCConversation(message, npcId, round, sessionId, npc, isSustainable);
 
-    // Set CORS headers for the response
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
