@@ -50,15 +50,6 @@ class UpstashStore {
       const history = await this.client.get<ConversationHistory>(key);
       const messages = history?.messages || [];
       
-      console.log('Getting conversation history from Upstash:', {
-        key,
-        npcId,
-        round,
-        sessionId,
-        messageCount: messages.length,
-        messages: messages.map(msg => ({ role: msg.role, content: msg.content.slice(0, 50) + '...' }))
-      });
-      
       return messages;
     } catch (error) {
       console.error('Error getting conversation history from Upstash:', error);
@@ -79,17 +70,6 @@ class UpstashStore {
       
       // Save back to Upstash
       await this.client.set(key, existingHistory);
-
-      console.log('Added to conversation history in Upstash:', {
-        key,
-        npcId,
-        round,
-        sessionId,
-        messageRole: message.role,
-        messageContent: message.content.slice(0, 50) + '...',
-        totalMessages: existingHistory.messages.length,
-        isGuide: npcId === -1
-      });
     } catch (error) {
       console.error('Error adding to conversation history in Upstash:', error);
     }
@@ -100,7 +80,6 @@ class UpstashStore {
     
     try {
       await this.client.del(key);
-      console.log('Cleared conversation history in Upstash:', { key, npcId, round, sessionId });
     } catch (error) {
       console.error('Error clearing conversation history in Upstash:', error);
     }

@@ -76,9 +76,7 @@ async function storeConversationTurn(
     if (error) {
       console.error('Error in storeConversationTurn RPC:', error);
       await storeConversationTurnFallback(sessionId, npcId, round, turnMessages);
-    } else {
-      console.log('Stored conversation turn successfully via RPC.');
-    }
+    } 
   } catch (e) {
     console.error('Exception in storeConversationTurn:', e);
   }
@@ -122,9 +120,7 @@ async function storeConversationTurnFallback(
 
       if (updateError) {
         console.error('Error updating conversation:', updateError);
-      } else {
-        console.log('Updated existing conversation with new turn.');
-      }
+      } 
     } else {
       const { error: insertError } = await supabase
         .from('conversations')
@@ -137,9 +133,7 @@ async function storeConversationTurnFallback(
 
       if (insertError) {
         console.error('Error inserting new conversation:', insertError);
-      } else {
-        console.log('Created new conversation with turn.');
-      }
+      } 
     }
   } catch (e) {
     console.error('Exception in storeConversationTurnFallback:', e);
@@ -271,9 +265,6 @@ async function analyzeConversationCompleteness(
     .filter(msg => msg.role === 'assistant')
     .map(msg => msg.content)
     .join('\n');
-
-  console.log('Analyzing conversation for', npc.name, 'Round', round);
-  console.log('Conversation text:', conversationText);
   
   const conversationLower = conversationText.toLowerCase();
   const hasName = conversationLower.includes(npc.name.toLowerCase()) || 
@@ -284,17 +275,6 @@ async function analyzeConversationCompleteness(
   const hasSystem = conversationLower.includes(npc.system.toLowerCase());
   const hasSustainable = conversationLower.includes(npc.options.sustainable.toLowerCase());
   const hasUnsustainable = conversationLower.includes(npc.options.unsustainable.toLowerCase());
-  
-  console.log('Debug - Information found:', {
-    hasName,
-    hasSystem,
-    hasSustainable,
-    hasUnsustainable,
-    name: npc.name,
-    system: npc.system,
-    sustainable: npc.options.sustainable,
-    unsustainable: npc.options.unsustainable
-  });
 
   const analysisPrompt = `Analyze this FULL conversation with ${npc.name} (${npc.career}) about the ${npc.system} system.
 
@@ -368,7 +348,7 @@ Example responses for Round 2:
     const isComplete = analysis.startsWith('COMPLETE:');
     const reason = analysis.includes(':') ? analysis.split(':')[1]?.trim() || 'Unknown' : analysis;
 
-    console.log('Analysis result for', npc.name, ':', { isComplete, reason, analysis });
+    // console.log('Analysis result for', npc.name, ':', { isComplete, reason, analysis });
 
     return { isComplete, reason };
   } catch (error) {
@@ -509,18 +489,6 @@ async function handleRegularNPCConversation(
 
   const contextPrompt = await addConversationContext(updatedHistory, message, npcId, sessionId);
 
-  console.log('Sending request to DeepInfra:', {
-    model: 'Qwen/Qwen3-235B-A22B-Instruct-2507',
-    npcId,
-    npcName: npc.name,
-    round,
-    sessionId: sessionId || 'default',
-    message: message.slice(0, 50) + '...',
-    hasContext: contextPrompt.length > 0,
-    historyLength: updatedHistory.length,
-    historyMessages: updatedHistory.map(msg => ({ role: msg.role, content: msg.content.slice(0, 100) + '...' }))
-  });
-
   const response = await fetch('https://api.deepinfra.com/v1/openai/chat/completions', {
     method: 'POST',
     headers: {
@@ -553,13 +521,6 @@ async function handleRegularNPCConversation(
 
   const originalResponse = aiResponse;
   aiResponse = cleanIncompleteResponse(aiResponse);
-  
-  if (originalResponse !== aiResponse) {
-    console.log('Cleaned incomplete response:', {
-      original: originalResponse,
-      cleaned: aiResponse
-    });
-  }
 
   let detectedOpinion = null;
   if (round === 2) {
@@ -599,13 +560,6 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  console.log('Chat API called:', {
-    method: req.method,
-    url: req.url,
-    headers: req.headers,
-    body: req.body
-  });
-
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');

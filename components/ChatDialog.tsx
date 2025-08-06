@@ -155,19 +155,8 @@ export default function ChatDialog({
         
         if (response.ok) {
           const data = await response.json();
-          console.log('Loading messages for:', {
-            npcId,
-            npcName: NPCNames[npcId],
-            round,
-            sessionId: currentSessionId,
-            messageCount: data.messages.length,
-            historyLength: data.historyLength
-          });
-          
           setMessages(data.messages);
-          console.log('📚 Loaded conversation history with', data.messages.length, 'messages');
         } else {
-          console.log('No conversation history found, starting fresh');
           setMessages([]);
         }
               } catch (error) {
@@ -180,17 +169,7 @@ export default function ChatDialog({
     loadMessages();
   }, [npcId, round, isOpen]);
 
-
-
-  // Log NPC info when props change
   useEffect(() => {
-    console.log('ChatDialog props updated:', {
-      npcId,
-      npcName: NPCNames[npcId],
-      personality,
-      round,
-      isSustainable
-    });
   }, [npcId, personality, round, isSustainable]);
 
   // Update global chat state
@@ -242,8 +221,6 @@ export default function ChatDialog({
       }
     };
 
-    console.log('Sending chat request:', requestData);
-
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -272,26 +249,20 @@ export default function ChatDialog({
       }
 
       const data = await response.json();
-      console.log('API Success Response:', data);
-
               if (data.response) {
           // Check if opinion was detected
           if (data.detectedOpinion && round === 2) {
-            console.log('Opinion detected:', data.detectedOpinion);
-            // Update ballot with detected opinion
             if (onConversationComplete) {
               onConversationComplete(npcId, round, data.detectedOpinion, data.conversationAnalysis);
             }
           }
 
-          // Log conversation analysis
-          if (data.conversationAnalysis) {
-            console.log('Conversation analysis:', data.conversationAnalysis);
-            console.log('Analysis result - isComplete:', data.conversationAnalysis.isComplete);
-            console.log('Analysis result - reason:', data.conversationAnalysis.reason);
-          }
-          
-
+          // // Log conversation analysis
+          // if (data.conversationAnalysis) {
+          //   console.log('Conversation analysis:', data.conversationAnalysis);
+          //   console.log('Analysis result - isComplete:', data.conversationAnalysis.isComplete);
+          //   console.log('Analysis result - reason:', data.conversationAnalysis.reason);
+          // }
           
           // Split response into natural conversation chunks and add delay between each
           const chunks = splitIntoConversationChunks(data.response);
@@ -312,7 +283,6 @@ export default function ChatDialog({
             // For Round 1: Call when introduction is complete
             // For Round 2: Call when opinion is detected (handled above)
             if (round === 1 && data.conversationAnalysis.isComplete) {
-              console.log('Round 1 conversation complete, calling onConversationComplete');
               onConversationComplete(npcId, round, undefined, data.conversationAnalysis);
             }
           }

@@ -30,16 +30,6 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
   const messages = useMemo(() => getEndingMessages(), [getEndingMessages]);
   const currentMessage = messages[currentMessageIndex];
   const currentDurations = useMemo(() => soundDurations[activeEndingType], [soundDurations, activeEndingType]);
-  
-  console.log('TypewriterEnding Debug:', {
-    endingType,
-    activeEndingType,
-    messagesCount: messages.length,
-    currentMessageIndex,
-    currentMessage: currentMessage?.text,
-    isVisible,
-    isSequenceFinished
-  });
 
   // Main effect for playing the message sequence
   useEffect(() => {

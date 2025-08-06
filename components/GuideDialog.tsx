@@ -51,10 +51,7 @@ export default function GuideDialog({
         if (response.ok) {
           const data = await response.json();
           existingMessages = data.messages || [];
-          console.log('🔍 Loaded existing messages:', existingMessages);
-        } else {
-          console.log('No existing conversation history found.');
-        }
+        } 
 
         // --- 2. Determine which initial messages are needed based on game state ---
         let messagesToDisplay = [...existingMessages]; // Start with what we have
@@ -128,8 +125,6 @@ export default function GuideDialog({
         }
 
         // --- 4. Set the final state for the UI ---
-        console.log('🔍 Final messages to display:', messagesToDisplay);
-        
         // If we have new messages to add, display them one by one with delays
         if (needsDBUpdate && newMessages.length > 0) {
           let currentMessages = existingMessages;
@@ -187,7 +182,6 @@ export default function GuideDialog({
     
     // Check if this is the decision phase and user typed "continue"
     if (round === 2 && spokenNPCs.round2.size >= 6 && userMessage.toLowerCase() === 'continue' && onOpenPDA) {
-      console.log('GuideDialog: User typed "continue" during decision phase, opening PDA');
       onOpenPDA();
       return;
     }
@@ -226,10 +220,8 @@ export default function GuideDialog({
       if (data.response) {
         // Handle round advancement
         if (data.conversationAnalysis?.shouldAdvanceRound && round === 1) {
-          console.log('Guide: Advancing to Round 2');
           onRoundChange(2);
         } else if (data.conversationAnalysis?.shouldOpenPDA && round === 2) {
-          console.log('Guide: Triggering ending phase');
           if (typeof window !== 'undefined' && (window as any).triggerEndingPhase) {
             (window as any).triggerEndingPhase();
           }

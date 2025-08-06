@@ -101,7 +101,6 @@ const preferencesCache: { [participantId: string]: { [key: number]: 'sustainable
 // Function to clear the preferences cache (useful for testing)
 export const clearPreferencesCache = (): void => {
   Object.keys(preferencesCache).forEach(key => delete preferencesCache[key]);
-  console.log('Preferences cache cleared');
 };
 
 // Function to get cache info for debugging
@@ -145,7 +144,6 @@ function deterministicShuffle<T>(array: T[], seed: string): T[] {
 export const generateNPCPreferences = (participantId: string): { [key: number]: 'sustainable' | 'unsustainable' } => {
   // Check if we already have cached preferences for this participant
   if (preferencesCache[participantId]) {
-    console.log(`Using cached preferences for participant: ${participantId}`);
     return preferencesCache[participantId];
   }
   
@@ -155,12 +153,9 @@ export const generateNPCPreferences = (participantId: string): { [key: number]: 
     Object.keys(preferencesCache).forEach(key => {
       if (key.charAt(0).toUpperCase() === participantFirstChar) {
         delete preferencesCache[key];
-        console.log(`Cleared cached preferences for: ${key}`);
       }
     });
   }
-  
-  console.log(`Generating new preferences for participant: ${participantId}`);
   
   const firstChar = participantId.charAt(0).toUpperCase();
   
@@ -203,8 +198,6 @@ export const generateNPCPreferences = (participantId: string): { [key: number]: 
   
   // Cache the preferences for this participant
   preferencesCache[participantId] = preferences;
-  
-  console.log(`Cached preferences for participant ${participantId}:`, preferences);
   
   return preferences;
 };
@@ -280,35 +273,3 @@ export const getNPCRecommendedOption = (npcId: number): string => {
 export const doesNPCSupportSustainable = (npcId: number): boolean => {
   return NPCPreferences[npcId] === 'sustainable';
 };
-
-// Test function to verify deterministic randomization
-export const testDeterministicRandomization = (): void => {
-  const testParticipantId = 'PX123456789';
-  
-  console.log('Testing deterministic randomization...');
-  
-  // Generate preferences multiple times
-  const preferences1 = generateNPCPreferences(testParticipantId);
-  const preferences2 = generateNPCPreferences(testParticipantId);
-  const preferences3 = generateNPCPreferences(testParticipantId);
-  
-  // All should be identical
-  const areIdentical = JSON.stringify(preferences1) === JSON.stringify(preferences2) && 
-                       JSON.stringify(preferences2) === JSON.stringify(preferences3);
-  
-  console.log('Preferences 1:', preferences1);
-  console.log('Preferences 2:', preferences2);
-  console.log('Preferences 3:', preferences3);
-  console.log('All preferences identical:', areIdentical);
-  
-  if (areIdentical) {
-    console.log('✅ Deterministic randomization working correctly!');
-  } else {
-    console.error('❌ Deterministic randomization failed!');
-  }
-  
-  // Test different participant IDs
-  const testParticipantId2 = 'AX987654321';
-  const preferences4 = generateNPCPreferences(testParticipantId2);
-  console.log('Different participant preferences:', preferences4);
-}; 

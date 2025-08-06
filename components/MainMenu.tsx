@@ -22,14 +22,10 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
     // Check for existing session
     const checkExistingSession = async () => {
       const sessionInfo = sessionManager.getSessionInfo();
-      console.log('MainMenu checking session:', sessionInfo);
       if (sessionInfo.participantId) {
-        console.log('MainMenu found existing participant ID:', sessionInfo.participantId);
         setHasExistingSession(true);
         setExistingParticipantId(sessionInfo.participantId);
-      } else {
-        console.log('MainMenu no existing participant ID found');
-      }
+      } 
     };
 
     checkExistingSession();

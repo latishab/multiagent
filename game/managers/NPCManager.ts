@@ -549,19 +549,16 @@ export class NPCManager {
   private checkInteractions() {
     // Don't check for interactions if chat is open
     if (typeof window !== 'undefined' && (window as any).isChatOpen) {
-      console.log('❌ Chat is open, blocking interaction');
       return
     }
 
     // Don't check for interactions if any NPC is already interacting
     if (this.npcs.some(npc => npc.isInteracting)) {
-      console.log('❌ NPC is already interacting, blocking interaction');
       return
     }
 
     // Check if the current interactable NPC should be interactable based on game state
     if (this.currentInteractableNPC && !this.shouldNPCBeInteractable(this.currentInteractableNPC)) {
-      console.log('❌ NPC should not be interactable at this time:', this.currentInteractableNPC.id);
       return
     }
 
@@ -627,7 +624,6 @@ export class NPCManager {
     
     const npc = this.npcs.find(n => n.id === targetNpcId)
     if (npc) {
-      console.log('Ending interaction for NPC:', { originalId: npcId, targetId: targetNpcId, npcName: npc.type })
       npc.isInteracting = false
     } else {
       console.warn('Could not find NPC to end interaction:', { originalId: npcId, targetId: targetNpcId })

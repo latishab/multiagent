@@ -106,12 +106,9 @@ class SessionManager {
         localStorage.setItem('multiagent_participant_id', participantId);
       }
       this.participantId = participantId;
-      
-      console.log('Generated new participant ID:', participantId);
       return participantId;
     } catch (error) {
       console.error('Error generating participant ID:', error);
-      // Fallback to a simple random ID
       const fallbackId = `fallback_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
       if (typeof window !== 'undefined' && window.localStorage) {
         localStorage.setItem('multiagent_participant_id', fallbackId);

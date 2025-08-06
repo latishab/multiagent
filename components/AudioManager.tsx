@@ -22,7 +22,6 @@ export default function AudioManager({ isPlaying, volume = 0.25 }: AudioManagerP
     // Handle audio events
     const handleCanPlayThrough = () => {
       setIsLoaded(true);
-      console.log('Soundtrack loaded successfully');
     };
 
     const handleError = (e: Event) => {
@@ -30,7 +29,6 @@ export default function AudioManager({ isPlaying, volume = 0.25 }: AudioManagerP
     };
 
     const handleEnded = () => {
-      console.log('Soundtrack ended, should loop automatically');
     };
 
     audio.addEventListener('canplaythrough', handleCanPlayThrough);

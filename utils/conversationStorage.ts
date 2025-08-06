@@ -140,10 +140,6 @@ class ConversationStorage {
         });
       }
 
-      // The Supabase insert logic is now REMOVED from here, as the chat.ts API handles it more efficiently.
-      // This prevents duplicate single-message entries.
-
-      console.log('Message stored in short-term cache (Upstash/Pinecone). Supabase is handled by the API.');
     } catch (error) {
       console.error('Error storing message:', error);
       throw error;
@@ -352,11 +348,6 @@ class ConversationStorage {
         currentSessionId
       );
       
-      console.log('Conversation cleared:', {
-        npcId,
-        round: effectiveRound,
-        sessionId: currentSessionId
-      });
     } catch (error) {
       console.error('Error clearing conversation:', error);
       throw error;
@@ -381,7 +372,6 @@ class ConversationStorage {
         );
       }
       
-      console.log('All conversations cleared for session:', currentSessionId);
     } catch (error) {
       console.error('Error clearing all conversations:', error);
       throw error;
@@ -394,16 +384,8 @@ class ConversationStorage {
   async handleNewGame(sessionId?: string): Promise<void> {
     try {
       const currentSessionId = sessionId || await sessionManager.getSessionId();
-      
-      console.log('Handling new game for session:', currentSessionId);
-      
-      // Clear all conversations from Upstash (LLM context)
       await this.clearAllConversations(currentSessionId);
-      
-      // Clear session ID to force new session generation
       sessionManager.clearSessionOnly();
-      
-      console.log('New game handled - conversations cleared and session reset');
     } catch (error) {
       console.error('Error handling new game:', error);
       throw error;

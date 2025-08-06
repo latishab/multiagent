@@ -22,7 +22,6 @@ export default class MainScene extends Scene {
   }
 
   preload() {
-    // Add comprehensive error handling for texture loading
     this.load.on('loaderror', (file: any) => {
       console.error('Failed to load texture:', file.src)
     })

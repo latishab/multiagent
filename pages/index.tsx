@@ -33,21 +33,16 @@ export default function Home() {
     // Check if there's an existing session
     const checkExistingSession = async () => {
       const sessionInfo = sessionManager.getSessionInfo();
-      console.log('Checking existing session:', sessionInfo);
       if (sessionInfo.participantId) {
-        console.log('Found existing participant ID:', sessionInfo.participantId);
         setParticipantId(sessionInfo.participantId);
         setGameState('playing');
-      } else {
-        console.log('No existing participant ID found, showing main menu');
-      }
+      } 
     };
 
     checkExistingSession();
   }, []);
 
   const handleStartGame = (newParticipantId: string) => {
-    console.log('Starting game with participant ID:', newParticipantId);
     setParticipantId(newParticipantId);
     setGameState('playing');
   };

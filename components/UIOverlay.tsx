@@ -109,10 +109,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
             round1: new Set((parsed.round1 || []).map((id: any) => Number(id))),
             round2: new Set((parsed.round2 || []).map((id: any) => Number(id)))
           };
-          console.log('Loaded spoken NPCs from localStorage:', {
-            round1: Array.from(result.round1),
-            round2: Array.from(result.round2)
-          });
           return result;
         } catch (error) {
           console.error('Error loading spoken NPCs from localStorage:', error);
@@ -270,15 +266,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       correctRound = 1;
     }
     
-    console.log('Determined round for NPC:', { 
-      npcId: npcIdNum, 
-      correctRound, 
-      round1Spoken: spokenNPCs.round1.has(npcIdNum), 
-      round2Spoken: spokenNPCs.round2.has(npcIdNum),
-      round1Complete,
-      round1Size: spokenNPCs.round1.size
-    });
-    
     setChatState({
       isOpen: true,
       npcId: npcIdNum,
@@ -306,8 +293,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
 
   // Function to mark NPC as actually spoken to (called when conversation has content)
   const markNPCAsSpoken = (npcId: number, round: number, detectedOpinion?: { opinion: string; reasoning: string }, conversationAnalysis?: { isComplete: boolean; reason: string }) => {
-    console.log('markNPCAsSpoken called:', { npcId, round, detectedOpinion, conversationAnalysis });
-    
     // Special handling for main NPC (The Guide)
     if (npcId === -1) {
       setHasTalkedToGuide(true);
@@ -319,13 +304,11 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       
       // Only advance to Round 2 if Round 1 is complete
       if (currentRound === 1 && round1Complete) {
-        console.log('All NPCs spoken in round 1, advancing to round 2');
         setChatState(prev => ({
           ...prev,
           round: 2
         }));
       } else if (currentRound === 2 && round2Complete) {
-        console.log('All NPCs spoken in round 2, triggering ending phase');
         // Trigger ending phase after a short delay
         setTimeout(() => {
           setShowDecisionMode(true);
@@ -349,14 +332,9 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           ...prev,
           [roundKey]: new Set(Array.from(prev[roundKey]).concat([npcId]))
         };
-        console.log('Updated spoken NPCs:', {
-          round1: Array.from(newSpokenNPCs.round1),
-          round2: Array.from(newSpokenNPCs.round2)
-        });
         return newSpokenNPCs;
       });
     } else {
-      console.log('NPC already spoken to in this round, not marking again:', { npcId, round });
       return;
     }
 
@@ -373,10 +351,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     setBallotEntries(prev => {
       // Check if there's already an entry for this NPC and round
       const existingIndex = prev.findIndex(entry => entry.npcId === npcId && entry.round === round);
-      
-      console.log('Updating ballot entries for NPC', npcId, 'Round', round);
-      console.log('Existing entry found:', existingIndex !== -1);
-      console.log('Conversation analysis:', conversationAnalysis);
       
       if (existingIndex !== -1) {
         const updated = [...prev];
@@ -396,18 +370,12 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     if (npcId >= 1 && npcId <= 6) {
       triggerPdaNotification();
     }
-
-    // Round advancement is now handled by the main NPC conversation
-    // Regular NPCs just track progress, main NPC triggers round changes
-    console.log(`NPC ${npcId} conversation completed in round ${round}. All NPCs spoken: ${allNPCsSpoken}`);
   }
 
   // Function to calculate and show ending
   const calculateAndShowEnding = () => {
     const sustainableCount = Object.values(finalDecisions).filter(decision => decision === 'sustainable').length;
     const unsustainableCount = Object.values(finalDecisions).filter(decision => decision === 'unsustainable').length;
-    
-    console.log('Calculating ending:', { sustainableCount, unsustainableCount, finalDecisions });
     
     let ending: 'good' | 'bad';
     if (sustainableCount >= 5) {
@@ -416,14 +384,12 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       ending = 'bad';
     }
     
-    console.log('Ending determined:', ending);
     setEndingType(ending);
     setShowEnding(true);
   }
 
   // Function to handle when decisions are complete
   const handleDecisionsComplete = (decisions: { [npcId: number]: 'sustainable' | 'unsustainable' }) => {
-    console.log('All decisions complete:', decisions);
     setFinalDecisions(decisions);
     
     // Calculate and show ending
@@ -554,8 +520,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   // Expose the triggerEndingPhase function to the window object
   useEffect(() => {
     (window as any).triggerEndingPhase = () => {
-      console.log('Triggering ending phase');
-      // Show the PDA in decision mode for final choices
       setShowDecisionMode(true);
       setShowPDA(true);
     }
@@ -793,7 +757,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     }
   }, [])
 
-  const handleRestartGame = async () => {
+    const handleRestartGame = async () => {
     // Clear saved data before restarting
     if (typeof window !== 'undefined') {
       const participantId = sessionManager.getSessionInfo().participantId;
@@ -809,12 +773,12 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       localStorage.removeItem(chatStateKey);
       localStorage.removeItem(hasStartedGameKey);
       localStorage.setItem('multiagent-show-welcome', 'true');
-      
+
       // Clear session but keep participant ID
       await sessionManager.clearSessionOnly();
     }
     // Reload the page to restart the game
-    window.location.reload()
+    window.location.href = window.location.origin + window.location.pathname;
   }
 
   const handleNewGame = async () => {
@@ -838,7 +802,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       await sessionManager.clearSessionOnly();
     }
     // Reload the page to start a new game
-    window.location.reload()
+    window.location.href = window.location.origin + window.location.pathname;
   }
 
   // Handle hotbar slot clicks
