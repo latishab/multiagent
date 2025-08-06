@@ -6,6 +6,7 @@ import GameMenu from './GameMenu'
 import ProgressIndicator from './ProgressIndicator'
 import PDA from './PDA'
 import EndingOverlay from './EndingOverlay'
+import { NPCNames, NPCSystems, NPCOptions } from '../utils/npcData'
 
 import styles from '../styles/UIOverlay.module.css'
 
@@ -119,6 +120,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   const [endingType, setEndingType] = useState<'good' | 'bad' | 'medium' | null>(null);
   const [showPDA, setShowPDA] = useState(false);
   const [showDecisionMode, setShowDecisionMode] = useState(false);
+  const [pdaNotification, setPdaNotification] = useState(false);
   const [guideDialogOpen, setGuideDialogOpen] = useState(false);
   
   // Ballot entries to track NPC opinions
@@ -188,6 +190,25 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       (window as any).spokenNPCs = spokenNPCs;
     }
   }, [hasStartedGame, hasTalkedToGuide, chatState.round, spokenNPCs]);
+
+  // Function to play tablet ding sound
+  const playTabletDing = () => {
+    try {
+      const audio = new Audio('/assets/sound_effects/Ding_tablet sound.mp3');
+      audio.volume = 0.5;
+      audio.play().catch(error => {
+        console.warn('Could not play tablet ding sound:', error);
+      });
+    } catch (error) {
+      console.warn('Could not create audio for tablet ding:', error);
+    }
+  };
+
+  // Function to trigger PDA notification
+  const triggerPdaNotification = () => {
+    setPdaNotification(true);
+    playTabletDing();
+  };
 
   // Function to be called from the game to open chat
   const openChat = (npcId: string, personality: string) => {
@@ -309,41 +330,13 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       return;
     }
 
-    // Add ballot entry for this NPC conversation (only for newly spoken NPCs)
-    const npcNames: { [key: number]: string } = {
-      1: 'Mrs. Aria',
-      2: 'Chief Oskar',
-      3: 'Mr. Moss',
-      4: 'Miss Dai',
-      5: 'Ms. Kira',
-      6: 'Mr. Han'
-    }
-
-    const npcSystems: { [key: number]: string } = {
-      1: 'Water Cycle',
-      2: 'Energy Grid',
-      3: 'Fuel Acquisition',
-      4: 'Land Use',
-      5: 'Water Distribution',
-      6: 'Housing & Shelter'
-    }
-
-    const npcOptions: { [key: number]: { sustainable: string; unsustainable: string } } = {
-      1: { sustainable: 'Constructed Wetlands', unsustainable: 'Chemical Filtration Tanks' },
-      2: { sustainable: 'Local Solar Microgrids', unsustainable: 'Gas Power Hub' },
-      3: { sustainable: 'Biofuel Cooperative', unsustainable: 'Diesel Supply Contracts' },
-      4: { sustainable: 'Urban Agriculture Zones', unsustainable: 'Industrial Expansion' },
-      5: { sustainable: 'Public Shared Reservoir', unsustainable: 'Tiered Access Contracts' },
-      6: { sustainable: 'Modular Eco-Pods', unsustainable: 'Smart Concrete Complex' }
-    }
-
     const newEntry: BallotEntry = {
       npcId: npcId,
-      npcName: npcNames[npcId],
-      system: npcSystems[npcId],
+      npcName: NPCNames[npcId],
+      system: NPCSystems[npcId],
       round: round,
-      sustainableOption: npcOptions[npcId].sustainable,
-      unsustainableOption: npcOptions[npcId].unsustainable,
+      sustainableOption: NPCOptions[npcId].sustainable,
+      unsustainableOption: NPCOptions[npcId].unsustainable,
       npcOpinion: round === 1 ? 'Introduction phase - no opinion yet' : 
         (detectedOpinion ? detectedOpinion.opinion : 'Opinion not yet revealed'),
       npcReasoning: round === 1 ? 
@@ -377,6 +370,12 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     // Check if all NPCs have been spoken to in the current round
     const currentSpokenNPCs = spokenNPCs[roundKey as keyof typeof spokenNPCs];
     const allNPCsSpoken = currentSpokenNPCs.size >= 6;
+
+    // Trigger PDA notification only for regular NPCs (not the main NPC/guide)
+    // This alerts users that a new ballot entry has been added to the PDA
+    if (npcId >= 1 && npcId <= 6) {
+      triggerPdaNotification();
+    }
 
     // Round advancement is now handled by the main NPC conversation
     // Regular NPCs just track progress, main NPC triggers round changes
@@ -558,66 +557,66 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       const round1Entries: BallotEntry[] = [
         {
           npcId: 1,
-          npcName: 'Mrs. Aria',
-          system: 'Water Cycle',
+          npcName: NPCNames[1],
+          system: NPCSystems[1],
           round: 1,
-          sustainableOption: 'Constructed Wetlands',
-          unsustainableOption: 'Chemical Filtration Tanks',
+          sustainableOption: NPCOptions[1].sustainable,
+          unsustainableOption: NPCOptions[1].unsustainable,
           npcOpinion: '',
           npcReasoning: '',
           timestamp: Date.now()
         },
         {
           npcId: 2,
-          npcName: 'Chief Oskar',
-          system: 'Energy Grid',
+          npcName: NPCNames[2],
+          system: NPCSystems[2],
           round: 1,
-          sustainableOption: 'Local Solar Microgrids',
-          unsustainableOption: 'Gas Power Hub',
+          sustainableOption: NPCOptions[2].sustainable,
+          unsustainableOption: NPCOptions[2].unsustainable,
           npcOpinion: '',
           npcReasoning: '',
           timestamp: Date.now()
         },
         {
           npcId: 3,
-          npcName: 'Mr. Moss',
-          system: 'Fuel Acquisition',
+          npcName: NPCNames[3],
+          system: NPCSystems[3],
           round: 1,
-          sustainableOption: 'Biofuel Cooperative',
-          unsustainableOption: 'Diesel Supply Contracts',
+          sustainableOption: NPCOptions[3].sustainable,
+          unsustainableOption: NPCOptions[3].unsustainable,
           npcOpinion: '',
           npcReasoning: '',
           timestamp: Date.now()
         },
         {
           npcId: 4,
-          npcName: 'Miss Dai',
-          system: 'Land Use',
+          npcName: NPCNames[4],
+          system: NPCSystems[4],
           round: 1,
-          sustainableOption: 'Urban Agriculture Zones',
-          unsustainableOption: 'Industrial Expansion',
+          sustainableOption: NPCOptions[4].sustainable,
+          unsustainableOption: NPCOptions[4].unsustainable,
           npcOpinion: '',
           npcReasoning: '',
           timestamp: Date.now()
         },
         {
           npcId: 5,
-          npcName: 'Ms. Kira',
-          system: 'Water Distribution',
+          npcName: NPCNames[5],
+          system: NPCSystems[5],
           round: 1,
-          sustainableOption: 'Public Shared Reservoir',
-          unsustainableOption: 'Tiered Access Contracts',
+          sustainableOption: NPCOptions[5].sustainable,
+          unsustainableOption: NPCOptions[5].unsustainable,
           npcOpinion: '',
           npcReasoning: '',
           timestamp: Date.now()
         },
         {
           npcId: 6,
-          npcName: 'Mr. Han',
-          system: 'Housing & Shelter',
+          npcName: NPCNames[6],
+          system: NPCSystems[6],
           round: 1,
-          sustainableOption: 'Modular Eco-Pods',
-          unsustainableOption: 'Smart Concrete Complex',
+          sustainableOption: NPCOptions[6].sustainable,
+          unsustainableOption: NPCOptions[6].unsustainable,
           npcOpinion: '',
           npcReasoning: '',
           timestamp: Date.now()
@@ -841,9 +840,10 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   // Handle hotbar slot clicks
   const handleHotbarClick = (index: number) => {
     setSelectedSlot(index)
-    // If slot 1 is clicked, open PDA
+    // If slot 1 is clicked, open PDA and clear notification
     if (index === 0) {
       setShowPDA(true)
+      setPdaNotification(false) // Clear the notification when PDA is opened
     }
   }
 
@@ -930,7 +930,36 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
             className={`${styles.hotbarSlot} ${selectedSlot === index ? styles.active : ''} ${index === 0 ? styles.hasPDA : ''}`}
             onClick={() => handleHotbarClick(index)}
           >
-            {index === 0 ? '📱' : index + 1}
+            {index === 0 ? (
+              <div style={{ position: 'relative' }}>
+                <img 
+                  src="/assets/PDA/pda.png" 
+                  alt="PDA" 
+                  style={{ 
+                    width: '24px', 
+                    height: '24px', 
+                    objectFit: 'contain'
+                  }} 
+                />
+                {pdaNotification && (
+                  <div 
+                    style={{
+                      position: 'absolute',
+                      top: '-2px',
+                      right: '-2px',
+                      width: '8px',
+                      height: '8px',
+                      backgroundColor: '#ef4444',
+                      borderRadius: '50%',
+                      border: '1px solid #ffffff',
+                      boxShadow: '0 0 4px rgba(239, 68, 68, 0.8)'
+                    }}
+                  />
+                )}
+              </div>
+            ) : (
+              index + 1
+            )}
           </div>
         ))}
       </div>

@@ -15,7 +15,7 @@ export class NPCManager {
     {
       id: "1",
       personality: "A retired ecologist with a deep understanding of natural systems",
-      name: "Mrs. Aria"
+      name: "Mr. Aria"
     },
     {
       id: "2",
@@ -25,12 +25,12 @@ export class NPCManager {
     {
       id: "3",
       personality: "A forward-thinking fuel supplier interested in sustainable options",
-      name: "Mr. Moss"
+      name: "Ms. Moss"
     },
     {
       id: "4",
       personality: "A passionate teacher advocating for community-focused development",
-      name: "Miss Dai"
+      name: "Mr. Dai"
     },
     {
       id: "5",
@@ -40,7 +40,7 @@ export class NPCManager {
     {
       id: "6",
       personality: "An innovative builder exploring eco-friendly construction methods",
-      name: "Mr. Han"
+      name: "Mrs. Han"
     }
   ];
 
@@ -162,7 +162,7 @@ export class NPCManager {
     return uniqueId
   }
 
-  createNPC(x: number, y: number, npcType: NPCType, levelLayer: Phaser.Tilemaps.TilemapLayer, player: Physics.Arcade.Sprite) {
+  createNPC(x: number, y: number, npcType: NPCType, levelLayer: Phaser.Tilemaps.TilemapLayer, wallLayer: Phaser.Tilemaps.TilemapLayer, player: Physics.Arcade.Sprite) {
     // Create NPC sprite using the correct frame from the spritesheet
     // Use the middle frame of the down-facing row as default
     const defaultFrame = getDownFrames(npcType.startFrame)[1]
@@ -174,8 +174,9 @@ export class NPCManager {
     sprite.setSize(16, 16)
     sprite.setOffset(8, 16)
     
-    // Add collision with the level layer
+    // Add collision with both level layer and wall layer
     this.scene.physics.add.collider(sprite, levelLayer)
+    this.scene.physics.add.collider(sprite, wallLayer)
     
     // Add overlap detection between NPC and player (instead of collision)
     this.scene.physics.add.overlap(sprite, player, () => {
@@ -229,7 +230,7 @@ export class NPCManager {
     return npc
   }
 
-  createMainNPC(x: number, y: number, levelLayer: Phaser.Tilemaps.TilemapLayer, player: Physics.Arcade.Sprite) {
+  createMainNPC(x: number, y: number, levelLayer: Phaser.Tilemaps.TilemapLayer, wallLayer: Phaser.Tilemaps.TilemapLayer, player: Physics.Arcade.Sprite) {
     // Create main NPC sprite using the new.png spritesheet
     const sprite = this.scene.physics.add.sprite(x, y, 'main-npc', 0) // Use 'main-npc' key for new.png
     
@@ -239,8 +240,9 @@ export class NPCManager {
     sprite.setSize(16, 16)
     sprite.setOffset(8, 16)
     
-    // Add collision with the level layer
+    // Add collision with both level layer and wall layer
     this.scene.physics.add.collider(sprite, levelLayer)
+    this.scene.physics.add.collider(sprite, wallLayer)
     
     // Add overlap detection between main NPC and player
     this.scene.physics.add.overlap(sprite, player, () => {
@@ -291,14 +293,14 @@ export class NPCManager {
 
   createMainNPCAnimations(npc: NPC) {
     // Create animations for main NPC using new.png spritesheet
-    // Assuming new.png has the same 3x3 layout per character
+    // Layout: First row (0-2) = Up, Second row (3-5) = Side, Third row (6-8) = Down
     
     // Walk animations
     this.scene.anims.create({
       key: 'main-npc-walk-down',
       frames: [
-        { key: 'main-npc', frame: 6 }, // Down frames (third row)
-        { key: 'main-npc', frame: 7 }
+        { key: 'main-npc', frame: 6 }, // Down frames (third row, first frame)
+        { key: 'main-npc', frame: 7 }  // Down frames (third row, second frame)
       ],
       frameRate: 6,
       repeat: -1,
@@ -308,8 +310,8 @@ export class NPCManager {
     this.scene.anims.create({
       key: 'main-npc-walk-side',
       frames: [
-        { key: 'main-npc', frame: 3 }, // Side frames (second row)
-        { key: 'main-npc', frame: 4 }
+        { key: 'main-npc', frame: 3 }, // Side frames (second row, first frame)
+        { key: 'main-npc', frame: 4 }  // Side frames (second row, second frame)
       ],
       frameRate: 6,
       repeat: -1,
@@ -319,32 +321,32 @@ export class NPCManager {
     this.scene.anims.create({
       key: 'main-npc-walk-up',
       frames: [
-        { key: 'main-npc', frame: 0 }, // Up frames (first row)
-        { key: 'main-npc', frame: 1 }
+        { key: 'main-npc', frame: 0 }, // Up frames (first row, first frame)
+        { key: 'main-npc', frame: 1 }  // Up frames (first row, second frame)
       ],
       frameRate: 6,
       repeat: -1,
       yoyo: true
     })
 
-    // Idle animations
+    // Idle animations (using the last frame of each row)
     this.scene.anims.create({
       key: 'main-npc-idle-down',
-      frames: [{ key: 'main-npc', frame: 8 }], // Last frame of down row
+      frames: [{ key: 'main-npc', frame: 8 }], // Down idle (third row, last frame)
       frameRate: 1,
       repeat: 0
     })
 
     this.scene.anims.create({
       key: 'main-npc-idle-side',
-      frames: [{ key: 'main-npc', frame: 5 }], // Last frame of side row
+      frames: [{ key: 'main-npc', frame: 5 }], // Side idle (second row, last frame)
       frameRate: 1,
       repeat: 0
     })
 
     this.scene.anims.create({
       key: 'main-npc-idle-up',
-      frames: [{ key: 'main-npc', frame: 2 }], // Last frame of up row
+      frames: [{ key: 'main-npc', frame: 2 }], // Up idle (first row, last frame)
       frameRate: 1,
       repeat: 0
     })
@@ -685,7 +687,11 @@ export class NPCManager {
       npc.moveTimer = time + Phaser.Math.Between(npc.pauseTimeMin, npc.pauseTimeMax)
 
       // Set idle animation based on last direction
-      npc.sprite.play(`npc-${npc.animationId}-idle-${npc.lastDirection}`, true)
+      if (npc.animationId === 'main-npc') {
+        npc.sprite.play(`main-npc-idle-${npc.lastDirection}`, true)
+      } else {
+        npc.sprite.play(`npc-${npc.animationId}-idle-${npc.lastDirection}`, true)
+      }
     } else if (!npc.isMoving && time >= npc.moveTimer) {
       // Start moving in a random direction
       npc.isMoving = true
@@ -697,24 +703,40 @@ export class NPCManager {
       switch (npc.targetDirection) {
         case 'up':
           npc.sprite.setVelocity(0, -npc.speed)
-          npc.sprite.play(`npc-${npc.animationId}-walk-up`, true)
+          if (npc.animationId === 'main-npc') {
+            npc.sprite.play(`main-npc-walk-up`, true)
+          } else {
+            npc.sprite.play(`npc-${npc.animationId}-walk-up`, true)
+          }
           npc.lastDirection = 'up'
           break
         case 'down':
           npc.sprite.setVelocity(0, npc.speed)
-          npc.sprite.play(`npc-${npc.animationId}-walk-down`, true)
+          if (npc.animationId === 'main-npc') {
+            npc.sprite.play(`main-npc-walk-down`, true)
+          } else {
+            npc.sprite.play(`npc-${npc.animationId}-walk-down`, true)
+          }
           npc.lastDirection = 'down'
           break
         case 'left':
           npc.sprite.setVelocity(-npc.speed, 0)
           npc.sprite.setFlipX(true)
-          npc.sprite.play(`npc-${npc.animationId}-walk-side`, true)
+          if (npc.animationId === 'main-npc') {
+            npc.sprite.play(`main-npc-walk-side`, true)
+          } else {
+            npc.sprite.play(`npc-${npc.animationId}-walk-side`, true)
+          }
           npc.lastDirection = 'side'
           break
         case 'right':
           npc.sprite.setVelocity(npc.speed, 0)
           npc.sprite.setFlipX(false)
-          npc.sprite.play(`npc-${npc.animationId}-walk-side`, true)
+          if (npc.animationId === 'main-npc') {
+            npc.sprite.play(`main-npc-walk-side`, true)
+          } else {
+            npc.sprite.play(`npc-${npc.animationId}-walk-side`, true)
+          }
           npc.lastDirection = 'side'
           break
       }
@@ -725,7 +747,7 @@ export class NPCManager {
     return NPC_TYPES.find(type => type.startFrame === startFrame)?.name || 'unknown'
   }
 
-  spawnNPCsInAreas(mapWidth: number, mapHeight: number, levelLayer: Phaser.Tilemaps.TilemapLayer, player: Physics.Arcade.Sprite) {
+  spawnNPCsInAreas(mapWidth: number, mapHeight: number, levelLayer: Phaser.Tilemaps.TilemapLayer, wallLayer: Phaser.Tilemaps.TilemapLayer, player: Physics.Arcade.Sprite) {
     NPC_TYPES.forEach((npcType, index) => {
       let x: number, y: number
       
@@ -744,15 +766,19 @@ export class NPCManager {
         y = centerY + Math.sin(angle) * radius
       }
       
-      this.createNPC(x, y, npcType, levelLayer, player)
+      // Ensure NPC spawns within map boundaries
+      x = Math.max(50, Math.min(x, mapWidth - 50))
+      y = Math.max(50, Math.min(y, mapHeight - 50))
+      
+      this.createNPC(x, y, npcType, levelLayer, wallLayer, player)
     })
   }
 
-  spawnMainNPC(levelLayer: Phaser.Tilemaps.TilemapLayer, player: Physics.Arcade.Sprite) {
+  spawnMainNPC(levelLayer: Phaser.Tilemaps.TilemapLayer, wallLayer: Phaser.Tilemaps.TilemapLayer, player: Physics.Arcade.Sprite) {
     // Spawn main NPC in the center of the map
     const x = 800 // Center X position
     const y = 400 // Center Y position
     
-    this.createMainNPC(x, y, levelLayer, player)
+    this.createMainNPC(x, y, levelLayer, wallLayer, player)
   }
 } 

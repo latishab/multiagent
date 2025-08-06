@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { OptionDescriptions, SpecialistRecommendations } from '../utils/prompts'
+import { NPCNames, NPCSystems, NPCOptions, getNPCImage } from '../utils/npcData'
 
 interface BallotEntry {
   npcId: number;
@@ -19,33 +20,6 @@ interface PDAProps {
   ballotEntries: BallotEntry[];
   onDecisionsComplete?: (decisions: { [npcId: number]: 'sustainable' | 'unsustainable' }) => void;
   showDecisionMode?: boolean;
-}
-
-const NPCSystems: { [key: number]: string } = {
-  1: 'Water Cycle',
-  2: 'Energy Grid',
-  3: 'Fuel Acquisition',
-  4: 'Land Use',
-  5: 'Water Distribution',
-  6: 'Housing & Shelter'
-}
-
-const NPCOptions: { [key: number]: { sustainable: string; unsustainable: string } } = {
-  1: { sustainable: 'Constructed Wetlands', unsustainable: 'Chemical Filtration Tanks' },
-  2: { sustainable: 'Local Solar Microgrids', unsustainable: 'Gas Power Hub' },
-  3: { sustainable: 'Biofuel Cooperative', unsustainable: 'Diesel Supply Contracts' },
-  4: { sustainable: 'Urban Agriculture Zones', unsustainable: 'Industrial Expansion' },
-  5: { sustainable: 'Public Shared Reservoir', unsustainable: 'Tiered Access Contracts' },
-  6: { sustainable: 'Modular Eco-Pods', unsustainable: 'Smart Concrete Complex' }
-}
-
-const NPCNames: { [key: number]: string } = {
-  1: 'Mrs. Aria',
-  2: 'Chief Oskar',
-  3: 'Mr. Moss',
-  4: 'Miss Dai',
-  5: 'Ms. Kira',
-  6: 'Mr. Han'
 }
 
 export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplete, showDecisionMode = false }: PDAProps) {
@@ -133,12 +107,12 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                           <div className="system-title">
                             <div className="npc-profile">
                               <img 
-                                src={`/assets/characters/${npcId}.1.png`} 
+                                src={`/assets/characters/${getNPCImage(npcId)}`} 
                                 alt={`${NPCNames[npcId]}`}
                                 onError={(e) => {
                                   // Fallback to jpeg if png doesn't exist
                                   const target = e.target as HTMLImageElement;
-                                  target.src = `/assets/characters/${npcId}.jpeg`;
+                                  target.src = `/assets/characters/${getNPCImage(npcId).replace('.png', '.jpeg')}`;
                                 }}
                               />
                             </div>
@@ -233,12 +207,12 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                               <div className="decision-title">
                                 <div className="npc-profile">
                                   <img 
-                                    src={`/assets/characters/${npcId}.1.png`} 
+                                    src={`/assets/characters/${getNPCImage(npcId)}`} 
                                     alt={`${NPCNames[npcId]}`}
                                     onError={(e) => {
                                       // Fallback to jpeg if png doesn't exist
                                       const target = e.target as HTMLImageElement;
-                                      target.src = `/assets/characters/${npcId}.jpeg`;
+                                      target.src = `/assets/characters/${getNPCImage(npcId).replace('.png', '.jpeg')}`;
                                     }}
                                   />
                                 </div>
@@ -500,6 +474,7 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
           width: 100%;
           height: 100%;
           object-fit: cover;
+          object-position: center top;
           border-radius: 50%;
         }
 

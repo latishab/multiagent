@@ -1,4 +1,5 @@
 import React from 'react'
+import { NPCNames, NPCSystems, NPCOptions, getNPCImage } from '../utils/npcData'
 
 interface ProgressIndicatorProps {
   currentRound: number;
@@ -9,57 +10,6 @@ interface ProgressIndicatorProps {
   hasTalkedToGuide?: boolean;
   isChatOpen?: boolean;
   currentChatNPCId?: number;
-}
-
-const NPCNames: { [key: number]: string } = {
-  1: 'Mrs. Aria',
-  2: 'Chief Oskar',
-  3: 'Mr. Moss',
-  4: 'Miss Dai',
-  5: 'Ms. Kira',
-  6: 'Mr. Han'
-}
-
-const NPCSystems: { [key: number]: string } = {
-  1: 'Water Cycle',
-  2: 'Energy Grid',
-  3: 'Fuel Acquisition',
-  4: 'Land Use',
-  5: 'Water Distribution',
-  6: 'Housing & Shelter'
-}
-
-const NPCOptions: { [key: number]: { sustainable: string; unsustainable: string; system: string } } = {
-  1: { 
-    sustainable: 'Constructed Wetlands', 
-    unsustainable: 'Chemical Filtration Tanks',
-    system: 'Water Cycle'
-  },
-  2: { 
-    sustainable: 'Local Solar Microgrids', 
-    unsustainable: 'Gas Power Hub',
-    system: 'Energy Grid'
-  },
-  3: { 
-    sustainable: 'Biofuel Cooperative', 
-    unsustainable: 'Diesel Supply Contracts',
-    system: 'Fuel Acquisition'
-  },
-  4: { 
-    sustainable: 'Urban Agriculture Zones', 
-    unsustainable: 'Industrial Expansion',
-    system: 'Land Use'
-  },
-  5: { 
-    sustainable: 'Public Shared Reservoir', 
-    unsustainable: 'Tiered Access Contracts',
-    system: 'Water Distribution'
-  },
-  6: { 
-    sustainable: 'Modular Eco-Pods', 
-    unsustainable: 'Smart Concrete Complex',
-    system: 'Housing & Shelter'
-  }
 }
 
 export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedToGuide = false, isChatOpen = false, currentChatNPCId = -1 }: ProgressIndicatorProps) {
@@ -319,7 +269,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
               className={`npc-item ${isCurrentRound ? 'spoken' : ''} ${actualCurrentRound === 1 ? 'round1' : 'round2'} ${hasOpinion ? 'has-opinion' : ''}`}
             >
               <div className="npc-avatar">
-                {NPCNames[npcId].split(' ')[1]?.[0] || NPCNames[npcId][0]}
+                <img src={`/assets/characters/${getNPCImage(npcId)}`} alt={NPCNames[npcId]} />
               </div>
               <div className="npc-info">
                 <div className="npc-name">{NPCNames[npcId]}</div>
@@ -614,6 +564,16 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
           color: #e5e7eb;
           font-size: clamp(0.75rem, 2.5vw, 0.875rem);
           flex-shrink: 0;
+          overflow: hidden;
+          border: 2px solid #4b5563;
+        }
+
+        .npc-avatar img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: center top;
+          border-radius: 50%;
         }
 
         .npc-info {
