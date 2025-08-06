@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { getCompletionMessages, narrativesToMessages } from '../utils/guideNarratives';
+import { getCompletionMessages } from '../utils/guideNarratives';
 
 interface TypewriterEndingProps {
   endingType: 'good' | 'bad';
@@ -7,75 +7,77 @@ interface TypewriterEndingProps {
 }
 
 export default function TypewriterEnding({ endingType, onComplete }: TypewriterEndingProps) {
+  // ✅ NEW STATE: Tracks the currently playing ending sequence.
+  const [activeEndingType, setActiveEndingType] = useState<'good' | 'bad'>(endingType);
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
-  const [showContinueButton, setShowContinueButton] = useState(false);
+  // ✅ NEW STATE: Controls when to show the final action buttons.
+  const [isSequenceFinished, setIsSequenceFinished] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Sound effect durations in milliseconds (exact from audio files)
   const soundDurations = useMemo(() => ({
-    good: [16196, 18442, 16274, 3004], // good_ending_1.mp3 (16.2s), good_ending_2.mp3 (18.4s), good_ending_3.mp3 (16.3s), good_ending_4.mp3 (3.0s)
-    bad: [11886, 16431, 10762] // bad_ending_1.mp3 (11.9s), bad_ending_2.mp3 (16.4s), bad_ending_3.mp3 (10.8s)
+    good: [16196, 18442, 16274, 3004],
+    bad: [11886, 16431, 10762]
   }), []);
 
-  // Get the appropriate ending messages based on ending type
+  // ✅ MODIFIED: Now depends on the activeEndingType state.
   const getEndingMessages = useCallback(() => {
     const completionMessages = getCompletionMessages();
-    if (endingType === 'good') {
+    if (activeEndingType === 'good') {
       return completionMessages.filter(msg => msg.id.startsWith('good_ending'));
     } else {
       return completionMessages.filter(msg => msg.id.startsWith('bad_ending'));
     }
-  }, [endingType]);
+  }, [activeEndingType]);
 
   const messages = useMemo(() => getEndingMessages(), [getEndingMessages]);
   const currentMessage = messages[currentMessageIndex];
-  const currentDurations = useMemo(() => soundDurations[endingType], [soundDurations, endingType]);
+  // ✅ MODIFIED: Now depends on the activeEndingType state.
+  const currentDurations = useMemo(() => soundDurations[activeEndingType], [soundDurations, activeEndingType]);
   
   console.log('TypewriterEnding Debug:', {
     endingType,
+    activeEndingType,
     messagesCount: messages.length,
     currentMessageIndex,
     currentMessage: currentMessage?.text,
-    isVisible
+    isVisible,
+    isSequenceFinished
   });
 
-  // Play sound effect for current message
+  // Main effect for playing the message sequence
   useEffect(() => {
-    if (!currentMessage) return;
+    if (!currentMessage || isSequenceFinished) return;
 
     const soundIndex = currentMessageIndex;
-    const soundFile = `${endingType}_ending_${soundIndex + 1}.mp3`;
+    // ✅ MODIFIED: Uses activeEndingType to select the correct audio.
+    const soundFile = `${activeEndingType}_ending_${soundIndex + 1}.mp3`;
     
-    // Stop any currently playing audio
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
     }
     
-    // Create and play audio
     audioRef.current = new Audio(`/assets/sound_effects/${soundFile}`);
     audioRef.current.loop = false; // Ensure no looping
     audioRef.current.play().catch(err => {
       console.log('Audio play failed:', err);
     });
 
-    // Fade in the message
     setIsVisible(true);
 
-    // Set timeout based on sound duration
     const duration = currentDurations[soundIndex] || 5000;
     const timeoutId = setTimeout(() => {
       setIsVisible(false);
       
-      // Wait for fade out, then move to next message or show continue button
       setTimeout(() => {
         if (currentMessageIndex < messages.length - 1) {
           setCurrentMessageIndex(prev => prev + 1);
         } else {
-          setShowContinueButton(true);
+          // ✅ MODIFIED: Mark the sequence as finished instead of showing the button directly.
+          setIsSequenceFinished(true);
         }
-      }, 500); // 500ms fade out duration
+      }, 500);
     }, duration);
 
     return () => {
@@ -85,19 +87,18 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
         audioRef.current = null;
       }
     };
-  }, [currentMessageIndex, endingType, messages.length]); 
+  // ✅ MODIFIED: Add activeEndingType to the dependency array to restart the effect when it changes.
+  }, [currentMessageIndex, activeEndingType, messages.length, currentMessage, isSequenceFinished, currentDurations]); 
 
-  const handleContinue = () => {
-    if (currentMessageIndex < messages.length - 1) {
-      setCurrentMessageIndex(prev => prev + 1);
-      setShowContinueButton(false);
-    } else {
-      onComplete();
-    }
+  // ✅ NEW LOGIC: This handler will switch to the good ending.
+  const handleViewAlternateEnding = () => {
+    setActiveEndingType('good'); // Switch to the good ending
+    setCurrentMessageIndex(0);    // Reset to the first message
+    setIsSequenceFinished(false); // Hide the buttons and restart the sequence
   };
 
   const getEndingTitle = () => {
-    switch (endingType) {
+    switch (activeEndingType) {
       case 'good':
         return 'Good Ending';
       case 'bad':
@@ -109,25 +110,31 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
 
   return (
     <div className="typewriter-ending">
-      {/* Ending Image - Full Screen */}
+      {/* ✅ MODIFIED: Image now depends on the active ending type */}
       <img 
-        src={`/assets/Engding/${endingType === 'good' ? 'good ending.jpg' : 'bad ending.jpg'}`}
+        src={`/assets/Engding/${activeEndingType === 'good' ? 'good ending.jpg' : 'bad ending.jpg'}`}
         alt="Ending Scene"
         className="ending-image"
       />
 
-      {/* Dialogue Overlay - Bottom */}
       <div className="dialogue-overlay">
         <div className={`dialogue-content ${isVisible ? 'fade-in' : 'fade-out'}`}>
-          {currentMessage?.text || 'Loading message...'}
+          {currentMessage?.text || ''}
         </div>
       </div>
 
-      {/* Continue Button - Top Right */}
-      {showContinueButton && (
+      {/* ✅ NEW LOGIC: Conditionally render buttons when the sequence is finished */}
+      {isSequenceFinished && (
         <div className="continue-section">
-          <button className="continue-button" onClick={handleContinue}>
-            {currentMessageIndex < messages.length - 1 ? 'Continue' : 'Return to Main Menu'}
+          {/* If the initial ending was bad, show the choice */}
+          {endingType === 'bad' && activeEndingType === 'bad' && (
+            <button className="continue-button alternate" onClick={handleViewAlternateEnding}>
+              View a Different Outcome
+            </button>
+          )}
+          {/* Always show the main menu button at the very end */}
+          <button className="continue-button" onClick={onComplete}>
+            Return to Main Menu
           </button>
         </div>
       )}
@@ -189,8 +196,18 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
 
         .continue-section {
           position: absolute;
-          top: clamp(1rem, 4vw, 2rem);
+          bottom: calc(clamp(120px, 25vh, 200px) + 2rem); /* Position above the dialogue box */
           right: clamp(1rem, 4vw, 2rem);
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+          align-items: flex-end;
+          animation: fadeInButtons 1s ease-in-out;
+        }
+
+        @keyframes fadeInButtons {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
 
         .continue-button {
@@ -217,6 +234,15 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
 
         .continue-button:active {
           transform: translateY(0);
+        }
+        
+        .continue-button.alternate {
+          background: linear-gradient(135deg, #16a34a, #15803d); /* Green for alternate outcome */
+        }
+
+        .continue-button.alternate:hover {
+          background: linear-gradient(135deg, #15803d, #166534);
+          box-shadow: 0 6px 20px rgba(22, 163, 74, 0.4);
         }
 
         @media (max-width: 768px) {
