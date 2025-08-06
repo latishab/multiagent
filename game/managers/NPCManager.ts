@@ -547,10 +547,6 @@ export class NPCManager {
   }
 
   private checkInteractions() {
-    console.log('Current interactable NPC:', this.currentInteractableNPC?.id);
-    console.log('hasGameStarted:', typeof window !== 'undefined' ? (window as any).hasGameStarted : 'undefined');
-    console.log('isChatOpen:', typeof window !== 'undefined' ? (window as any).isChatOpen : 'undefined');
-    
     // Don't check for interactions if chat is open
     if (typeof window !== 'undefined' && (window as any).isChatOpen) {
       console.log('❌ Chat is open, blocking interaction');

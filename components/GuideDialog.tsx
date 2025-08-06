@@ -143,12 +143,10 @@ export default function GuideDialog({
           // Advance the round after messages are displayed 
           if (shouldAdvanceToRound1) {
             await new Promise(resolve => setTimeout(resolve, 500));
-            console.log('GuideDialog: Automatically advancing to Round 1');
             onRoundChange(1);
           }
           if (shouldAdvanceRound) {
             await new Promise(resolve => setTimeout(resolve, 500)); 
-            console.log('GuideDialog: Automatically advancing to Round 2');
             onRoundChange(2);
           }
         } else {

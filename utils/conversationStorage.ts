@@ -90,7 +90,8 @@ class ConversationStorage {
   // ============================================================================
 
   /**
-   * Store a new message in the conversation history
+   * Store a new message in the conversation history (Primarily for Upstash/Pinecone now)
+   * The main API handler is now responsible for batching turns into Supabase.
    */
   async storeMessage(
     npcId: number,
@@ -139,45 +140,10 @@ class ConversationStorage {
         });
       }
 
-      // Store in Supabase for research/analytics (if configured)
-      if (isSupabaseConfigured()) {
-        try {
-          const conversationRow: ConversationRow = {
-            session_id: currentSessionId,
-            npc_id: npcId,
-            round: effectiveRound,
-            message_data: {
-              role: message.role,
-              content: message.content,
-              timestamp: message.timestamp,
-              metadata: message.metadata
-            }
-          };
+      // The Supabase insert logic is now REMOVED from here, as the chat.ts API handles it more efficiently.
+      // This prevents duplicate single-message entries.
 
-          const { error } = await supabase
-            .from('conversations')
-            .insert(conversationRow);
-
-          if (error) {
-            console.error('Error storing message in Supabase:', error);
-            // Don't throw error - Supabase storage is optional for research
-          } else {
-            console.log('Message stored in Supabase for research');
-          }
-        } catch (supabaseError) {
-          console.error('Supabase storage error (non-critical):', supabaseError);
-          // Don't throw error - Supabase storage is optional
-        }
-      }
-
-      console.log('Message stored successfully:', {
-        npcId,
-        round: effectiveRound,
-        role: message.role,
-        contentLength: message.content.length,
-        sessionId: currentSessionId,
-        storedInSupabase: isSupabaseConfigured()
-      });
+      console.log('Message stored in short-term cache (Upstash/Pinecone). Supabase is handled by the API.');
     } catch (error) {
       console.error('Error storing message:', error);
       throw error;

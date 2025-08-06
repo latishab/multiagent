@@ -356,15 +356,11 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       console.log('Conversation analysis:', conversationAnalysis);
       
       if (existingIndex !== -1) {
-        // Update existing entry
         const updated = [...prev];
         updated[existingIndex] = newEntry;
-        console.log('Updated existing ballot entry');
-        return updated;
+        return updated; // Update existing entry
       } else {
-        // Add new entry
-        console.log('Added new ballot entry');
-        return [...prev, newEntry];
+        return [...prev, newEntry]; // Add new entry
       }
     });
 

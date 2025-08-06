@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { vectorStore } from '../../utils/vectorStore';
 import { upstashStore } from '../../utils/upstashStore';
 import { NPCData, getSystemPrompt } from '../../utils/prompts';
+import { supabase, isSupabaseConfigured } from '../../utils/supabaseClient';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -47,6 +48,115 @@ interface GuideAnalysis {
   response: string;
   shouldAdvanceRound?: boolean;
   shouldOpenPDA?: boolean;
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Stores a turn (user message + assistant response) in a single conversation document.
+ * Creates the document if it's the first turn, otherwise appends to it.
+ * @param sessionId The user's session ID.
+ * @param npcId The NPC's ID.
+ * @param round The current game round.
+ * @param turnMessages An array containing the user's message and the assistant's response.
+ */
+async function storeConversationTurn(
+  sessionId: string,
+  npcId: number,
+  round: number,
+  turnMessages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: number }>
+) {
+  if (!isSupabaseConfigured()) return;
+
+  try {
+    // Upsert the conversation document.
+    // RPC (Remote Procedure Call) is the cleanest way to do an append/upsert in Supabase.
+    // You'll need to create this function in your Supabase SQL editor.
+    const { error } = await supabase.rpc('append_to_conversation', {
+      p_session_id: sessionId,
+      p_npc_id: npcId,
+      p_round: round,
+      new_messages: turnMessages,
+    });
+
+    if (error) {
+      console.error('Error in storeConversationTurn RPC:', error);
+      // Fallback to client-side logic if RPC fails or is not set up yet
+      // This part is for safety, but the RPC is preferred.
+      await storeConversationTurnFallback(sessionId, npcId, round, turnMessages);
+    } else {
+      console.log('Stored conversation turn successfully via RPC.');
+    }
+  } catch (e) {
+    console.error('Exception in storeConversationTurn:', e);
+  }
+}
+
+/**
+ * Fallback method for storing conversation turns when RPC is not available
+ */
+async function storeConversationTurnFallback(
+  sessionId: string,
+  npcId: number,
+  round: number,
+  turnMessages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: number }>
+) {
+  try {
+    // First, try to get existing conversation
+    const { data: existingConversation, error: fetchError } = await supabase
+      .from('conversations')
+      .select('messages')
+      .eq('session_id', sessionId)
+      .eq('npc_id', npcId)
+      .eq('round', round)
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('Error fetching existing conversation:', fetchError);
+      return;
+    }
+
+    if (existingConversation) {
+      // Update existing conversation by appending new messages
+      const updatedMessages = [...(existingConversation.messages || []), ...turnMessages];
+      
+      const { error: updateError } = await supabase
+        .from('conversations')
+        .update({ 
+          messages: updatedMessages,
+          updated_at: new Date().toISOString()
+        })
+        .eq('session_id', sessionId)
+        .eq('npc_id', npcId)
+        .eq('round', round);
+
+      if (updateError) {
+        console.error('Error updating conversation:', updateError);
+      } else {
+        console.log('Updated existing conversation with new turn.');
+      }
+    } else {
+      // Insert new conversation
+      const { error: insertError } = await supabase
+        .from('conversations')
+        .insert({
+          session_id: sessionId,
+          npc_id: npcId,
+          round: round,
+          messages: turnMessages
+        });
+
+      if (insertError) {
+        console.error('Error inserting new conversation:', insertError);
+      } else {
+        console.log('Created new conversation with turn.');
+      }
+    }
+  } catch (e) {
+    console.error('Exception in storeConversationTurnFallback:', e);
+  }
 }
 
 // ============================================================================
@@ -376,38 +486,37 @@ async function handleGuideConversation(
   sessionId: string,
   spokenNPCs: { round1: number[]; round2: number[] }
 ): Promise<any> {
-  // Use round 1 for The Guide to preserve conversation across rounds
-  const effectiveRound = 1;
+  const effectiveRound = 1; // Guide conversation is always stored in round 1
   
-  // Get conversation history from Upstash (short-term memory)
+  // Get history and add user message to Upstash (short-term memory)
   const history = await upstashStore.getConversationHistory(-1, effectiveRound, sessionId);
-  
-  // Add user message to Upstash (short-term memory)
-  await upstashStore.addToConversationHistory(-1, effectiveRound, {
-    role: 'user',
-    content: message
-  }, sessionId);
-  
-  // Analyze conversation with LLM
+  await upstashStore.addToConversationHistory(-1, effectiveRound, { role: 'user', content: message }, sessionId);
+
+  // --- (No change to this part) ---
   const analysis = await analyzeGuideConversation(message, round, history, spokenNPCs);
   
   // Add assistant response to Upstash (short-term memory)
-  await upstashStore.addToConversationHistory(-1, effectiveRound, {
-    role: 'assistant',
-    content: analysis.response
-  }, sessionId);
-  
+  await upstashStore.addToConversationHistory(-1, effectiveRound, { role: 'assistant', content: analysis.response }, sessionId);
+
+  // Store the entire turn (user message + assistant response) in Supabase in one go.
+  await storeConversationTurn(sessionId, -1, effectiveRound, [
+    { role: 'user', content: message, timestamp: Date.now() },
+    { role: 'assistant', content: analysis.response, timestamp: Date.now() }
+  ]);
+
   return {
     response: analysis.response,
     detectedOpinion: null,
-    conversationAnalysis: { 
-      isComplete: true, 
+    conversationAnalysis: {
+      isComplete: true,
       reason: 'Main NPC response',
       shouldAdvanceRound: analysis.shouldAdvanceRound,
       shouldOpenPDA: analysis.shouldOpenPDA
     }
   };
 }
+
+
 
 /**
  * Handles regular NPC conversation logic
@@ -422,13 +531,9 @@ async function handleRegularNPCConversation(
 ): Promise<any> {
   // Setup conversation history (Redis for short-term memory)
   await setupConversationHistory(npcId, round, sessionId, npc, isSustainable);
-
-  // Add user message to Upstash (short-term memory)
-  await upstashStore.addToConversationHistory(npcId, round, {
-    role: 'user',
-    content: message
-  }, sessionId);
-
+  await upstashStore.addToConversationHistory(npcId, round, { role: 'user', content: message }, sessionId);
+  
+  // Pinecone, context, and DeepInfra call remain the same...
   // Get updated history from Upstash (short-term memory)
   const updatedHistory = await upstashStore.getConversationHistory(npcId, round, sessionId);
 
@@ -514,13 +619,15 @@ async function handleRegularNPCConversation(
     sessionId: sessionId || 'default'
   });
 
-  // Add assistant response to Upstash (short-term memory)
-  await upstashStore.addToConversationHistory(npcId, round, {
-    role: 'assistant',
-    content: aiResponse
-  }, sessionId);
+  // Add assistant response to Upstash
+  await upstashStore.addToConversationHistory(npcId, round, { role: 'assistant', content: aiResponse }, sessionId);
 
-  // Analyze conversation completeness AFTER adding the current response
+  // Store the entire turn in Supabase in one go.
+  await storeConversationTurn(sessionId, npcId, round, [
+      { role: 'user', content: message, timestamp: Date.now() },
+      { role: 'assistant', content: aiResponse, timestamp: Date.now() }
+  ]);
+
   const finalHistory = await upstashStore.getConversationHistory(npcId, round, sessionId);
   const conversationAnalysis = await analyzeConversationCompleteness(finalHistory, npc, round);
 
