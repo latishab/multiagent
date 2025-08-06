@@ -236,7 +236,7 @@ export default function GuideDialog({
         }
       }
     } catch (error) {
-      console.error('Error in guide chat:', error);
+      console.error('LLM response failed in GuideDialog:', error instanceof Error ? error.message : String(error));
       setError(error instanceof Error ? error.message : String(error));
       setMessages(prev => [...prev, { 
         text: "I apologize, but I'm having trouble responding right now.", 

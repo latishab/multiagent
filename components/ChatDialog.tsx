@@ -290,7 +290,7 @@ export default function ChatDialog({
           throw new Error('Invalid response format from API');
         }
     } catch (error) {
-      console.error('Full error details:', error);
+      console.error('LLM response failed in ChatDialog:', error instanceof Error ? error.message : String(error));
       setError(error instanceof Error ? error.message : String(error));
       
       // Add error message to conversation

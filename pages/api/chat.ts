@@ -334,7 +334,10 @@ Example responses for Round 2:
     });
 
     if (!response.ok) {
-      console.error('Analysis API call failed');
+    console.error('LLM Analysis API call failed:', {
+      status: response.status,
+      statusText: response.statusText
+    });
       return { isComplete: false, reason: 'Analysis failed' };
     }
 
@@ -342,6 +345,7 @@ Example responses for Round 2:
     const analysis = data.choices?.[0]?.message?.content?.trim();
     
     if (!analysis) {
+      console.error('LLM Analysis API returned empty response');
       return { isComplete: false, reason: 'No analysis response' };
     }
 
@@ -352,7 +356,7 @@ Example responses for Round 2:
 
     return { isComplete, reason };
   } catch (error) {
-    console.error('Error analyzing conversation:', error);
+    console.error('LLM Analysis API error:', error instanceof Error ? error.message : String(error));
     return { isComplete: false, reason: 'Analysis error' };
   }
 }
@@ -508,6 +512,11 @@ async function handleRegularNPCConversation(
 
   if (!response.ok) {
     const errorData = await response.json();
+    console.error('LLM API call failed:', {
+      status: response.status,
+      statusText: response.statusText,
+      error: errorData.error?.message || 'Unknown error'
+    });
     throw new Error(errorData.error?.message || 'Failed to get response from DeepInfra');
   }
 
@@ -515,7 +524,7 @@ async function handleRegularNPCConversation(
   let aiResponse = data.choices?.[0]?.message?.content;
   
   if (!aiResponse) {
-    console.error('Invalid API response format:', data);
+    console.error('LLM API returned invalid response format');
     throw new Error('Invalid response format from API');
   }
 
