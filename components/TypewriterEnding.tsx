@@ -13,10 +13,10 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Sound effect durations in milliseconds (exact from audio files)
-  const soundDurations = {
+  const soundDurations = useMemo(() => ({
     good: [16196, 18442, 16274, 3004], // good_ending_1.mp3 (16.2s), good_ending_2.mp3 (18.4s), good_ending_3.mp3 (16.3s), good_ending_4.mp3 (3.0s)
     bad: [11886, 16431, 10762] // bad_ending_1.mp3 (11.9s), bad_ending_2.mp3 (16.4s), bad_ending_3.mp3 (10.8s)
-  };
+  }), []);
 
   // Get the appropriate ending messages based on ending type
   const getEndingMessages = useCallback(() => {
@@ -30,7 +30,7 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
 
   const messages = useMemo(() => getEndingMessages(), [getEndingMessages]);
   const currentMessage = messages[currentMessageIndex];
-  const currentDurations = soundDurations[endingType];
+  const currentDurations = useMemo(() => soundDurations[endingType], [soundDurations, endingType]);
   
   console.log('TypewriterEnding Debug:', {
     endingType,
@@ -85,7 +85,7 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
         audioRef.current = null;
       }
     };
-  }, [currentMessageIndex, endingType, messages.length, currentDurations]); 
+  }, [currentMessageIndex, endingType, messages.length]); 
 
   const handleContinue = () => {
     if (currentMessageIndex < messages.length - 1) {
