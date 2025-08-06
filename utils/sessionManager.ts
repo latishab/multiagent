@@ -16,7 +16,7 @@ interface DeviceFingerprint {
 
 class SessionManager {
   private static instance: SessionManager;
-  private sessionId: string | null = null;
+  private participantId: string | null = null;
 
   private constructor() {}
 
@@ -79,80 +79,105 @@ class SessionManager {
     return `${Math.abs(hash).toString(36)}_${randomSuffix}`;
   }
 
-  // Get or create session ID
-  public async getSessionId(): Promise<string> {
-    // Try to get from localStorage first
-    const storedSessionId = localStorage.getItem('multiagent_session_id');
-    if (storedSessionId) {
-      this.sessionId = storedSessionId;
-      return this.sessionId;
+  // Get or create participant ID
+  public async getParticipantId(): Promise<string> {
+    // Only use localStorage if we're in a browser environment
+    if (typeof window !== 'undefined' && window.localStorage) {
+      // Try to get from localStorage first
+      const storedParticipantId = localStorage.getItem('multiagent_participant_id');
+      if (storedParticipantId) {
+        this.participantId = storedParticipantId;
+        return this.participantId;
+      }
     }
 
-    // If we have a session ID in memory, use it
-    if (this.sessionId) {
-      return this.sessionId;
+    // If we have a participant ID in memory, use it
+    if (this.participantId) {
+      return this.participantId;
     }
 
-    // Generate new session ID
+    // Generate new participant ID
     try {
       const fingerprint = await this.generateDeviceFingerprint();
-      const sessionId = await this.hashFingerprint(fingerprint);
+      const participantId = await this.hashFingerprint(fingerprint);
       
-      // Store in localStorage
-      localStorage.setItem('multiagent_session_id', sessionId);
-      this.sessionId = sessionId;
+      // Store in localStorage if available
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('multiagent_participant_id', participantId);
+      }
+      this.participantId = participantId;
       
-      console.log('Generated new session ID:', sessionId);
-      return sessionId;
+      console.log('Generated new participant ID:', participantId);
+      return participantId;
     } catch (error) {
-      console.error('Error generating session ID:', error);
+      console.error('Error generating participant ID:', error);
       // Fallback to a simple random ID
       const fallbackId = `fallback_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-      localStorage.setItem('multiagent_session_id', fallbackId);
-      this.sessionId = fallbackId;
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('multiagent_participant_id', fallbackId);
+      }
+      this.participantId = fallbackId;
       return fallbackId;
     }
   }
 
-  // Clear session (useful for testing or resetting)
-  public clearSession(): void {
-    this.sessionId = null;
-    localStorage.removeItem('multiagent_session_id');
+  // Clear participant ID (useful for testing or resetting)
+  public clearParticipant(): void {
+    this.participantId = null;
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem('multiagent_participant_id');
+    }
   }
 
-  // Clear session and participant ID (for complete reset)
+  // Clear all data (for complete reset)
   public clearAll(): void {
-    this.sessionId = null;
-    localStorage.removeItem('multiagent_session_id');
-    localStorage.removeItem('multiagent_participant_id');
+    this.participantId = null;
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem('multiagent_participant_id');
+    }
   }
 
-  // Clear only session ID but keep participant ID (for restarting game with same participant)
-  public clearSessionOnly(): void {
-    this.sessionId = null;
-    localStorage.removeItem('multiagent_session_id');
-  }
-
-  // Get session info for debugging
-  public getSessionInfo(): { sessionId: string | null; stored: boolean; participantId: string | null } {
-    const stored = localStorage.getItem('multiagent_session_id') !== null;
-    const participantId = localStorage.getItem('multiagent_participant_id');
-    return { sessionId: this.sessionId, stored, participantId };
-  }
-
-  // Get participant ID
-  public getParticipantId(): string | null {
-    return localStorage.getItem('multiagent_participant_id');
+  // Get participant info for debugging
+  public getParticipantInfo(): { participantId: string | null; stored: boolean } {
+    const stored = typeof window !== 'undefined' && window.localStorage ? 
+      localStorage.getItem('multiagent_participant_id') !== null : false;
+    return { participantId: this.participantId, stored };
   }
 
   // Set participant ID
   public setParticipantId(participantId: string): void {
-    localStorage.setItem('multiagent_participant_id', participantId);
+    this.participantId = participantId;
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem('multiagent_participant_id', participantId);
+    }
   }
 
   // Clear participant ID
   public clearParticipantId(): void {
-    localStorage.removeItem('multiagent_participant_id');
+    this.participantId = null;
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem('multiagent_participant_id');
+    }
+  }
+
+  // Compatibility method - returns participant ID as session ID
+  public async getSessionId(): Promise<string> {
+    return this.getParticipantId();
+  }
+
+  // Compatibility method - clear session (clears participant)
+  public clearSessionOnly(): void {
+    this.clearParticipantId();
+  }
+
+  // Compatibility method - get session info
+  public getSessionInfo(): { sessionId: string | null; stored: boolean; participantId: string | null } {
+    const info = this.getParticipantInfo();
+    return { 
+      sessionId: info.participantId, 
+      stored: info.stored, 
+      participantId: info.participantId 
+    };
   }
 }
 

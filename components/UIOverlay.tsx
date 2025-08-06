@@ -446,6 +446,11 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       // Reset messages when changing rounds
       messages: []
     }))
+    
+    // If advancing to round 1 or round 2, mark that the player has talked to the Guide
+    if (round === 1 || round === 2) {
+      setHasTalkedToGuide(true);
+    }
   }
 
   // Handle stance changes (now only for internal use)
@@ -1033,6 +1038,10 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         onClose={closeGuideDialog}
         onRoundChange={handleRoundChange}
         onConversationComplete={(npcId, round, detectedOpinion, conversationAnalysis) => markNPCAsSpoken(npcId, round, detectedOpinion, conversationAnalysis)}
+        onOpenPDA={() => {
+          setShowDecisionMode(true);
+          setShowPDA(true);
+        }}
       />
 
       {/* Game Menu */}

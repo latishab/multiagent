@@ -9,6 +9,7 @@ interface GuideDialogProps {
   onClose: () => void;
   onRoundChange: (round: number) => void;
   onConversationComplete?: (npcId: number, round: number, detectedOpinion?: { opinion: string; reasoning: string }, conversationAnalysis?: { isComplete: boolean; reason: string }) => void;
+  onOpenPDA?: () => void;
 }
 
 interface Message {
@@ -22,7 +23,8 @@ export default function GuideDialog({
   spokenNPCs,
   onClose,
   onRoundChange,
-  onConversationComplete
+  onConversationComplete,
+  onOpenPDA
 }: GuideDialogProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -58,14 +60,20 @@ export default function GuideDialog({
         let messagesToDisplay = [...existingMessages]; // Start with what we have
         let needsDBUpdate = false;
         let shouldAdvanceRound = false;
+        let shouldAdvanceToRound1 = false;
 
-        // State A: First time ever opening the dialog
-        if (round === 1 && existingMessages.length === 0) {
-          const initialMessages = narrativesToMessages(getInitialGuideMessages());
-          
+        // State A: First time ever opening the dialog (check if initial messages exist)
+        const initialMessages = narrativesToMessages(getInitialGuideMessages());
+        const firstInitialMessage = initialMessages[0]?.text;
+        const hasInitialMessages = existingMessages.some(
+          (msg) => msg.text === firstInitialMessage
+        );
+        
+        if ((round === 0 || round === 1) && !hasInitialMessages) {
           // Add to the messages to be displayed
           messagesToDisplay.push(...initialMessages);
           needsDBUpdate = true;
+          shouldAdvanceToRound1 = true;
         
         // We check this condition BEFORE checking for the start of Round 2.
         } else if (round === 2 && spokenNPCs.round2.size >= 6) {
@@ -133,6 +141,11 @@ export default function GuideDialog({
           }
           
           // Advance the round after messages are displayed 
+          if (shouldAdvanceToRound1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            console.log('GuideDialog: Automatically advancing to Round 1');
+            onRoundChange(1);
+          }
           if (shouldAdvanceRound) {
             await new Promise(resolve => setTimeout(resolve, 500)); 
             console.log('GuideDialog: Automatically advancing to Round 2');
@@ -173,6 +186,13 @@ export default function GuideDialog({
 
     const userMessage = inputValue.trim();
     setInputValue('');
+    
+    // Check if this is the decision phase and user typed "continue"
+    if (round === 2 && spokenNPCs.round2.size >= 6 && userMessage.toLowerCase() === 'continue' && onOpenPDA) {
+      console.log('GuideDialog: User typed "continue" during decision phase, opening PDA');
+      onOpenPDA();
+      return;
+    }
     
     const currentSessionId = await sessionManager.getSessionId();
     
