@@ -7,11 +7,9 @@ interface TypewriterEndingProps {
 }
 
 export default function TypewriterEnding({ endingType, onComplete }: TypewriterEndingProps) {
-  // ✅ NEW STATE: Tracks the currently playing ending sequence.
   const [activeEndingType, setActiveEndingType] = useState<'good' | 'bad'>(endingType);
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
-  // ✅ NEW STATE: Controls when to show the final action buttons.
   const [isSequenceFinished, setIsSequenceFinished] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -20,7 +18,6 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
     bad: [11886, 16431, 10762]
   }), []);
 
-  // ✅ MODIFIED: Now depends on the activeEndingType state.
   const getEndingMessages = useCallback(() => {
     const completionMessages = getCompletionMessages();
     if (activeEndingType === 'good') {
@@ -32,7 +29,6 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
 
   const messages = useMemo(() => getEndingMessages(), [getEndingMessages]);
   const currentMessage = messages[currentMessageIndex];
-  // ✅ MODIFIED: Now depends on the activeEndingType state.
   const currentDurations = useMemo(() => soundDurations[activeEndingType], [soundDurations, activeEndingType]);
   
   console.log('TypewriterEnding Debug:', {
@@ -50,7 +46,6 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
     if (!currentMessage || isSequenceFinished) return;
 
     const soundIndex = currentMessageIndex;
-    // ✅ MODIFIED: Uses activeEndingType to select the correct audio.
     const soundFile = `${activeEndingType}_ending_${soundIndex + 1}.mp3`;
     
     if (audioRef.current) {
@@ -74,7 +69,6 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
         if (currentMessageIndex < messages.length - 1) {
           setCurrentMessageIndex(prev => prev + 1);
         } else {
-          // ✅ MODIFIED: Mark the sequence as finished instead of showing the button directly.
           setIsSequenceFinished(true);
         }
       }, 500);
@@ -87,10 +81,8 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
         audioRef.current = null;
       }
     };
-  // ✅ MODIFIED: Add activeEndingType to the dependency array to restart the effect when it changes.
   }, [currentMessageIndex, activeEndingType, messages.length, currentMessage, isSequenceFinished, currentDurations]); 
 
-  // ✅ NEW LOGIC: This handler will switch to the good ending.
   const handleViewAlternateEnding = () => {
     setActiveEndingType('good'); // Switch to the good ending
     setCurrentMessageIndex(0);    // Reset to the first message
@@ -110,7 +102,6 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
 
   return (
     <div className="typewriter-ending">
-      {/* ✅ MODIFIED: Image now depends on the active ending type */}
       <img 
         src={`/assets/Engding/${activeEndingType === 'good' ? 'good ending.jpg' : 'bad ending.jpg'}`}
         alt="Ending Scene"
@@ -123,7 +114,6 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
         </div>
       </div>
 
-      {/* ✅ NEW LOGIC: Conditionally render buttons when the sequence is finished */}
       {isSequenceFinished && (
         <div className="continue-section">
           {/* If the initial ending was bad, show the choice */}

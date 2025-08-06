@@ -18,8 +18,6 @@ interface BallotEntry {
   round: number;
   sustainableOption: string;
   unsustainableOption: string;
-  npcOpinion: string;
-  npcReasoning: string;
   timestamp: number;
 }
 
@@ -44,14 +42,20 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   const [showGameMenu, setShowGameMenu] = useState(false);
   const [hasStartedGame, setHasStartedGame] = useState(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('multiagent-has-started-game');
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-has-started-game-${participantId}` : 'multiagent-has-started-game';
+      
+      const saved = localStorage.getItem(storageKey);
       return saved ? JSON.parse(saved) : false;
     }
     return false;
   });
   const [hasTalkedToGuide, setHasTalkedToGuide] = useState(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('multiagent-has-talked-to-guide');
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-has-talked-to-guide-${participantId}` : 'multiagent-has-talked-to-guide';
+      
+      const saved = localStorage.getItem(storageKey);
       return saved ? JSON.parse(saved) : false;
     }
     return false;
@@ -65,7 +69,10 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     isSustainable: boolean
   }>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('multiagent-chat-state');
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-chat-state-${participantId}` : 'multiagent-chat-state';
+      
+      const saved = localStorage.getItem(storageKey);
       if (saved) {
         try {
           return JSON.parse(saved);
@@ -90,7 +97,11 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   }>(() => {
     // Load from localStorage on initialization
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('multiagent-spoken-npcs');
+      // Get participant ID for localStorage key
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-spoken-npcs-${participantId}` : 'multiagent-spoken-npcs';
+      
+      const saved = localStorage.getItem(storageKey);
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
@@ -127,7 +138,10 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   // Ballot entries to track NPC opinions
   const [ballotEntries, setBallotEntries] = useState<BallotEntry[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('multiagent-ballot-entries');
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-ballot-entries-${participantId}` : 'multiagent-ballot-entries';
+      
+      const saved = localStorage.getItem(storageKey);
       if (saved) {
         try {
           return JSON.parse(saved);
@@ -142,18 +156,24 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   // Save spoken NPCs to localStorage whenever they change
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-spoken-npcs-${participantId}` : 'multiagent-spoken-npcs';
+      
       const dataToSave = {
         round1: Array.from(spokenNPCs.round1),
         round2: Array.from(spokenNPCs.round2)
       };
-      localStorage.setItem('multiagent-spoken-npcs', JSON.stringify(dataToSave));
+      localStorage.setItem(storageKey, JSON.stringify(dataToSave));
     }
   }, [spokenNPCs]);
 
   // Save ballot entries to localStorage whenever they change
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('multiagent-ballot-entries', JSON.stringify(ballotEntries));
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-ballot-entries-${participantId}` : 'multiagent-ballot-entries';
+      
+      localStorage.setItem(storageKey, JSON.stringify(ballotEntries));
     }
   }, [ballotEntries]);
 
@@ -166,19 +186,28 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('multiagent-has-started-game', JSON.stringify(hasStartedGame));
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-has-started-game-${participantId}` : 'multiagent-has-started-game';
+      
+      localStorage.setItem(storageKey, JSON.stringify(hasStartedGame));
     }
   }, [hasStartedGame]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('multiagent-has-talked-to-guide', JSON.stringify(hasTalkedToGuide));
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-has-talked-to-guide-${participantId}` : 'multiagent-has-talked-to-guide';
+      
+      localStorage.setItem(storageKey, JSON.stringify(hasTalkedToGuide));
     }
   }, [hasTalkedToGuide]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('multiagent-chat-state', JSON.stringify(chatState));
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-chat-state-${participantId}` : 'multiagent-chat-state';
+      
+      localStorage.setItem(storageKey, JSON.stringify(chatState));
     }
   }, [chatState]);
 
@@ -338,11 +367,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       round: round,
       sustainableOption: NPCOptions[npcId].sustainable,
       unsustainableOption: NPCOptions[npcId].unsustainable,
-      npcOpinion: round === 1 ? 'Introduction phase - no opinion yet' : 
-        (detectedOpinion ? detectedOpinion.opinion : 'Opinion not yet revealed'),
-      npcReasoning: round === 1 ? 
-        (conversationAnalysis?.isComplete ? 'Introduction complete' : 'Introduction in progress') :
-        (detectedOpinion ? detectedOpinion.reasoning : 'Waiting for NPC to express their opinion'),
       timestamp: Date.now()
     }
 
@@ -352,7 +376,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       
       console.log('Updating ballot entries for NPC', npcId, 'Round', round);
       console.log('Existing entry found:', existingIndex !== -1);
-      console.log('New entry reasoning:', newEntry.npcReasoning);
       console.log('Conversation analysis:', conversationAnalysis);
       
       if (existingIndex !== -1) {
@@ -550,7 +573,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         round2: prev.round2
       }));
       
-      // ✅ ADD THIS LINE to update the game round
       setChatState(prev => ({ ...prev, round: 2 }));
       
       // Create ballot entries for Round 1 (introduction phase)
@@ -562,8 +584,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 1,
           sustainableOption: NPCOptions[1].sustainable,
           unsustainableOption: NPCOptions[1].unsustainable,
-          npcOpinion: '',
-          npcReasoning: '',
           timestamp: Date.now()
         },
         {
@@ -573,8 +593,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 1,
           sustainableOption: NPCOptions[2].sustainable,
           unsustainableOption: NPCOptions[2].unsustainable,
-          npcOpinion: '',
-          npcReasoning: '',
           timestamp: Date.now()
         },
         {
@@ -584,8 +602,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 1,
           sustainableOption: NPCOptions[3].sustainable,
           unsustainableOption: NPCOptions[3].unsustainable,
-          npcOpinion: '',
-          npcReasoning: '',
           timestamp: Date.now()
         },
         {
@@ -595,8 +611,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 1,
           sustainableOption: NPCOptions[4].sustainable,
           unsustainableOption: NPCOptions[4].unsustainable,
-          npcOpinion: '',
-          npcReasoning: '',
           timestamp: Date.now()
         },
         {
@@ -606,8 +620,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 1,
           sustainableOption: NPCOptions[5].sustainable,
           unsustainableOption: NPCOptions[5].unsustainable,
-          npcOpinion: '',
-          npcReasoning: '',
           timestamp: Date.now()
         },
         {
@@ -617,8 +629,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 1,
           sustainableOption: NPCOptions[6].sustainable,
           unsustainableOption: NPCOptions[6].unsustainable,
-          npcOpinion: '',
-          npcReasoning: '',
           timestamp: Date.now()
         }
       ];
@@ -649,8 +659,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 1,
           sustainableOption: NPCOptions[1].sustainable,
           unsustainableOption: NPCOptions[1].unsustainable,
-          npcOpinion: '',
-          npcReasoning: '',
           timestamp: Date.now()
         },
         {
@@ -660,8 +668,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 1,
           sustainableOption: NPCOptions[2].sustainable,
           unsustainableOption: NPCOptions[2].unsustainable,
-          npcOpinion: '',
-          npcReasoning: '',
           timestamp: Date.now()
         },
         {
@@ -671,8 +677,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 1,
           sustainableOption: NPCOptions[3].sustainable,
           unsustainableOption: NPCOptions[3].unsustainable,
-          npcOpinion: '',
-          npcReasoning: '',
           timestamp: Date.now()
         },
         {
@@ -682,8 +686,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 1,
           sustainableOption: NPCOptions[4].sustainable,
           unsustainableOption: NPCOptions[4].unsustainable,
-          npcOpinion: '',
-          npcReasoning: '',
           timestamp: Date.now()
         },
         {
@@ -693,8 +695,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 1,
           sustainableOption: NPCOptions[5].sustainable,
           unsustainableOption: NPCOptions[5].unsustainable,
-          npcOpinion: '',
-          npcReasoning: '',
           timestamp: Date.now()
         },
         {
@@ -704,8 +704,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 1,
           sustainableOption: NPCOptions[6].sustainable,
           unsustainableOption: NPCOptions[6].unsustainable,
-          npcOpinion: '',
-          npcReasoning: '',
           timestamp: Date.now()
         }
       ];
@@ -718,8 +716,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 2,
           sustainableOption: NPCOptions[1].sustainable,
           unsustainableOption: NPCOptions[1].unsustainable,
-          npcOpinion: 'I recommend the Urban Agriculture Zones. They create community spaces and improve food security. The industrial expansion might bring more tax revenue, but it eliminates green spaces and increases pollution. We need to balance economic growth with community wellbeing.',
-          npcReasoning: 'Community wellbeing and food security',
           timestamp: Date.now()
         },
         {
@@ -729,8 +725,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 2,
           sustainableOption: NPCOptions[2].sustainable,
           unsustainableOption: NPCOptions[2].unsustainable,
-          npcOpinion: 'I recommend the Diesel Supply Contracts. Reliability is crucial for fuel systems. The biofuel cooperative is innovative but has limited production capacity. Right now, we need guaranteed fuel availability to keep the city running. The contracts provide stable pricing and supply.',
-          npcReasoning: 'System reliability and guaranteed supply',
           timestamp: Date.now()
         },
         {
@@ -740,8 +734,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 2,
           sustainableOption: NPCOptions[3].sustainable,
           unsustainableOption: NPCOptions[3].unsustainable,
-          npcOpinion: 'I recommend the Local Solar Microgrids. They reduce carbon emissions and create energy independence. The gas power hub might be more reliable, but it locks us into fossil fuel dependency. We need to invest in renewable energy now for a sustainable future.',
-          npcReasoning: 'Environmental sustainability and energy independence',
           timestamp: Date.now()
         },
         {
@@ -751,8 +743,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 2,
           sustainableOption: NPCOptions[4].sustainable,
           unsustainableOption: NPCOptions[4].unsustainable,
-          npcOpinion: 'I recommend the Public Shared Reservoir. Water is a basic human right that shouldn\'t be privatized. The tiered contracts might encourage conservation, but they could create water poverty for low-income families. Equal access ensures no one goes thirsty.',
-          npcReasoning: 'Water justice and equal access',
           timestamp: Date.now()
         },
         {
@@ -762,8 +752,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 2,
           sustainableOption: NPCOptions[5].sustainable,
           unsustainableOption: NPCOptions[5].unsustainable,
-          npcOpinion: 'I recommend the Constructed Wetlands. While they take longer to purify water, they work with nature rather than against it. The chemical tanks might be faster, but they introduce toxins that could harm the ecosystem for generations. We need to think long-term about our water quality.',
-          npcReasoning: 'Environmental sustainability and long-term ecosystem health',
           timestamp: Date.now()
         },
         {
@@ -773,8 +761,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           round: 2,
           sustainableOption: NPCOptions[6].sustainable,
           unsustainableOption: NPCOptions[6].unsustainable,
-          npcOpinion: 'I recommend the Modular Eco-Pods. They\'re quick to deploy and environmentally friendly. The smart concrete complexes might be more durable, but they\'re extremely resource-intensive. We need housing solutions that don\'t destroy the environment we\'re trying to rebuild.',
-          npcReasoning: 'Environmental impact and quick deployment',
           timestamp: Date.now()
         }
       ];
@@ -782,8 +768,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       setBallotEntries([...round1Entries, ...round2Entries]);
       setHasTalkedToGuide(false); // Don't auto-talk to guide, let player do it
       setHasStartedGame(true); // Game has started, but guide not talked to yet
-      
-      // ✅ ENABLE DECISION MODE when Round 2 is complete
       setShowDecisionMode(true);
       
       console.log('✅ Round 2 completed! Talk to The Guide to make final decisions');
@@ -812,11 +796,18 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   const handleRestartGame = async () => {
     // Clear saved data before restarting
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('multiagent-spoken-npcs');
-      localStorage.removeItem('multiagent-ballot-entries');
-      localStorage.removeItem('multiagent-has-talked-to-guide');
-      localStorage.removeItem('multiagent-chat-state');
-      localStorage.removeItem('multiagent-has-started-game');
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const spokenNPCsKey = participantId ? `multiagent-spoken-npcs-${participantId}` : 'multiagent-spoken-npcs';
+      const ballotEntriesKey = participantId ? `multiagent-ballot-entries-${participantId}` : 'multiagent-ballot-entries';
+      const hasTalkedToGuideKey = participantId ? `multiagent-has-talked-to-guide-${participantId}` : 'multiagent-has-talked-to-guide';
+      const chatStateKey = participantId ? `multiagent-chat-state-${participantId}` : 'multiagent-chat-state';
+      const hasStartedGameKey = participantId ? `multiagent-has-started-game-${participantId}` : 'multiagent-has-started-game';
+      
+      localStorage.removeItem(spokenNPCsKey);
+      localStorage.removeItem(ballotEntriesKey);
+      localStorage.removeItem(hasTalkedToGuideKey);
+      localStorage.removeItem(chatStateKey);
+      localStorage.removeItem(hasStartedGameKey);
       localStorage.setItem('multiagent-show-welcome', 'true');
       
       // Clear session but keep participant ID
@@ -829,11 +820,18 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   const handleNewGame = async () => {
     // Clear saved data before starting new game
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('multiagent-spoken-npcs');
-      localStorage.removeItem('multiagent-ballot-entries');
-      localStorage.removeItem('multiagent-has-talked-to-guide');
-      localStorage.removeItem('multiagent-chat-state');
-      localStorage.removeItem('multiagent-has-started-game');
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const spokenNPCsKey = participantId ? `multiagent-spoken-npcs-${participantId}` : 'multiagent-spoken-npcs';
+      const ballotEntriesKey = participantId ? `multiagent-ballot-entries-${participantId}` : 'multiagent-ballot-entries';
+      const hasTalkedToGuideKey = participantId ? `multiagent-has-talked-to-guide-${participantId}` : 'multiagent-has-talked-to-guide';
+      const chatStateKey = participantId ? `multiagent-chat-state-${participantId}` : 'multiagent-chat-state';
+      const hasStartedGameKey = participantId ? `multiagent-has-started-game-${participantId}` : 'multiagent-has-started-game';
+      
+      localStorage.removeItem(spokenNPCsKey);
+      localStorage.removeItem(ballotEntriesKey);
+      localStorage.removeItem(hasTalkedToGuideKey);
+      localStorage.removeItem(chatStateKey);
+      localStorage.removeItem(hasStartedGameKey);
       localStorage.setItem('multiagent-show-welcome', 'true');
 
       // Clear session but keep participant ID

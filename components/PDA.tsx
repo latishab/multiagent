@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
-import { OptionDescriptions, SpecialistRecommendations } from '../utils/prompts'
-import { NPCNames, NPCSystems, NPCOptions, getNPCImage } from '../utils/npcData'
+import { NPCNames, NPCSystems, NPCOptions, OptionDescriptions, SpecialistRecommendations, getNPCImage } from '../utils/npcData'
 
 interface BallotEntry {
   npcId: number;
@@ -9,8 +8,6 @@ interface BallotEntry {
   round: number;
   sustainableOption: string;
   unsustainableOption: string;
-  npcOpinion: string;
-  npcReasoning: string;
   timestamp: number;
 }
 
@@ -41,7 +38,8 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
   };
 
   const getSystemInfo = (npcId: number) => {
-    const entry = ballotEntries.find(e => e.npcId === npcId);
+    const entry = ballotEntries.find(e => e.npcId === npcId && e.round === 2) || 
+                  ballotEntries.find(e => e.npcId === npcId && e.round === 1);
     return entry || null;
   };
 

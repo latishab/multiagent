@@ -81,19 +81,19 @@ class SessionManager {
 
   // Get or create participant ID
   public async getParticipantId(): Promise<string> {
+    // If we have a participant ID in memory, use it 
+    if (this.participantId) {
+      return this.participantId;
+    }
+
     // Only use localStorage if we're in a browser environment
     if (typeof window !== 'undefined' && window.localStorage) {
-      // Try to get from localStorage first
+      // Try to get from localStorage
       const storedParticipantId = localStorage.getItem('multiagent_participant_id');
       if (storedParticipantId) {
         this.participantId = storedParticipantId;
         return this.participantId;
       }
-    }
-
-    // If we have a participant ID in memory, use it
-    if (this.participantId) {
-      return this.participantId;
     }
 
     // Generate new participant ID

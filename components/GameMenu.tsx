@@ -10,7 +10,7 @@ interface GameMenuProps {
   onReturnToMainMenu: () => void;
 }
 
-type MenuState = 'main' | 'about' | 'controls';
+type MenuState = 'main' | 'controls';
 
 export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame, onReturnToMainMenu }: GameMenuProps) {
   const [currentMenu, setCurrentMenu] = useState<MenuState>('main');
@@ -25,30 +25,9 @@ export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame, on
 
   const handleNewGame = async () => {
     if (confirm('Are you sure you want to start a new game? This will clear all conversations and reset your session.')) {
-      try {
-        const sessionId = await sessionManager.getSessionId();
-        
-        // Call the new game API endpoint
-        const response = await fetch('/api/new-game', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ sessionId })
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to reset game');
-        }
-
-        // Clear session and call the new game handler
-        await sessionManager.clearSessionOnly();
-        onNewGame();
-        onClose();
-      } catch (error) {
-        console.error('Error starting new game:', error);
-        alert('Failed to start new game. Please try again.');
-      }
+      await sessionManager.clearSessionOnly();
+      onRestartGame();
+      onClose();
     }
   };
 
@@ -70,9 +49,7 @@ export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame, on
         <button className={styles.menuButton} onClick={() => setCurrentMenu('controls')}>
           Controls
         </button>
-        <button className={styles.menuButton} onClick={() => setCurrentMenu('about')}>
-          About
-        </button>
+
       </div>
 
       <div className={styles.menuFooter}>
@@ -134,49 +111,6 @@ export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame, on
     </div>
   );
 
-  const renderAbout = () => (
-    <div className={styles.menuContent}>
-      <div className={styles.menuHeader}>
-        <button className={styles.backButton} onClick={() => setCurrentMenu('main')}>
-          ← Back
-        </button>
-        <h2>About</h2>
-      </div>
-
-      <div className={styles.aboutContent}>
-        <h3>City Reconstruction</h3>
-        <p>
-          An interactive decision-making game where players engage with NPCs to make choices 
-          about city reconstruction, balancing sustainability with economic factors.
-        </p>
-
-        <h4>Game Features</h4>
-        <ul>
-          <li>6 unique NPCs representing different city systems</li>
-          <li>Three conversation rounds with each NPC</li>
-          <li>AI-powered conversations with memory</li>
-          <li>Multiple choice scenarios</li>
-          <li>Session-based progress tracking</li>
-        </ul>
-
-        <h4>NPCs</h4>
-        <ul>
-          <li><strong>Mr. Aria</strong> - Water Cycle (Retired Ecologist)</li>
-          <li><strong>Chief Oskar</strong> - Energy Grid (Infrastructure Engineer)</li>
-          <li><strong>Ms. Moss</strong> - Fuel Acquisition (Fuel Supplier)</li>
-          <li><strong>Mr. Dai</strong> - Land Use (Volunteer Teacher)</li>
-          <li><strong>Ms. Kira</strong> - Water Distribution (Water Justice Activist)</li>
-          <li><strong>Mrs. Han</strong> - Housing & Shelter (Builder/Constructor)</li>
-        </ul>
-
-        <div className={styles.versionInfo}>
-          <p>Version 1.0.0</p>
-          <p>Built with Next.js and Phaser</p>
-        </div>
-      </div>
-    </div>
-  );
-
   if (!isOpen) return null;
 
   return (
@@ -184,7 +118,6 @@ export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame, on
       <div className={styles.gameMenu}>
         {currentMenu === 'main' && renderMainMenu()}
         {currentMenu === 'controls' && renderControls()}
-        {currentMenu === 'about' && renderAbout()}
       </div>
     </div>
   );

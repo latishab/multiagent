@@ -1,4 +1,5 @@
 import { NPCNames, NPCSystems, NPCOptions } from './npcData';
+import { OptionDescriptions, SpecialistRecommendations } from './npcData';
 
 export interface NPCInfo {
   name: string;
@@ -109,44 +110,6 @@ export const NPCPersonalities: { [key: number]: string } = {
   4: "A passionate teacher focused on community development and education. Emphasizes sustainable urban planning and community engagement. Believes in gradual learning and understanding.",
   5: "A water distribution manager with expertise in community resource allocation. Focuses on efficient distribution and community access. Prefers to understand needs before making recommendations.",
   6: "An innovative builder exploring modern construction methods. Balances technology with practical construction needs. Takes time to assess situations before offering solutions."
-};
-
-// Detailed option descriptions for NPCs to use when explaining their options
-export const OptionDescriptions: { [key: number]: { sustainable: string; unsustainable: string } } = {
-  1: { 
-    sustainable: 'Natural filtration using wetlands and living organisms. Preserves ecosystem health and creates green spaces, but takes 3x longer to purify water and requires extensive land area.',
-    unsustainable: 'Industrial chemical treatment with rapid purification. Provides clean water immediately and uses minimal space, but introduces toxic chemicals into the environment and creates hazardous waste.'
-  },
-  2: { 
-    sustainable: 'Decentralized solar microgrids with community ownership. Reduces carbon emissions and creates energy independence, but vulnerable to weather conditions and requires massive battery storage for reliability.',
-    unsustainable: 'Centralized gas power hub with proven technology. Guarantees 99.9% uptime and integrates with existing infrastructure, but locks the city into fossil fuel dependency for decades and increases air pollution.'
-  },
-  3: { 
-    sustainable: 'Local biofuel cooperative using agricultural waste and algae. Creates local jobs and reduces carbon footprint, but limited production capacity means fuel shortages during peak demand and higher costs.',
-    unsustainable: 'Traditional diesel supply contracts with established suppliers. Guarantees fuel availability and stable pricing, but increases pollution, creates dependency on external corporations, and supports fossil fuel industry.'
-  },
-  4: { 
-    sustainable: 'Urban agriculture zones with community gardens and local food production. Reduces food miles, creates community spaces, and improves food security, but reduces potential tax revenue and industrial development opportunities.',
-    unsustainable: 'Industrial expansion zones for factories and warehouses. Maximizes economic growth and creates high-paying jobs, but eliminates green spaces, increases pollution, and creates urban heat islands.'
-  },
-  5: { 
-    sustainable: 'Public shared reservoir with equal access for all citizens. Ensures water justice and community ownership, but may lead to overuse and requires strict conservation measures during droughts.',
-    unsustainable: 'Tiered access contracts with usage-based pricing. Encourages water conservation and funds infrastructure improvements, but may create water poverty for low-income families and privatize a public resource.'
-  },
-  6: { 
-    sustainable: 'Modular eco-pods with sustainable materials and energy efficiency. Quick to deploy and reduces environmental impact, but limited customization options and may not meet long-term durability standards.',
-    unsustainable: 'Smart concrete complexes with advanced technology integration. Durable, customizable, and future-proof, but extremely resource-intensive and creates massive carbon footprint during construction.'
-  }
-};
-
-// Hardcoded specialist recommendations for Round 2 to ensure consistency
-export const SpecialistRecommendations: { [key: number]: string } = {
-  1: 'I recommend the Constructed Wetlands. While they take longer to purify water, they work with nature rather than against it. The chemical tanks might be faster, but they introduce toxins that could harm the ecosystem for generations. We need to think long-term about our water quality.',
-  2: 'I recommend the Gas Power Hub. Stability comes first in energy systems. The solar microgrids are promising but require massive battery storage for reliability. Right now, we need guaranteed power to keep the city running. The Hub integrates smoothly with existing infrastructure.',
-  3: 'I recommend the Biofuel Cooperative. It creates local jobs and reduces our carbon footprint. The diesel contracts might be cheaper upfront, but they lock us into fossil fuel dependency. We need to invest in sustainable alternatives now, even if it costs more initially.',
-  4: 'I recommend the Urban Agriculture Zones. They create community spaces and improve food security. The industrial expansion might bring more tax revenue, but it eliminates green spaces and increases pollution. We need to balance economic growth with community wellbeing.',
-  5: 'I recommend the Public Shared Reservoir. Water is a basic human right that shouldn\'t be privatized. The tiered contracts might encourage conservation, but they could create water poverty for low-income families. Equal access ensures no one goes thirsty.',
-  6: 'I recommend the Modular Eco-Pods. They\'re quick to deploy and environmentally friendly. The smart concrete complexes might be more durable, but they\'re extremely resource-intensive. We need housing solutions that don\'t destroy the environment we\'re trying to rebuild.'
 };
 
 interface RoundPrompt {
