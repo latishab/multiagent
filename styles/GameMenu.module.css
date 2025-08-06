@@ -356,6 +356,83 @@
   letter-spacing: 0.5px;
 }
 
+/* Main Menu specific styles */
+.sessionSection,
+.newGameSection {
+  margin-bottom: 40px;
+}
+
+.sessionSection h3,
+.newGameSection h3 {
+  color: #f8fafc;
+  font-size: 24px;
+  margin-bottom: 16px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.sessionSection p,
+.newGameSection p {
+  color: #94a3b8;
+  font-size: 16px;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.inputSection {
+  margin-bottom: 24px;
+}
+
+.participantInput {
+  width: 100%;
+  background: linear-gradient(145deg, #475569, #334155);
+  color: #e2e8f0;
+  border: 2px solid rgba(148, 163, 184, 0.2);
+  padding: 16px 20px;
+  border-radius: 12px;
+  outline: none;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.participantInput:focus {
+  border-color: rgba(59, 130, 246, 0.4);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: linear-gradient(145deg, #526480, #3d4a5f);
+}
+
+.participantInput::placeholder {
+  color: #64748b;
+  font-weight: 400;
+}
+
+.participantInput:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.errorText {
+  color: #ef4444;
+  font-size: 14px;
+  margin-top: 8px;
+  text-align: center;
+  font-weight: 500;
+}
+
+.menuButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.menuButton:disabled:hover {
+  transform: none !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
 /* Scrollbar styling */
 .gameMenu::-webkit-scrollbar {
   width: 8px;

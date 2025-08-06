@@ -120,10 +120,39 @@ class SessionManager {
     localStorage.removeItem('multiagent_session_id');
   }
 
+  // Clear session and participant ID (for complete reset)
+  public clearAll(): void {
+    this.sessionId = null;
+    localStorage.removeItem('multiagent_session_id');
+    localStorage.removeItem('multiagent_participant_id');
+  }
+
+  // Clear only session ID but keep participant ID (for restarting game with same participant)
+  public clearSessionOnly(): void {
+    this.sessionId = null;
+    localStorage.removeItem('multiagent_session_id');
+  }
+
   // Get session info for debugging
-  public getSessionInfo(): { sessionId: string | null; stored: boolean } {
+  public getSessionInfo(): { sessionId: string | null; stored: boolean; participantId: string | null } {
     const stored = localStorage.getItem('multiagent_session_id') !== null;
-    return { sessionId: this.sessionId, stored };
+    const participantId = localStorage.getItem('multiagent_participant_id');
+    return { sessionId: this.sessionId, stored, participantId };
+  }
+
+  // Get participant ID
+  public getParticipantId(): string | null {
+    return localStorage.getItem('multiagent_participant_id');
+  }
+
+  // Set participant ID
+  public setParticipantId(participantId: string): void {
+    localStorage.setItem('multiagent_participant_id', participantId);
+  }
+
+  // Clear participant ID
+  public clearParticipantId(): void {
+    localStorage.removeItem('multiagent_participant_id');
   }
 }
 

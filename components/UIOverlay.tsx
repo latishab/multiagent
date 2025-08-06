@@ -7,6 +7,7 @@ import ProgressIndicator from './ProgressIndicator'
 import PDA from './PDA'
 import EndingOverlay from './EndingOverlay'
 import { NPCNames, NPCSystems, NPCOptions } from '../utils/npcData'
+import { sessionManager } from '../utils/sessionManager'
 
 import styles from '../styles/UIOverlay.module.css'
 
@@ -807,7 +808,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     }
   }, [])
 
-  const handleRestartGame = () => {
+  const handleRestartGame = async () => {
     // Clear saved data before restarting
     if (typeof window !== 'undefined') {
       localStorage.removeItem('multiagent-spoken-npcs');
@@ -816,12 +817,15 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       localStorage.removeItem('multiagent-chat-state');
       localStorage.removeItem('multiagent-has-started-game');
       localStorage.setItem('multiagent-show-welcome', 'true');
+      
+      // Clear session but keep participant ID
+      await sessionManager.clearSessionOnly();
     }
     // Reload the page to restart the game
     window.location.reload()
   }
 
-  const handleNewGame = () => {
+  const handleNewGame = async () => {
     // Clear saved data before starting new game
     if (typeof window !== 'undefined') {
       localStorage.removeItem('multiagent-spoken-npcs');
@@ -830,6 +834,9 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       localStorage.removeItem('multiagent-chat-state');
       localStorage.removeItem('multiagent-has-started-game');
       localStorage.setItem('multiagent-show-welcome', 'true');
+
+      // Clear session but keep participant ID
+      await sessionManager.clearSessionOnly();
     }
     // Reload the page to start a new game
     window.location.reload()
@@ -1034,6 +1041,10 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         onClose={() => setShowGameMenu(false)}
         onRestartGame={handleRestartGame}
         onNewGame={handleNewGame}
+        onReturnToMainMenu={() => {
+          setShowGameMenu(false);
+          window.dispatchEvent(new CustomEvent('return-to-main-menu'));
+        }}
       />
 
       {/* PDA */}

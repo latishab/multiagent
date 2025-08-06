@@ -7,16 +7,17 @@ interface GameMenuProps {
   onClose: () => void;
   onRestartGame: () => void;
   onNewGame: () => void;
+  onReturnToMainMenu: () => void;
 }
 
-type MenuState = 'main' | 'settings' | 'about' | 'controls';
+type MenuState = 'main' | 'about' | 'controls';
 
-export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame }: GameMenuProps) {
+export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame, onReturnToMainMenu }: GameMenuProps) {
   const [currentMenu, setCurrentMenu] = useState<MenuState>('main');
 
   const handleRestartGame = async () => {
     if (confirm('Are you sure you want to restart the game? This will clear your current progress.')) {
-      await sessionManager.clearSession();
+      await sessionManager.clearSessionOnly();
       onRestartGame();
       onClose();
     }
@@ -24,7 +25,7 @@ export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame }: 
 
   const handleNewGame = async () => {
     if (confirm('Are you sure you want to start a new game? This will clear your current progress.')) {
-      await sessionManager.clearSession();
+      await sessionManager.clearSessionOnly();
       onNewGame();
       onClose();
     }
@@ -42,8 +43,8 @@ export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame }: 
         <button className={styles.menuButton} onClick={handleNewGame}>
           New Game
         </button>
-        <button className={styles.menuButton} onClick={() => setCurrentMenu('settings')}>
-          Settings
+        <button className={styles.menuButton} onClick={onReturnToMainMenu}>
+          Return to Main Menu
         </button>
         <button className={styles.menuButton} onClick={() => setCurrentMenu('controls')}>
           Controls
@@ -55,26 +56,6 @@ export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame }: 
 
       <div className={styles.menuFooter}>
         <p>Press ESC to close menu</p>
-      </div>
-    </div>
-  );
-
-  const renderSettings = () => (
-    <div className={styles.menuContent}>
-      <div className={styles.menuHeader}>
-        <button className={styles.backButton} onClick={() => setCurrentMenu('main')}>
-          ← Back
-        </button>
-        <h2>Settings</h2>
-      </div>
-
-      <div className={styles.settingsSection}>
-        <h3>Game</h3>
-        <div className={styles.settingItem}>
-          <button className={styles.dangerButton} onClick={handleRestartGame}>
-            Restart Game
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -169,7 +150,7 @@ export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame }: 
 
         <div className={styles.versionInfo}>
           <p>Version 1.0.0</p>
-          <p>Built with Next.js, Phaser, and AI</p>
+          <p>Built with Next.js and Phaser</p>
         </div>
       </div>
     </div>
@@ -181,7 +162,6 @@ export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame }: 
     <div className={styles.gameMenuOverlay}>
       <div className={styles.gameMenu}>
         {currentMenu === 'main' && renderMainMenu()}
-        {currentMenu === 'settings' && renderSettings()}
         {currentMenu === 'controls' && renderControls()}
         {currentMenu === 'about' && renderAbout()}
       </div>

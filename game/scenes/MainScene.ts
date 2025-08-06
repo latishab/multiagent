@@ -131,8 +131,8 @@ export default class MainScene extends Scene {
       // Create player and NPCs
       this.playerManager.createPlayerAnimations()
       const player = this.playerManager.createPlayer(
-        this.map.widthInPixels / 2,
-        this.map.heightInPixels / 2,
+        750,
+        580,
         this.levelLayer,
         this.wallLayer
       )

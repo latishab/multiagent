@@ -127,7 +127,7 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
       {showContinueButton && (
         <div className="continue-section">
           <button className="continue-button" onClick={handleContinue}>
-            {currentMessageIndex < messages.length - 1 ? 'Continue' : 'Return to Menu'}
+            {currentMessageIndex < messages.length - 1 ? 'Continue' : 'Return to Main Menu'}
           </button>
         </div>
       )}

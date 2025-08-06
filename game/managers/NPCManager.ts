@@ -747,15 +747,110 @@ export class NPCManager {
     return NPC_TYPES.find(type => type.startFrame === startFrame)?.name || 'unknown'
   }
 
+  private findValidSpawnPosition(bounds: { x: number, y: number, width: number, height: number }, levelLayer: Phaser.Tilemaps.TilemapLayer, wallLayer: Phaser.Tilemaps.TilemapLayer): { x: number, y: number } {
+    const tileSize = 16 // Each tile is 16x16 pixels
+    const npcSize = 16 // NPC collision size
+    
+    // Check if bounds are within map limits
+    const mapWidth = levelLayer.width
+    const mapHeight = levelLayer.height
+    
+    // Clamp bounds to map boundaries
+    const clampedBounds = {
+      x: Math.max(0, Math.min(bounds.x, mapWidth - bounds.width)),
+      y: Math.max(0, Math.min(bounds.y, mapHeight - bounds.height)),
+      width: Math.min(bounds.width, mapWidth),
+      height: Math.min(bounds.height, mapHeight)
+    }
+    
+    // Try the center first
+    let x = clampedBounds.x + clampedBounds.width / 2
+    let y = clampedBounds.y + clampedBounds.height / 2
+    
+    // Check if center position is valid
+    if (this.isValidSpawnPosition(x, y, levelLayer, wallLayer)) {
+      return { x, y }
+    }
+    
+    // If center is invalid, try random positions within the bounds
+    const maxAttempts = 50
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      x = clampedBounds.x + Math.random() * clampedBounds.width
+      y = clampedBounds.y + Math.random() * clampedBounds.height
+      
+      if (this.isValidSpawnPosition(x, y, levelLayer, wallLayer)) {
+        return { x, y }
+      }
+    }
+    
+    // If no valid position found, try expanding the search area
+    const expandedBounds = {
+      x: Math.max(0, clampedBounds.x - 100),
+      y: Math.max(0, clampedBounds.y - 100),
+      width: Math.min(clampedBounds.width + 200, mapWidth),
+      height: Math.min(clampedBounds.height + 200, mapHeight)
+    }
+    
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      x = expandedBounds.x + Math.random() * expandedBounds.width
+      y = expandedBounds.y + Math.random() * expandedBounds.height
+      
+      if (this.isValidSpawnPosition(x, y, levelLayer, wallLayer)) {
+        return { x, y }
+      }
+    }
+    
+    // Last resort: try to find any valid position on the map
+    for (let attempt = 0; attempt < 100; attempt++) {
+      x = Math.random() * mapWidth
+      y = Math.random() * mapHeight
+      
+      if (this.isValidSpawnPosition(x, y, levelLayer, wallLayer)) {
+        return { x, y }
+      }
+    }
+    
+    // Ultimate fallback: return center of map
+    return { x: mapWidth / 2, y: mapHeight / 2 }
+  }
+
+  private isValidSpawnPosition(x: number, y: number, levelLayer: Phaser.Tilemaps.TilemapLayer, wallLayer: Phaser.Tilemaps.TilemapLayer): boolean {
+    const tileSize = 16
+    const npcSize = 16
+    
+    // Convert pixel coordinates to tile coordinates
+    const tileX = Math.floor(x / tileSize)
+    const tileY = Math.floor(y / tileSize)
+    
+    // Check if coordinates are within map bounds
+    if (tileX < 0 || tileY < 0 || tileX >= levelLayer.width || tileY >= levelLayer.height) {
+      return false
+    }
+    
+    // Check if the tile exists and is walkable
+    const levelTile = levelLayer.getTileAt(tileX, tileY)
+    const wallTile = wallLayer.getTileAt(tileX, tileY)
+    
+    // Position is valid if:
+    // 1. Level tile exists and is not a collision tile
+    // 2. Wall tile doesn't exist (no wall)
+    // 3. Level tile doesn't have collision properties
+    const hasLevelTile = levelTile !== null
+    const hasWallTile = wallTile !== null
+    const hasCollision = levelTile && levelTile.properties && levelTile.properties.collides
+    
+    return hasLevelTile && !hasWallTile && !hasCollision
+  }
+
   spawnNPCsInAreas(mapWidth: number, mapHeight: number, levelLayer: Phaser.Tilemaps.TilemapLayer, wallLayer: Phaser.Tilemaps.TilemapLayer, player: Physics.Arcade.Sprite) {
     NPC_TYPES.forEach((npcType, index) => {
       let x: number, y: number
       
       if (npcType.areaBounds) {
-        // Spawn NPC within their designated area
-        const bounds = npcType.areaBounds
-        x = bounds.x + bounds.width / 2
-        y = bounds.y + bounds.height / 2
+        // Find a valid spawn position within the designated area
+        const spawnPos = this.findValidSpawnPosition(npcType.areaBounds, levelLayer, wallLayer)
+        x = spawnPos.x
+        y = spawnPos.y
       } else {
         // Fallback to circle spawning if no area bounds defined
         const centerX = mapWidth / 2
@@ -776,8 +871,8 @@ export class NPCManager {
 
   spawnMainNPC(levelLayer: Phaser.Tilemaps.TilemapLayer, wallLayer: Phaser.Tilemaps.TilemapLayer, player: Physics.Arcade.Sprite) {
     // Spawn main NPC in the center of the map
-    const x = 800 // Center X position
-    const y = 400 // Center Y position
+    const x = 750 // Center X position
+    const y = 520 // Center Y position
     
     this.createMainNPC(x, y, levelLayer, wallLayer, player)
   }

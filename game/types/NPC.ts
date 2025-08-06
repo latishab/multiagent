@@ -102,33 +102,33 @@ export const NPC_TYPES: NPCType[] = [
   { 
     name: 'mr-dai', 
     startFrame: calculateStartFrame(0),
-    areaBounds: { x: 100, y: 100, width: 300, height: 200 }  // Top-left area
+    areaBounds: { x: 100, y: 100, width: 300, height: 200 }  
   },
   { 
     name: 'ms-moss', 
     startFrame: calculateStartFrame(1),
-    areaBounds: { x: 500, y: 100, width: 300, height: 200 }  // Top-middle area
+    areaBounds: { x: 800, y: 180, width: 300, height: 200 }  
   },
   { 
     name: 'chief-oskar', 
     startFrame: calculateStartFrame(2),
-    areaBounds: { x: 900, y: 100, width: 300, height: 200 }  // Top-right area
+    areaBounds: { x: 1300, y: 300, width: 300, height: 200 }  
   },
   // Second row characters (3-5)
   { 
     name: 'ms-kira', 
     startFrame: calculateStartFrame(3),
-    areaBounds: { x: 100, y: 400, width: 300, height: 200 }  // Bottom-left area
+    areaBounds: { x: 80, y: 400, width: 300, height: 200 }  
   },
   { 
     name: 'mr-aria', 
     startFrame: calculateStartFrame(4),
-    areaBounds: { x: 500, y: 400, width: 300, height: 200 }  // Bottom-middle area
+    areaBounds: { x: 500, y: 400, width: 300, height: 200 }  
   },
   { 
     name: 'mrs-han', 
     startFrame: calculateStartFrame(5),
-    areaBounds: { x: 900, y: 400, width: 300, height: 200 }  // Bottom-right area
+    areaBounds: { x: 980, y: 400, width: 300, height: 200 }  
   }
 ]
 
