@@ -8,6 +8,7 @@ import PDA from './PDA'
 import EndingOverlay from './EndingOverlay'
 import { NPCNames, NPCSystems, NPCOptions } from '../utils/npcData'
 import { sessionManager } from '../utils/sessionManager'
+import { soundEffects } from '../utils/soundEffects'
 
 import styles from '../styles/UIOverlay.module.css'
 
@@ -450,6 +451,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
 
   // Handle inventory item clicks
   const handleInventoryItemClick = (item: string | null, index: number) => {
+    soundEffects.playClick();
     // Handle inventory item clicks here
   }
 
@@ -807,6 +809,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
 
   // Handle hotbar slot clicks
   const handleHotbarClick = (index: number) => {
+    soundEffects.playClick();
     setSelectedSlot(index)
     // If slot 1 is clicked, open PDA and clear notification
     if (index === 0) {
@@ -869,6 +872,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
             <button 
               className={styles.startButton}
               onClick={() => {
+                soundEffects.playClick();
                 setShowWelcome(false);
                 setHasStartedGame(true);
               }}
@@ -935,7 +939,10 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       {/* Menu Button */}
       <button
         className={styles.menuButton}
-        onClick={() => setShowGameMenu(true)}
+        onClick={() => {
+          soundEffects.playClick();
+          setShowGameMenu(true);
+        }}
       >
         Menu (ESC)
       </button>
@@ -943,7 +950,10 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       {/* Inventory Button */}
       <button
         className={styles.inventoryButton}
-        onClick={() => setInventoryOpen(!inventoryOpen)}
+        onClick={() => {
+          soundEffects.playClick();
+          setInventoryOpen(!inventoryOpen);
+        }}
       >
         Inventory (I)
       </button>
@@ -966,7 +976,10 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
             </div>
             <button
               className={styles.closeButton}
-              onClick={() => setInventoryOpen(false)}
+              onClick={() => {
+                soundEffects.playClick();
+                setInventoryOpen(false);
+              }}
             >
               Close
             </button>

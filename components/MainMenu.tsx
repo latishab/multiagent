@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { sessionManager } from '../utils/sessionManager';
+import { soundEffects } from '../utils/soundEffects';
 import styles from '../styles/GameMenu.module.css';
 
 interface MainMenuProps {
@@ -16,7 +17,9 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
   const [existingParticipantId, setExistingParticipantId] = useState('');
   const [currentMenu, setCurrentMenu] = useState<MenuState>('main');
   const [isMuted, setIsMuted] = useState(false);
+  const [isSfxMuted, setIsSfxMuted] = useState(false);
   const [volume, setVolume] = useState(0.25);
+  const [sfxVolume, setSfxVolume] = useState(0.5);
 
   useEffect(() => {
     // Check for existing session
@@ -32,6 +35,8 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
   }, []);
 
   const handleStartNewGame = async () => {
+    soundEffects.playClick();
+    
     if (!participantId.trim()) {
       setError('Please enter a participant ID');
       return;
@@ -63,6 +68,8 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
   };
 
   const handleContinueGame = async () => {
+    soundEffects.playClick();
+    
     setIsLoading(true);
     setError('');
 
@@ -77,6 +84,8 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
   };
 
   const handleClearSession = async () => {
+    soundEffects.playClick();
+    
     if (confirm('Are you sure you want to clear your current session? This will reset all progress.')) {
       await sessionManager.clearAll();
       setHasExistingSession(false);
@@ -87,8 +96,15 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
   };
 
   const toggleMute = () => {
+    soundEffects.playClick();
     setIsMuted(!isMuted);
     window.dispatchEvent(new CustomEvent('audio-toggle-mute', { detail: { isMuted: !isMuted } }));
+  };
+
+  const toggleSfxMute = () => {
+    soundEffects.playClick();
+    setIsSfxMuted(!isSfxMuted);
+    window.dispatchEvent(new CustomEvent('audio-toggle-sfx-mute', { detail: { isSfxMuted: !isSfxMuted } }));
   };
 
   const handleVolumeChange = (newVolume: number) => {
@@ -96,9 +112,19 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
     window.dispatchEvent(new CustomEvent('audio-volume-change', { detail: { volume: newVolume } }));
   };
 
+  const handleSfxVolumeChange = (newSfxVolume: number) => {
+    setSfxVolume(newSfxVolume);
+    window.dispatchEvent(new CustomEvent('audio-sfx-volume-change', { detail: { sfxVolume: newSfxVolume } }));
+  };
+
   const handleVolumeSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
     handleVolumeChange(newVolume);
+  };
+
+  const handleSfxVolumeSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newSfxVolume = parseFloat(e.target.value);
+    handleSfxVolumeChange(newSfxVolume);
   };
 
   const renderMainMenu = () => (
@@ -116,21 +142,30 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
             {isLoading ? 'Loading...' : 'Continue Game'}
           </button>
         ) : (
-          <button 
-            className={`${styles.menuButton} ${styles.primary}`} 
-            onClick={() => setCurrentMenu('participant')}
-            disabled={isLoading}
-          >
-            Play
-          </button>
-        )}
-        
-        <button className={styles.menuButton} onClick={() => setCurrentMenu('settings')}>
-          Settings
+                  <button 
+          className={`${styles.menuButton} ${styles.primary}`} 
+          onClick={() => {
+            soundEffects.playClick();
+            setCurrentMenu('participant');
+          }}
+          disabled={isLoading}
+        >
+          Play
         </button>
-        <button className={styles.menuButton} onClick={() => setCurrentMenu('controls')}>
-          Controls
-        </button>
+      )}
+      
+      <button className={styles.menuButton} onClick={() => {
+        soundEffects.playClick();
+        setCurrentMenu('settings');
+      }}>
+        Settings
+      </button>
+      <button className={styles.menuButton} onClick={() => {
+        soundEffects.playClick();
+        setCurrentMenu('controls');
+      }}>
+        Controls
+      </button>
       </div>
     </div>
   );
@@ -138,7 +173,10 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
   const renderParticipantMenu = () => (
     <div className={styles.menuContent}>
       <div className={styles.menuHeader}>
-        <button className={styles.backButton} onClick={() => setCurrentMenu('main')}>
+        <button className={styles.backButton} onClick={() => {
+          soundEffects.playClick();
+          setCurrentMenu('main');
+        }}>
           ← Back
         </button>
         <h2>Enter Participant ID</h2>
@@ -177,7 +215,10 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
   const renderSettingsMenu = () => (
     <div className={styles.menuContent}>
       <div className={styles.menuHeader}>
-        <button className={styles.backButton} onClick={() => setCurrentMenu('main')}>
+        <button className={styles.backButton} onClick={() => {
+          soundEffects.playClick();
+          setCurrentMenu('main');
+        }}>
           ← Back
         </button>
         <h2>Settings</h2>
@@ -194,9 +235,12 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
           <span>{hasExistingSession ? 'Active' : 'No active session'}</span>
         </div>
         <div className={styles.settingItem}>
-          <button className={styles.menuButton} onClick={() => setCurrentMenu('participant')}>
-            Change Participant ID
-          </button>
+                  <button className={styles.menuButton} onClick={() => {
+          soundEffects.playClick();
+          setCurrentMenu('participant');
+        }}>
+          Change Participant ID
+        </button>
         </div>
       </div>
     </div>
@@ -205,7 +249,10 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
   const renderControlsMenu = () => (
     <div className={styles.menuContent}>
       <div className={styles.menuHeader}>
-        <button className={styles.backButton} onClick={() => setCurrentMenu('main')}>
+        <button className={styles.backButton} onClick={() => {
+          soundEffects.playClick();
+          setCurrentMenu('main');
+        }}>
           ← Back
         </button>
         <h2>Controls</h2>
@@ -216,7 +263,7 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
         <div className={styles.controlGrid}>
           <div className={styles.controlItem}>
             <span className={styles.key}>WASD</span>
-            <span className={styles.description}>Move around the city</span>
+            <span className={styles.description}>Move around the facility</span>
           </div>
           <div className={styles.controlItem}>
             <span className={styles.key}>Arrow Keys</span>
@@ -261,16 +308,13 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
         <h3>Audio</h3>
         <div className={styles.audioControls}>
           <div className={styles.audioControl}>
-            <span className={styles.controlLabel}>Mute</span>
+            <span className={styles.controlLabel}>Music</span>
             <button 
               className={`${styles.audioButton} ${isMuted ? styles.active : ''}`}
               onClick={toggleMute}
             >
               {isMuted ? '🔇' : '🔊'}
             </button>
-          </div>
-          <div className={styles.audioControl}>
-            <span className={styles.controlLabel}>Volume</span>
             <input
               type="range"
               min="0"
@@ -282,6 +326,26 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
               disabled={isMuted}
             />
             <span className={styles.volumeValue}>{Math.round(volume * 100)}%</span>
+          </div>
+          <div className={styles.audioControl}>
+            <span className={styles.controlLabel}>SFX</span>
+            <button 
+              className={`${styles.audioButton} ${isSfxMuted ? styles.active : ''}`}
+              onClick={toggleSfxMute}
+            >
+              {isSfxMuted ? '🔇' : '🔊'}
+            </button>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={sfxVolume}
+              onChange={handleSfxVolumeSliderChange}
+              className={styles.volumeSlider}
+              disabled={isSfxMuted}
+            />
+            <span className={styles.volumeValue}>{Math.round(sfxVolume * 100)}%</span>
           </div>
         </div>
       </div>

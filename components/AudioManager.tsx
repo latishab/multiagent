@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { soundEffects } from '../utils/soundEffects';
 
 interface AudioManagerProps {
   isPlaying: boolean;
@@ -63,6 +64,7 @@ export default function AudioManager({ isPlaying, volume = 0.25 }: AudioManagerP
     if (!audioRef.current) return;
     
     setIsMuted(!isMuted);
+    soundEffects.setMuted(!isMuted);
     if (!isMuted) {
       audioRef.current.pause();
     } else if (isPlaying) {
@@ -72,10 +74,21 @@ export default function AudioManager({ isPlaying, volume = 0.25 }: AudioManagerP
     }
   };
 
+  // Handle SFX mute/unmute
+  const toggleSfxMute = () => {
+    soundEffects.setSfxMuted(!soundEffects.isSfxMutedState());
+  };
+
   // Handle volume changes
   const handleVolumeChange = (newVolume: number) => {
     if (!audioRef.current) return;
     audioRef.current.volume = newVolume;
+    soundEffects.setVolume(newVolume);
+  };
+
+  // Handle SFX volume changes
+  const handleSfxVolumeChange = (newSfxVolume: number) => {
+    soundEffects.setSfxVolume(newSfxVolume);
   };
 
   // Listen for custom events from GameMenu
@@ -84,18 +97,30 @@ export default function AudioManager({ isPlaying, volume = 0.25 }: AudioManagerP
       setIsMuted(event.detail.isMuted);
     };
 
+    const handleToggleSfxMute = (event: CustomEvent) => {
+      soundEffects.setSfxMuted(event.detail.isSfxMuted);
+    };
+
     const handleVolumeChange = (event: CustomEvent) => {
       if (audioRef.current) {
         audioRef.current.volume = event.detail.volume;
       }
     };
 
+    const handleSfxVolumeChange = (event: CustomEvent) => {
+      soundEffects.setSfxVolume(event.detail.sfxVolume);
+    };
+
     window.addEventListener('audio-toggle-mute', handleToggleMute as EventListener);
+    window.addEventListener('audio-toggle-sfx-mute', handleToggleSfxMute as EventListener);
     window.addEventListener('audio-volume-change', handleVolumeChange as EventListener);
+    window.addEventListener('audio-sfx-volume-change', handleSfxVolumeChange as EventListener);
 
     return () => {
       window.removeEventListener('audio-toggle-mute', handleToggleMute as EventListener);
+      window.removeEventListener('audio-toggle-sfx-mute', handleToggleSfxMute as EventListener);
       window.removeEventListener('audio-volume-change', handleVolumeChange as EventListener);
+      window.removeEventListener('audio-sfx-volume-change', handleSfxVolumeChange as EventListener);
     };
   }, []);
 
