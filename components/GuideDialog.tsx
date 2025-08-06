@@ -90,7 +90,7 @@ export default function GuideDialog({
           }
 
         // State C: Player has completed Round 1 and is now starting Round 2
-        } else if (round === 1 && spokenNPCs.round1.size >= 6) {
+        } else if ((round === 1 || round === 2) && spokenNPCs.round1.size >= 6 && spokenNPCs.round2.size < 6) {
           const round2IntroMessages = narrativesToMessages(getRoundAdvancementMessages());
           const initialRound2Message = round2IntroMessages[0]?.text;
 

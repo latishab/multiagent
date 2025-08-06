@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { sessionManager } from '../utils/sessionManager'
-import { getInitialGuideMessages, getRoundAdvancementMessages, getDecisionPhaseMessages, GuideNarrative, narrativesToMessages } from '../utils/guideNarratives'
 import { NPCNames, NPCOptions, getNPCImage } from '../utils/npcData'
 
 interface ChatDialogProps {
@@ -152,9 +151,7 @@ export default function ChatDialog({
       
       try {
         // Load conversation history from API
-        // For The Guide, use round 1 to preserve conversation across rounds
-        const effectiveRound = npcId === -1 ? 1 : round;
-        const response = await fetch(`/api/conversation-history?npcId=${npcId}&round=${effectiveRound}&sessionId=${currentSessionId}`);
+        const response = await fetch(`/api/conversation-history?npcId=${npcId}&round=${round}&sessionId=${currentSessionId}`);
         
         if (response.ok) {
           const data = await response.json();
@@ -183,69 +180,7 @@ export default function ChatDialog({
     loadMessages();
   }, [npcId, round, isOpen]);
 
-  // Auto-send initial messages from The Guide when chat opens
-  useEffect(() => {
-    const sendInitialGuideMessages = async () => {
-      // Only for The Guide and when chat is open
-      if (!isOpen || npcId !== -1) return;
-      
-      // Simple check: if we have messages, don't send initial messages
-      if (messages.length > 0) {
-        console.log('✅ Conversation has messages, skipping initial messages');
-        return;
-      }
-      
-      // Determine what initial messages to send based on game state
-      let guideNarratives;
-      if (round === 1 && spokenNPCs.round1.size === 0) {
-        guideNarratives = getInitialGuideMessages();
-      } else if (round === 1 && spokenNPCs.round1.size >= 6) {
-        guideNarratives = getRoundAdvancementMessages();
-      } else if (round === 2 && spokenNPCs.round2.size >= 6) {
-        guideNarratives = getDecisionPhaseMessages();
-      } else if (round === 2 && spokenNPCs.round2.size === 0 && spokenNPCs.round1.size >= 6) {
-        guideNarratives = getRoundAdvancementMessages();
-      } else {
-        // No initial messages needed
-        return;
-      }
-      
-      console.log('📝 Sending initial messages for round', round);
-      setIsLoading(true);
-      
-      try {
-        const initialMessages = narrativesToMessages(guideNarratives);
-        const currentSessionId = await sessionManager.getSessionId();
-        
-        // Send messages one by one
-        for (let i = 0; i < initialMessages.length; i++) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-          setMessages(prev => [...prev, initialMessages[i]]);
-          
-          // Store message
-          await fetch('/api/store-message', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              message: initialMessages[i].text,
-              npcId: -1,
-              round: 1,
-              sessionId: currentSessionId,
-              role: 'assistant'
-            })
-          });
-          
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      } catch (error) {
-        console.error('Error sending initial messages:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    sendInitialGuideMessages();
-  }, [isOpen, npcId, round, spokenNPCs.round1.size, spokenNPCs.round2.size, messages.length]);
+
 
   // Log NPC info when props change
   useEffect(() => {
@@ -355,31 +290,7 @@ export default function ChatDialog({
             console.log('Analysis result - reason:', data.conversationAnalysis.reason);
           }
           
-          // Special handling for main NPC round advancement
-          if (npcId === -1) {
-            // Use the shouldAdvanceRound field from API response if available
-            if (data.conversationAnalysis?.shouldAdvanceRound && round === 1) {
-              console.log('Main NPC advancing to Round 2 (via shouldAdvanceRound)');
-              onRoundChange(2);
-            } else if (data.conversationAnalysis?.shouldOpenPDA && round === 2) {
-              console.log('Main NPC triggering ending phase (via shouldOpenPDA)');
-              if (typeof window !== 'undefined' && (window as any).triggerEndingPhase) {
-                (window as any).triggerEndingPhase();
-              }
-            } else {
-              // Fallback to text-based detection
-              const responseLower = data.response.toLowerCase();
-              if (responseLower.includes('round 2') && round === 1) {
-                console.log('Main NPC advancing to Round 2 (via text detection)');
-                onRoundChange(2);
-              } else if (responseLower.includes('ending phase') && round === 2) {
-                console.log('Main NPC triggering ending phase (via text detection)');
-                if (typeof window !== 'undefined' && (window as any).triggerEndingPhase) {
-                  (window as any).triggerEndingPhase();
-                }
-              }
-            }
-          }
+
           
           // Split response into natural conversation chunks and add delay between each
           const chunks = splitIntoConversationChunks(data.response);
