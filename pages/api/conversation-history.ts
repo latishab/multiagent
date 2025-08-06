@@ -1,6 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getEffectiveRound, validateConversationParams } from '../../utils/conversationUtils';
-import { upstashStore } from '../../utils/upstashStore';
+import { conversationStorage } from '../../utils/conversationStorage';
 
 export default async function handler(
   req: NextApiRequest,
@@ -29,15 +28,15 @@ export default async function handler(
     const roundNumber = parseInt(round as string);
 
     // Validate parameters
-    if (!validateConversationParams(npcIdNumber, roundNumber, sessionId as string)) {
+    if (!conversationStorage.validateConversationParams(npcIdNumber, roundNumber, sessionId as string)) {
       return res.status(400).json({ message: 'Invalid parameters' });
     }
 
     // Get effective round for conversation storage
-    const effectiveRound = getEffectiveRound(npcIdNumber, roundNumber);
+    const effectiveRound = conversationStorage.getEffectiveRound(npcIdNumber, roundNumber);
 
-    // Get conversation history from Upstash store
-    const history = await upstashStore.getConversationHistory(npcIdNumber, effectiveRound, sessionId as string);
+    // Get conversation history using conversation storage
+    const history = await conversationStorage.getConversationHistory(npcIdNumber, effectiveRound, sessionId as string);
 
     // Convert to UI-friendly format (exclude system messages)
     const uiMessages = history

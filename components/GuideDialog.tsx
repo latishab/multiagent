@@ -57,6 +57,7 @@ export default function GuideDialog({
         // --- 2. Determine which initial messages are needed based on game state ---
         let messagesToDisplay = [...existingMessages]; // Start with what we have
         let needsDBUpdate = false;
+        let shouldAdvanceRound = false;
 
         // State A: First time ever opening the dialog
         if (round === 1 && existingMessages.length === 0) {
@@ -81,7 +82,7 @@ export default function GuideDialog({
           }
 
         // State C: Player has completed Round 1 and is now starting Round 2
-        } else if (round === 2 && spokenNPCs.round1.size >= 6) {
+        } else if (round === 1 && spokenNPCs.round1.size >= 6) {
           const round2IntroMessages = narrativesToMessages(getRoundAdvancementMessages());
           const initialRound2Message = round2IntroMessages[0]?.text;
 
@@ -93,6 +94,7 @@ export default function GuideDialog({
           if (!initialRound2MessageAlreadyExists) {
             messagesToDisplay.push(...round2IntroMessages);
             needsDBUpdate = true;
+            shouldAdvanceRound = true; 
           }
         }
 
@@ -128,6 +130,13 @@ export default function GuideDialog({
             await new Promise(resolve => setTimeout(resolve, 800)); // Delay between messages
             currentMessages = [...currentMessages, newMessages[i]];
             setMessages(currentMessages);
+          }
+          
+          // Advance the round after messages are displayed 
+          if (shouldAdvanceRound) {
+            await new Promise(resolve => setTimeout(resolve, 500)); 
+            console.log('GuideDialog: Automatically advancing to Round 2');
+            onRoundChange(2);
           }
         } else {
           setMessages(messagesToDisplay);

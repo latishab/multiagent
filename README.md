@@ -15,11 +15,20 @@ cd multiagent
 npm install
 ```
 
-3. Create a `.env` file in the root directory and add your API keys:
+3. Create a `.env.local` file in the root directory and add your API keys:
 ```
-DEEPINFRA_API_KEY=
-VERCEL_URL=
-PINECONE_API_KEY=
+# Supabase Configuration (for conversation storage)
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# Existing API Keys
+DEEPINFRA_API_KEY=your_deepinfra_api_key
+PINECONE_API_KEY=your_pinecone_api_key
+PINECONE_ENVIRONMENT=your_pinecone_environment
+
+# Upstash Redis Configuration
+KV_REST_API_URL=your_upstash_redis_url
+KV_REST_API_TOKEN=your_upstash_redis_token
 ```
 
 4. Start the development server:

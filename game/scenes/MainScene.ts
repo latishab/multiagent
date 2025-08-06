@@ -207,12 +207,6 @@ export default class MainScene extends Scene {
     
     // Set world bounds
     this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels)
-    
-    console.log('Map layers created:', {
-      ground: this.groundLayer,
-      item: this.levelLayer,
-      wall: this.wallLayer
-    })
   }
 
   private setupCamera() {

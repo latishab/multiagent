@@ -24,10 +24,31 @@ export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame, on
   };
 
   const handleNewGame = async () => {
-    if (confirm('Are you sure you want to start a new game? This will clear your current progress.')) {
-      await sessionManager.clearSessionOnly();
-      onNewGame();
-      onClose();
+    if (confirm('Are you sure you want to start a new game? This will clear all conversations and reset your session.')) {
+      try {
+        const sessionId = await sessionManager.getSessionId();
+        
+        // Call the new game API endpoint
+        const response = await fetch('/api/new-game', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ sessionId })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to reset game');
+        }
+
+        // Clear session and call the new game handler
+        await sessionManager.clearSessionOnly();
+        onNewGame();
+        onClose();
+      } catch (error) {
+        console.error('Error starting new game:', error);
+        alert('Failed to start new game. Please try again.');
+      }
     }
   };
 
@@ -40,7 +61,7 @@ export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame, on
         <button className={`${styles.menuButton} ${styles.primary}`} onClick={() => onClose()}>
           Continue Game
         </button>
-        <button className={styles.menuButton} onClick={handleNewGame}>
+        <button className={`${styles.menuButton} ${styles.danger}`} onClick={handleNewGame}>
           New Game
         </button>
         <button className={styles.menuButton} onClick={onReturnToMainMenu}>
