@@ -32,8 +32,12 @@ export default function Home() {
   useEffect(() => {
     // Check if there's an existing session
     const checkExistingSession = async () => {
+      // Small delay to ensure browser environment is ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const sessionInfo = sessionManager.getSessionInfo();
-      if (sessionInfo.participantId) {
+      
+      if (sessionInfo.participantId && sessionInfo.stored) {
         setParticipantId(sessionInfo.participantId);
         setGameState('playing');
       } 

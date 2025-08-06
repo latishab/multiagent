@@ -138,6 +138,12 @@ class SessionManager {
   public getParticipantInfo(): { participantId: string | null; stored: boolean } {
     const stored = typeof window !== 'undefined' && window.localStorage ? 
       localStorage.getItem('multiagent_participant_id') !== null : false;
+    
+    // If we have a stored participant ID but not in memory, load it
+    if (stored && !this.participantId) {
+      this.participantId = localStorage.getItem('multiagent_participant_id');
+    }
+    
     return { participantId: this.participantId, stored };
   }
 

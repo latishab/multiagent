@@ -17,6 +17,9 @@ export default class MainScene extends Scene {
   // UI properties
   private selectedSlot: number = 0
 
+  // Minimap properties
+  private minimap!: Phaser.Cameras.Scene2D.Camera
+
   constructor() {
     super({ key: 'MainScene' })
   }
@@ -163,6 +166,7 @@ export default class MainScene extends Scene {
       }
       
       this.setupCamera()
+      this.createMinimap()
       this.scale.on('resize', this.handleResize, this)
     } catch (error) {
       console.error('Error during game initialization:', error)
@@ -172,6 +176,7 @@ export default class MainScene extends Scene {
   update() {
     this.playerManager.update()
     this.npcManager.update(this.time.now)
+    this.updateMinimap()
   }
 
   private createMap() {
@@ -221,5 +226,47 @@ export default class MainScene extends Scene {
   private handleResize() {
     this.cameras.main.setZoom(2)
     this.cameras.main.roundPixels = true
+  }
+
+  private createMinimap() {
+    // Calculate position for bottom-left corner
+    const minimapWidth = 250
+    const minimapHeight = 180
+    const padding = 15
+    const x = padding
+    const y = this.cameras.main.height - minimapHeight - padding
+    
+    // Create a minimap camera positioned in the bottom-right corner
+    this.minimap = this.cameras.add(x, y, minimapWidth, minimapHeight)
+    
+    // Set minimap properties
+    this.minimap.setZoom(0.15) // Zoom out to show more of the map
+    this.minimap.setBackgroundColor('#1a1a1a') // Dark gray background
+    this.minimap.setAlpha(0.9) // Slightly more opaque
+    
+    // Create a border for the minimap
+    const borderGraphics = this.add.graphics()
+    borderGraphics.lineStyle(2, 0x4a90e2, 1) // Blue border color consistent with UI
+    borderGraphics.strokeRect(x, y, minimapWidth, minimapHeight)
+    
+    // Set the minimap to follow the player
+    const player = this.playerManager.getPlayer()
+    this.minimap.startFollow(player)
+    
+    // Set bounds for the minimap camera
+    const bounds = this.physics.world.bounds
+    this.minimap.setBounds(bounds.x, bounds.y, bounds.width, bounds.height)
+    
+    // Only show specific layers in the minimap for better visibility
+    this.minimap.ignore([this.groundLayer]) // Hide ground layer in minimap
+  }
+
+  private updateMinimap() {
+    // Update minimap position to follow player
+    const player = this.playerManager.getPlayer()
+    if (player && this.minimap) {
+      // The minimap will automatically follow the player due to startFollow()
+      // You can add additional minimap logic here if needed
+    }
   }
 } 
