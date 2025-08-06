@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { sessionManager } from '../utils/sessionManager';
 import styles from '../styles/GameMenu.module.css';
 
@@ -10,10 +10,12 @@ interface GameMenuProps {
   onReturnToMainMenu: () => void;
 }
 
-type MenuState = 'main' | 'controls';
+type MenuState = 'main' | 'controls' | 'audio';
 
 export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame, onReturnToMainMenu }: GameMenuProps) {
   const [currentMenu, setCurrentMenu] = useState<MenuState>('main');
+  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(0.25);
 
   const handleRestartGame = async () => {
     if (confirm('Are you sure you want to restart the game? This will clear your current progress.')) {
@@ -29,6 +31,21 @@ export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame, on
       onRestartGame();
       onClose();
     }
+  };
+
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+    window.dispatchEvent(new CustomEvent('audio-toggle-mute', { detail: { isMuted: !isMuted } }));
+  };
+
+  const handleVolumeChange = (newVolume: number) => {
+    setVolume(newVolume);
+    window.dispatchEvent(new CustomEvent('audio-volume-change', { detail: { volume: newVolume } }));
+  };
+
+  const handleVolumeSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseFloat(e.target.value);
+    handleVolumeChange(newVolume);
   };
 
   const renderMainMenu = () => (
@@ -57,6 +74,8 @@ export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame, on
       </div>
     </div>
   );
+
+
 
   const renderControls = () => (
     <div className={styles.menuContent}>
@@ -105,6 +124,35 @@ export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame, on
           <div className={styles.controlItem}>
             <span className={styles.key}>ESC</span>
             <span className={styles.description}>Close dialogs / Open menu</span>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.controlsSection}>
+        <h3>Audio</h3>
+        <div className={styles.audioControls}>
+          <div className={styles.audioControl}>
+            <span className={styles.controlLabel}>Mute</span>
+            <button 
+              className={`${styles.audioButton} ${isMuted ? styles.active : ''}`}
+              onClick={toggleMute}
+            >
+              {isMuted ? '🔇' : '🔊'}
+            </button>
+          </div>
+          <div className={styles.audioControl}>
+            <span className={styles.controlLabel}>Volume</span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={volume}
+              onChange={handleVolumeSliderChange}
+              className={styles.volumeSlider}
+              disabled={isMuted}
+            />
+            <span className={styles.volumeValue}>{Math.round(volume * 100)}%</span>
           </div>
         </div>
       </div>

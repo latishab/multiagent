@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
-import { NPCNames, NPCSystems, NPCOptions, OptionDescriptions, SpecialistRecommendations, getNPCImage } from '../utils/npcData'
+import React, { useState, useEffect } from 'react'
+import { NPCNames, NPCSystems, NPCOptions, OptionDescriptions, generateNPCPreferences, generateSpecialistRecommendations, getNPCImage } from '../utils/npcData'
+import { sessionManager } from '../utils/sessionManager'
 
 interface BallotEntry {
   npcId: number;
@@ -23,6 +24,17 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
   const [selectedSystem, setSelectedSystem] = useState<number | null>(null);
   const [decisions, setDecisions] = useState<{ [npcId: number]: 'sustainable' | 'unsustainable' }>({});
   const [activeTab, setActiveTab] = useState<'info' | 'decisions'>('info');
+  const [specialistRecommendations, setSpecialistRecommendations] = useState<{ [key: number]: string }>({});
+
+  // Generate recommendations based on participant ID
+  useEffect(() => {
+    const participantId = sessionManager.getSessionInfo().participantId;
+    if (participantId) {
+      const preferences = generateNPCPreferences(participantId);
+      const recommendations = generateSpecialistRecommendations(preferences);
+      setSpecialistRecommendations(recommendations);
+    }
+  }, []);
 
   const handleDecision = (npcId: number, choice: 'sustainable' | 'unsustainable') => {
     setDecisions(prev => ({
@@ -151,7 +163,7 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                                 <div className="opinion-section">
                                   <h4>Specialist Opinion:</h4>
                                   <div className="opinion-content">
-                                    <p>{SpecialistRecommendations[npcId]}</p>
+                                    <p>{specialistRecommendations[npcId] || 'No recommendation available yet.'}</p>
                                   </div>
                                 </div>
                               )}

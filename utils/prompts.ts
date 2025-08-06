@@ -1,5 +1,4 @@
-import { NPCNames, NPCSystems, NPCOptions } from './npcData';
-import { OptionDescriptions, SpecialistRecommendations } from './npcData';
+import { NPCNames, NPCSystems, NPCOptions, OptionDescriptions, generateNPCPreferences, generateSpecialistRecommendations } from './npcData';
 
 export interface NPCInfo {
   name: string;
@@ -245,14 +244,21 @@ export const InteractionRules = {
   ]
 };
 
-export function getSystemPrompt(npc: NPCInfo, round: number, isSustainable: boolean = true): string {
+export function getSystemPrompt(npc: NPCInfo, round: number, isSustainable: boolean = true, participantId?: string): string {
   const roundPrompt = RoundPrompts[round];
   
   // Get the NPC ID for option descriptions
   const npcId = Object.keys(NPCData).find(key => NPCData[parseInt(key)].name === npc.name);
   const npcIdNumber = npcId ? parseInt(npcId) : 1;
   const optionDescriptions = OptionDescriptions[npcIdNumber];
-  const specialistRecommendation = SpecialistRecommendations[npcIdNumber];
+  
+  // Generate dynamic recommendations based on participant ID
+  let specialistRecommendation = 'No recommendation available yet.';
+  if (participantId) {
+    const preferences = generateNPCPreferences(participantId);
+    const recommendations = generateSpecialistRecommendations(preferences);
+    specialistRecommendation = recommendations[npcIdNumber] || 'No recommendation available yet.';
+  }
   
   const basePrompt = `You are ${npc.name}, a ${npc.career} in charge of the city's ${npc.system} system.
 

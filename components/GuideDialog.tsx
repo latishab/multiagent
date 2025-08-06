@@ -209,6 +209,7 @@ export default function GuideDialog({
           round: round,
           isSustainable: true,
           sessionId: currentSessionId,
+          participantId: sessionManager.getSessionInfo().participantId,
           spokenNPCs: {
             round1: Array.from(spokenNPCs.round1),
             round2: Array.from(spokenNPCs.round2)

@@ -18,6 +18,10 @@ const TypewriterEnding = dynamic(() => import('../components/TypewriterEnding'),
   ssr: false
 })
 
+const AudioManager = dynamic(() => import('../components/AudioManager'), {
+  ssr: false
+})
+
 type GameState = 'menu' | 'playing' | 'ending';
 
 export default function Home() {
@@ -108,6 +112,9 @@ export default function Home() {
           onComplete={handleEndingComplete} 
         />
       )}
+
+      {/* Audio Manager - plays during game and menu */}
+      <AudioManager isPlaying={gameState === 'playing' || gameState === 'menu'} />
 
       <style jsx global>{`
         /* Ensure Phaser canvas doesn't overlap UI */

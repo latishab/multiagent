@@ -235,6 +235,7 @@ export default function ChatDialog({
       round,
       isSustainable,
       sessionId: currentSessionId,
+      participantId: sessionManager.getSessionInfo().participantId,
       spokenNPCs: {
         round1: Array.from(spokenNPCs.round1),
         round2: Array.from(spokenNPCs.round2)

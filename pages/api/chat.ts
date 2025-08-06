@@ -384,11 +384,11 @@ Example responses for Round 2:
 /**
  * Handles conversation history management and system prompt setup
  */
-async function setupConversationHistory(npcId: number, round: number, sessionId: string, npc: NPCInfo, isSustainable: boolean): Promise<void> {
+async function setupConversationHistory(npcId: number, round: number, sessionId: string, npc: NPCInfo, isSustainable: boolean, participantId?: string): Promise<void> {
   const history = await upstashStore.getConversationHistory(npcId, round, sessionId);
 
   if (history.length === 0) {
-    const systemPrompt = getSystemPrompt(npc, round, isSustainable);
+    const systemPrompt = getSystemPrompt(npc, round, isSustainable, participantId);
     await upstashStore.addToConversationHistory(npcId, round, {
       role: 'system',
       content: systemPrompt
@@ -396,7 +396,7 @@ async function setupConversationHistory(npcId: number, round: number, sessionId:
   } else {
     const hasSystemMessage = history.some((msg: any) => msg.role === 'system');
     if (!hasSystemMessage) {
-      const systemPrompt = getSystemPrompt(npc, round, isSustainable);
+      const systemPrompt = getSystemPrompt(npc, round, isSustainable, participantId);
       await upstashStore.addToConversationHistory(npcId, round, {
         role: 'system',
         content: systemPrompt
@@ -491,9 +491,10 @@ async function handleRegularNPCConversation(
   round: number,
   sessionId: string,
   npc: NPCInfo,
-  isSustainable: boolean
+  isSustainable: boolean,
+  participantId?: string
 ): Promise<any> {
-  await setupConversationHistory(npcId, round, sessionId, npc, isSustainable);
+  await setupConversationHistory(npcId, round, sessionId, npc, isSustainable, participantId);
   await upstashStore.addToConversationHistory(npcId, round, { role: 'user', content: message }, sessionId);
   
   const updatedHistory = await upstashStore.getConversationHistory(npcId, round, sessionId);
@@ -634,7 +635,7 @@ export default async function handler(
   }
 
   try {
-    const { message, npcId, round, isSustainable = true, sessionId } = req.body;
+    const { message, npcId, round, isSustainable = true, sessionId, participantId } = req.body;
 
     if (!message || !npcId || !round) {
       return res.status(400).json({ message: 'Missing required fields' });
@@ -661,7 +662,7 @@ export default async function handler(
       });
     }
 
-    const result = await handleRegularNPCConversation(message, npcId, round, sessionId, npc, isSustainable);
+    const result = await handleRegularNPCConversation(message, npcId, round, sessionId, npc, isSustainable, participantId);
 
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
