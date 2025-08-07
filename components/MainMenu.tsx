@@ -265,10 +265,6 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
             <span className={styles.key}>WASD</span>
             <span className={styles.description}>Move around the facility</span>
           </div>
-          <div className={styles.controlItem}>
-            <span className={styles.key}>Arrow Keys</span>
-            <span className={styles.description}>Alternative movement</span>
-          </div>
         </div>
       </div>
 

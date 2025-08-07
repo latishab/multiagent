@@ -35,7 +35,10 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   )
   const [showWelcome, setShowWelcome] = useState(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('multiagent-show-welcome');
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-show-welcome-${participantId}` : 'multiagent-show-welcome';
+      
+      const saved = localStorage.getItem(storageKey);
       return saved ? JSON.parse(saved) : true;
     }
     return true;
@@ -177,7 +180,10 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   // Save game state to localStorage whenever it changes
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('multiagent-show-welcome', JSON.stringify(showWelcome));
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-show-welcome-${participantId}` : 'multiagent-show-welcome';
+      
+      localStorage.setItem(storageKey, JSON.stringify(showWelcome));
     }
   }, [showWelcome]);
 
@@ -774,7 +780,11 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       localStorage.removeItem(hasTalkedToGuideKey);
       localStorage.removeItem(chatStateKey);
       localStorage.removeItem(hasStartedGameKey);
-      localStorage.setItem('multiagent-show-welcome', 'true');
+      
+      // Clear and reset welcome state for this participant
+      const welcomeKey = participantId ? `multiagent-show-welcome-${participantId}` : 'multiagent-show-welcome';
+      localStorage.removeItem(welcomeKey);
+      localStorage.setItem(welcomeKey, 'true');
 
       // Clear session but keep participant ID
       await sessionManager.clearSessionOnly();
@@ -798,7 +808,11 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       localStorage.removeItem(hasTalkedToGuideKey);
       localStorage.removeItem(chatStateKey);
       localStorage.removeItem(hasStartedGameKey);
-      localStorage.setItem('multiagent-show-welcome', 'true');
+      
+      // Clear and reset welcome state for this participant
+      const welcomeKey = participantId ? `multiagent-show-welcome-${participantId}` : 'multiagent-show-welcome';
+      localStorage.removeItem(welcomeKey);
+      localStorage.setItem(welcomeKey, 'true');
 
       // Clear session but keep participant ID
       await sessionManager.clearSessionOnly();
