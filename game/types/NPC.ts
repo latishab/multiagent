@@ -128,7 +128,7 @@ export const NPC_TYPES: NPCType[] = [
   { 
     name: 'mrs-han', 
     startFrame: calculateStartFrame(5),
-    areaBounds: { x: 980, y: 400, width: 300, height: 200 }  
+    areaBounds: { x: 1200, y: 400, width: 300, height: 200 }  
   }
 ]
 
