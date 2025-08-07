@@ -814,8 +814,8 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       localStorage.removeItem(welcomeKey);
       localStorage.setItem(welcomeKey, 'true');
 
-      // Clear session but keep participant ID
-      await sessionManager.clearSessionOnly();
+      // Don't clear the participant ID - just clear game progress data
+      // The participant ID should remain so the game can restart properly
     }
     // Reload the page to start a new game
     window.location.href = window.location.origin + window.location.pathname;

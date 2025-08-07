@@ -2,6 +2,17 @@ import React, { useState, useEffect } from 'react'
 import { NPCNames, NPCSystems, NPCOptions, OptionDescriptions, generateNPCPreferences, generateSpecialistRecommendations, getNPCImage } from '../utils/npcData'
 import { sessionManager } from '../utils/sessionManager'
 
+// Types for PDA decisions
+interface PDADecision {
+  npcId: number;
+  npcName: string;
+  systemName: string;
+  choice: 'sustainable' | 'unsustainable';
+  chosenOption: string;
+  rejectedOption: string;
+  timestamp: number;
+}
+
 interface BallotEntry {
   npcId: number;
   npcName: string;
@@ -25,6 +36,7 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
   const [decisions, setDecisions] = useState<{ [npcId: number]: 'sustainable' | 'unsustainable' }>({});
   const [activeTab, setActiveTab] = useState<'info' | 'decisions'>('info');
   const [specialistRecommendations, setSpecialistRecommendations] = useState<{ [key: number]: string }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Generate recommendations based on participant ID
   useEffect(() => {
@@ -43,9 +55,71 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
     }));
   };
 
-  const handleCompleteDecisions = () => {
-    if (onDecisionsComplete && Object.keys(decisions).length === 6) {
-      onDecisionsComplete(decisions);
+  // Function to store PDA decisions
+  const storePDADecisions = async (decisions: { [npcId: number]: 'sustainable' | 'unsustainable' }) => {
+    try {
+      const sessionId = await sessionManager.getSessionId();
+      const participantId = sessionManager.getSessionInfo().participantId;
+      
+      // Convert decisions object to array format with full details
+      const decisionsArray: PDADecision[] = Object.entries(decisions).map(([npcId, choice]) => {
+        const npcIdNum = parseInt(npcId);
+        const isSustainable = choice === 'sustainable';
+        
+        return {
+          npcId: npcIdNum,
+          npcName: NPCNames[npcIdNum],
+          systemName: NPCSystems[npcIdNum],
+          choice,
+          chosenOption: isSustainable ? NPCOptions[npcIdNum].sustainable : NPCOptions[npcIdNum].unsustainable,
+          rejectedOption: isSustainable ? NPCOptions[npcIdNum].unsustainable : NPCOptions[npcIdNum].sustainable,
+          timestamp: Date.now()
+        };
+      });
+
+      const response = await fetch('/api/store-pda-decisions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sessionId,
+          decisions: decisionsArray,
+          participantId
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('Error storing PDA decisions:', error);
+      throw error;
+    }
+  };
+
+  const handleCompleteDecisions = async () => {
+    if (Object.keys(decisions).length === 6) {
+      setIsSubmitting(true);
+      try {
+        // Store decisions in database
+        await storePDADecisions(decisions);
+        
+        // Call the original callback if provided
+        if (onDecisionsComplete) {
+          onDecisionsComplete(decisions);
+        }
+      } catch (error) {
+        console.error('Failed to store PDA decisions:', error);
+        if (onDecisionsComplete) {
+          onDecisionsComplete(decisions);
+        }
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -266,8 +340,12 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
 
                     {getProgress() === 6 && (
                       <div className="complete-section">
-                        <button className="complete-button" onClick={handleCompleteDecisions}>
-                          Submit Final Decisions
+                        <button 
+                          className="complete-button" 
+                          onClick={handleCompleteDecisions}
+                          disabled={isSubmitting}
+                        >
+                          {isSubmitting ? 'Submitting...' : 'Submit Final Decisions'}
                         </button>
                       </div>
                     )}
@@ -753,11 +831,17 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
           min-width: clamp(200px, 30vw, 300px);
         }
 
-        .complete-button:hover {
+        .complete-button:hover:not(:disabled) {
           background: linear-gradient(135deg, #1d4ed8, #1e40af);
           transform: translateY(-2px);
           box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
           color: white !important;
+        }
+
+        .complete-button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          transform: none;
         }
 
         /* Empty State Styles */

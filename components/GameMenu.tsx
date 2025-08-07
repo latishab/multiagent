@@ -31,13 +31,13 @@ export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame, on
   const handleNewGame = async () => {
     if (confirm('Are you sure you want to start a new game? This will clear all conversations and reset your session.')) {
       try {
-        await sessionManager.clearSessionOnly();
-        onRestartGame();
+        // Don't clear the session - let the onNewGame handler manage the clearing
+        onNewGame();
         onClose();
       } catch (error) {
         console.error('Error starting new game:', error);
         // Fallback: just restart without clearing session
-        onRestartGame();
+        onNewGame();
         onClose();
       }
     }
