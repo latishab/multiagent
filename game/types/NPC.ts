@@ -107,7 +107,7 @@ export const NPC_TYPES: NPCType[] = [
   { 
     name: 'ms-moss', 
     startFrame: calculateStartFrame(1),
-    areaBounds: { x: 800, y: 180, width: 300, height: 200 }  
+    areaBounds: { x: 900, y: 100, width: 300, height: 200 }  
   },
   { 
     name: 'chief-oskar', 
@@ -118,7 +118,7 @@ export const NPC_TYPES: NPCType[] = [
   { 
     name: 'ms-kira', 
     startFrame: calculateStartFrame(3),
-    areaBounds: { x: 80, y: 400, width: 300, height: 200 }  
+    areaBounds: { x: -100, y: 300, width: 300, height: 200 }  
   },
   { 
     name: 'mr-aria', 
