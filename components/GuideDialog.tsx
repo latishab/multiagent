@@ -46,7 +46,7 @@ export default function GuideDialog({
       try {
         // --- 1. Load Existing History ---
         let existingMessages: Message[] = [];
-        const response = await fetch(`/api/conversation-history?npcId=-1&round=1&sessionId=${currentSessionId}`);
+        const response = await fetch(`/api/conversation-history?npcId=-1&round=${round}&sessionId=${currentSessionId}`);
         
         if (response.ok) {
           const data = await response.json();
@@ -116,7 +116,7 @@ export default function GuideDialog({
               body: JSON.stringify({
                 message: msg.text,
                 npcId: -1,
-                round: 1, // Guide history is always stored in round 1
+                round: round, 
                 sessionId: currentSessionId,
                 role: 'assistant'
               })

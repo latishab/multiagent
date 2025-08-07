@@ -4,10 +4,10 @@
 
 /**
  * Gets the effective round for conversation storage
- * The Guide always uses round 1 to preserve conversation across rounds
+ * Each round has its own conversation history for all NPCs including The Guide
  */
 export function getEffectiveRound(npcId: number, round: number): number {
-  return npcId === -1 ? 1 : round;
+  return round;
 }
 
 /**

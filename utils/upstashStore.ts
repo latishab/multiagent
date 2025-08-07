@@ -29,14 +29,6 @@ class UpstashStore {
   }
 
   public getConversationKey(npcId: number, round: number, sessionId?: string): string {
-    // Special handling for The Guide (npcId: -1) - preserve conversation across rounds
-    if (npcId === -1) {
-      if (sessionId) {
-        return `guide_session_${sessionId}`;
-      }
-      return 'guide';
-    }
-    
     if (sessionId) {
       return `npc_${npcId}_round_${round}_session_${sessionId}`;
     }

@@ -440,8 +440,7 @@ async function handleGuideConversation(
   sessionId: string,
   spokenNPCs: { round1: number[]; round2: number[] }
 ): Promise<any> {
-  const effectiveRound = 1;
-  
+  const effectiveRound = round;
   const history = await upstashStore.getConversationHistory(-1, effectiveRound, sessionId);
   await upstashStore.addToConversationHistory(-1, effectiveRound, { role: 'user', content: message }, sessionId);
 
