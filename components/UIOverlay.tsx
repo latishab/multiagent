@@ -1048,6 +1048,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         ballotEntries={ballotEntries}
         onDecisionsComplete={handleDecisionsComplete}
         showDecisionMode={showDecisionMode}
+        spokenNPCs={spokenNPCs}
       />
       
       {/* Ending Overlay */}

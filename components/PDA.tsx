@@ -29,9 +29,13 @@ interface PDAProps {
   ballotEntries: BallotEntry[];
   onDecisionsComplete?: (decisions: { [npcId: number]: 'sustainable' | 'unsustainable' }) => void;
   showDecisionMode?: boolean;
+  spokenNPCs?: {
+    round1: Set<number>;
+    round2: Set<number>;
+  };
 }
 
-export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplete, showDecisionMode = false }: PDAProps) {
+export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplete, showDecisionMode = false, spokenNPCs }: PDAProps) {
   const [selectedSystem, setSelectedSystem] = useState<number | null>(null);
   const [decisions, setDecisions] = useState<{ [npcId: number]: 'sustainable' | 'unsustainable' }>({});
   const [activeTab, setActiveTab] = useState<'info' | 'decisions'>('info');
@@ -213,29 +217,45 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                             <>
                               <div className="options-section">
                                 <h4>Available Options:</h4>
-                                <div className="options-grid">
-                                  <div className="option sustainable">
-                                    <span className="option-icon">📋</span>
-                                    <div className="option-info">
-                                      <strong>Proposal A:</strong>
-                                      <p>{NPCOptions[npcId].sustainable}</p>
-                                      <p className="option-description">{OptionDescriptions[npcId].sustainable}</p>
-                                    </div>
-                                  </div>
-                                  <div className="option unsustainable">
-                                    <span className="option-icon">📄</span>
-                                    <div className="option-info">
-                                      <strong>Proposal B:</strong>
-                                      <p>{NPCOptions[npcId].unsustainable}</p>
-                                      <p className="option-description">{OptionDescriptions[npcId].unsustainable}</p>
-                                    </div>
-                                  </div>
+                                                                <div className="options-grid">
+                                  {(() => {
+                                    const participantId = sessionManager.getSessionInfo().participantId;
+                                    const preferences = participantId ? generateNPCPreferences(participantId) : null;
+                                    const recommendation = preferences ? preferences[npcId] : null;
+                                    
+                                    // Only show specialist choice if player has spoken to this NPC in Round 2
+                                    const hasSpokenToNPC = spokenNPCs?.round2?.has(npcId) || false;
+                                    const shouldShowChoice = recommendation && hasSpokenToNPC;
+                                    
+                                    return (
+                                      <>
+                                        <div className={`option sustainable ${shouldShowChoice && recommendation === 'sustainable' ? 'recommended' : ''}`}>
+                                          <span className="option-icon">📋</span>
+                                          <div className="option-info">
+                                            <strong>Proposal A:</strong>
+                                            {shouldShowChoice && recommendation === 'sustainable' && <span className="option-recommendation-badge">⭐ Specialist Choice</span>}
+                                            <p>{NPCOptions[npcId].sustainable}</p>
+                                            <p className="option-description">{OptionDescriptions[npcId].sustainable}</p>
+                                          </div>
+                                        </div>
+                                        <div className={`option unsustainable ${shouldShowChoice && recommendation === 'unsustainable' ? 'recommended' : ''}`}>
+                                          <span className="option-icon">📄</span>
+                                          <div className="option-info">
+                                            <strong>Proposal B:</strong>
+                                            {shouldShowChoice && recommendation === 'unsustainable' && <span className="option-recommendation-badge">⭐ Specialist Choice</span>}
+                                            <p>{NPCOptions[npcId].unsustainable}</p>
+                                            <p className="option-description">{OptionDescriptions[npcId].unsustainable}</p>
+                                          </div>
+                                        </div>
+                                      </>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                               
                               {systemInfo.round === 2 && (
                                 <div className="opinion-section">
-                                  <h4>Specialist Opinion:</h4>
+                                  <h4>Specialist's Choice:</h4>
                                   <div className="opinion-content">
                                     <p>{specialistRecommendations[npcId] || 'No recommendation available yet.'}</p>
                                   </div>
@@ -309,29 +329,45 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                             </div>
                             
                             <div className="decision-options">
-                              <button
-                                className={`decision-button sustainable ${decisions[npcId] === 'sustainable' ? 'selected' : ''}`}
-                                onClick={() => handleDecision(npcId, 'sustainable')}
-                                disabled={isSystemComplete(npcId)}
-                              >
-                                <span className="option-icon">📋</span>
-                                <div className="option-content">
-                                  <h4>Proposal A</h4>
-                                  <p>{NPCOptions[npcId].sustainable}</p>
-                                </div>
-                              </button>
-                              
-                              <button
-                                className={`decision-button unsustainable ${decisions[npcId] === 'unsustainable' ? 'selected' : ''}`}
-                                onClick={() => handleDecision(npcId, 'unsustainable')}
-                                disabled={isSystemComplete(npcId)}
-                              >
-                                <span className="option-icon">📄</span>
-                                <div className="option-content">
-                                  <h4>Proposal B</h4>
-                                  <p>{NPCOptions[npcId].unsustainable}</p>
-                                </div>
-                              </button>
+                              {(() => {
+                                const participantId = sessionManager.getSessionInfo().participantId;
+                                const preferences = participantId ? generateNPCPreferences(participantId) : null;
+                                const recommendation = preferences ? preferences[npcId] : null;
+                                
+                                // Only show specialist choice if player has spoken to this NPC in Round 2
+                                const hasSpokenToNPC = spokenNPCs?.round2?.has(npcId) || false;
+                                const shouldShowChoice = recommendation && hasSpokenToNPC;
+                                
+                                return (
+                                  <>
+                                    <button
+                                      className={`decision-button sustainable ${decisions[npcId] === 'sustainable' ? 'selected' : ''} ${shouldShowChoice && recommendation === 'sustainable' ? 'recommended' : ''}`}
+                                      onClick={() => handleDecision(npcId, 'sustainable')}
+                                      disabled={isSystemComplete(npcId)}
+                                    >
+                                      <span className="option-icon">📋</span>
+                                      <div className="option-content">
+                                        <h4>Proposal A</h4>
+                                        {shouldShowChoice && recommendation === 'sustainable' && <span className="decision-recommendation-badge">⭐ Specialist Choice</span>}
+                                        <p>{NPCOptions[npcId].sustainable}</p>
+                                      </div>
+                                    </button>
+                                    
+                                    <button
+                                      className={`decision-button unsustainable ${decisions[npcId] === 'unsustainable' ? 'selected' : ''} ${shouldShowChoice && recommendation === 'unsustainable' ? 'recommended' : ''}`}
+                                      onClick={() => handleDecision(npcId, 'unsustainable')}
+                                      disabled={isSystemComplete(npcId)}
+                                    >
+                                      <span className="option-icon">📄</span>
+                                      <div className="option-content">
+                                        <h4>Proposal B</h4>
+                                        {shouldShowChoice && recommendation === 'unsustainable' && <span className="decision-recommendation-badge">⭐ Specialist Choice</span>}
+                                        <p>{NPCOptions[npcId].unsustainable}</p>
+                                      </div>
+                                    </button>
+                                  </>
+                                );
+                              })()}
                             </div>
                           </div>
                         );
@@ -629,6 +665,22 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
           border-left-color: #f59e0b;
         }
 
+        .option.recommended {
+          border-left-width: 6px;
+          background: rgba(59, 130, 246, 0.1);
+        }
+
+        .option-recommendation-badge {
+          background: #3b82f6;
+          color: white;
+          padding: 0.2rem 0.4rem;
+          border-radius: 4px;
+          font-size: 0.7rem;
+          font-weight: bold;
+          margin-left: 0.5rem;
+          display: inline-block;
+        }
+
         .option-icon {
           font-size: 1.2rem;
         }
@@ -655,6 +707,69 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
         .opinion-section h4 {
           margin: 0 0 0.75rem 0;
           color: #f9fafb;
+        }
+
+        .recommendation-display {
+          margin-bottom: 1rem;
+        }
+
+        .recommendation-badge {
+          border-radius: 8px;
+          padding: 1rem;
+          margin-bottom: 1rem;
+          border: 2px solid;
+          position: relative;
+        }
+
+        .recommendation-badge.sustainable {
+          background: rgba(16, 185, 129, 0.1);
+          border-color: #10b981;
+        }
+
+        .recommendation-badge.unsustainable {
+          background: rgba(245, 158, 11, 0.1);
+          border-color: #f59e0b;
+        }
+
+        .recommendation-header {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .recommendation-icon {
+          font-size: 1.2rem;
+        }
+
+        .recommendation-label {
+          background: #374151;
+          color: #e5e7eb;
+          padding: 0.2rem 0.5rem;
+          border-radius: 4px;
+          font-size: 0.7rem;
+          font-weight: bold;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .recommendation-option {
+          font-size: 0.95rem;
+          line-height: 1.4;
+        }
+
+        .recommendation-option strong {
+          color: #f9fafb;
+        }
+
+        .no-recommendation {
+          color: #9ca3af;
+          font-style: italic;
+          text-align: center;
+          padding: 1rem;
+          background: rgba(55, 65, 81, 0.3);
+          border-radius: 8px;
+          border: 1px solid #4b5563;
         }
 
         .opinion-content p {
@@ -808,6 +923,22 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
         .decision-button:disabled {
           opacity: 0.6;
           cursor: not-allowed;
+        }
+
+        .decision-button.recommended {
+          border-color: #3b82f6;
+          background: rgba(59, 130, 246, 0.1);
+        }
+
+        .decision-recommendation-badge {
+          background: #3b82f6;
+          color: white;
+          padding: 0.2rem 0.4rem;
+          border-radius: 4px;
+          font-size: 0.7rem;
+          font-weight: bold;
+          margin-left: 0.5rem;
+          display: inline-block;
         }
 
         .complete-section {

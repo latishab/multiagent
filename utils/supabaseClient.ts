@@ -29,7 +29,8 @@ export interface ConversationRow {
       round: number;
       npcId: number;
       sessionId: string;
-      isSustainable?: boolean;
+      npcPreference?: 'sustainable' | 'unsustainable';
+      participantId?: string;
     };
   };
   created_at?: string;

@@ -3,6 +3,7 @@ import { vectorStore } from '../../utils/vectorStore';
 import { upstashStore } from '../../utils/upstashStore';
 import { NPCData, getSystemPrompt } from '../../utils/prompts';
 import { supabase, isSupabaseConfigured } from '../../utils/supabaseClient';
+import { generateNPCPreferences } from '../../utils/npcData';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -36,6 +37,8 @@ interface PineconeMatch {
     npcId: string;
     round: string;
     type: 'user_message' | 'assistant_response';
+    npcPreference?: 'sustainable' | 'unsustainable';
+    participantId?: string;
   };
 }
 
@@ -61,21 +64,45 @@ async function storeConversationTurn(
   sessionId: string,
   npcId: number,
   round: number,
-  turnMessages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: number }>
+  turnMessages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: number }>,
+  participantId?: string
 ) {
   if (!isSupabaseConfigured()) return;
+
+  // Get NPC's preference from cached preferences if participantId is available
+  let npcPreference: 'sustainable' | 'unsustainable' | null = null;
+  if (participantId && npcId > 0) { // Skip for The Guide (npcId: -1)
+    try {
+      const preferences = generateNPCPreferences(participantId); // This uses cached preferences
+      npcPreference = preferences[npcId] || null;
+    } catch (error) {
+      console.error('Error getting NPC preferences from cache:', error);
+    }
+  }
+
+  // Add metadata to each message
+  const messagesWithMetadata = turnMessages.map(msg => ({
+    ...msg,
+    metadata: {
+      npcId,
+      round,
+      sessionId,
+      npcPreference,
+      participantId
+    }
+  }));
 
   try {
     const { error } = await supabase.rpc('append_to_conversation', {
       p_session_id: sessionId,
       p_npc_id: npcId,
       p_round: round,
-      new_messages: turnMessages,
+      new_messages: messagesWithMetadata,
     });
 
     if (error) {
       console.error('Error in storeConversationTurn RPC:', error);
-      await storeConversationTurnFallback(sessionId, npcId, round, turnMessages);
+      await storeConversationTurnFallback(sessionId, npcId, round, messagesWithMetadata, participantId);
     } 
   } catch (e) {
     console.error('Exception in storeConversationTurn:', e);
@@ -89,7 +116,8 @@ async function storeConversationTurnFallback(
   sessionId: string,
   npcId: number,
   round: number,
-  turnMessages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: number }>
+  turnMessages: Array<{ role: 'user' | 'assistant'; content: string; timestamp: number; metadata?: any }>,
+  participantId?: string
 ) {
   try {
     const { data: existingConversation, error: fetchError } = await supabase
@@ -451,7 +479,7 @@ async function handleGuideConversation(
   await storeConversationTurn(sessionId, -1, effectiveRound, [
     { role: 'user', content: message, timestamp: Date.now() },
     { role: 'assistant', content: analysis.response, timestamp: Date.now() }
-  ]);
+  ], undefined); // The Guide doesn't have preferences
 
   return {
     response: analysis.response,
@@ -483,11 +511,25 @@ async function handleRegularNPCConversation(
   const updatedHistory = await upstashStore.getConversationHistory(npcId, round, sessionId);
 
   const messageId = `${npcId}_${round}_${Date.now()}`;
+  
+  // Get NPC's preference from cached preferences for vector store metadata
+  let npcPreference: 'sustainable' | 'unsustainable' | null = null;
+  if (participantId && npcId > 0) {
+    try {
+      const preferences = generateNPCPreferences(participantId); // This uses cached preferences
+      npcPreference = preferences[npcId] || null;
+    } catch (error) {
+      console.error('Error getting NPC preferences from cache for vector store:', error);
+    }
+  }
+  
   await vectorStore.storeMemory(messageId, message, {
     npcId: npcId.toString(),
     round: round.toString(),
     type: 'user_message',
-    sessionId: sessionId || 'default'
+    sessionId: sessionId || 'default',
+    npcPreference: npcPreference || undefined,
+    participantId: participantId || undefined
   });
 
   const contextPrompt = await addConversationContext(updatedHistory, message, npcId, sessionId);
@@ -540,7 +582,9 @@ async function handleRegularNPCConversation(
     npcId: npcId.toString(),
     round: round.toString(),
     type: 'assistant_response',
-    sessionId: sessionId || 'default'
+    sessionId: sessionId || 'default',
+    npcPreference: npcPreference || undefined,
+    participantId: participantId || undefined
   });
 
   await upstashStore.addToConversationHistory(npcId, round, { role: 'assistant', content: aiResponse }, sessionId);
@@ -548,7 +592,7 @@ async function handleRegularNPCConversation(
   await storeConversationTurn(sessionId, npcId, round, [
       { role: 'user', content: message, timestamp: Date.now() },
       { role: 'assistant', content: aiResponse, timestamp: Date.now() }
-  ]);
+  ], participantId);
 
   const finalHistory = await upstashStore.getConversationHistory(npcId, round, sessionId);
   const conversationAnalysis = await analyzeConversationCompleteness(finalHistory, npc, round);
