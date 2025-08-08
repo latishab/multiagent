@@ -31,6 +31,7 @@ export default class MainScene extends Scene {
     
     this.load.on('loadcomplete', () => {
       console.log('All assets loaded successfully')
+      this.trackClarity('assets_loaded')
     })
     
     // Add WebGL error handling
@@ -124,6 +125,10 @@ export default class MainScene extends Scene {
       // Initialize managers
       this.playerManager = new PlayerManager(this)
       this.npcManager = new NPCManager(this)
+      this.trackClarity('scene_created', {
+        mapWidth: this.map?.widthInPixels,
+        mapHeight: this.map?.heightInPixels
+      })
     } catch (error) {
       console.error('Error during scene creation:', error)
       this.createMap() // Fallback
@@ -153,6 +158,7 @@ export default class MainScene extends Scene {
       
       // Setup NPC chat interaction
       this.npcManager.setInteractionCallback((npcId: string, personality: string) => {
+        this.trackClarity('npc_interaction', { npcId, personality })
         if (typeof window !== 'undefined' && (window as any).openChat) {
           ;(window as any).openChat(npcId, personality)
         }
@@ -168,6 +174,14 @@ export default class MainScene extends Scene {
       this.setupCamera()
       this.createMinimap()
       this.scale.on('resize', this.handleResize, this)
+
+      // Track tile clicks
+      this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+        const worldPoint = pointer.positionToCamera(this.cameras.main) as Phaser.Math.Vector2
+        const tileX = this.map.worldToTileX(worldPoint.x)
+        const tileY = this.map.worldToTileY(worldPoint.y)
+        this.trackClarity('tile_click', { x: tileX, y: tileY })
+      })
     } catch (error) {
       console.error('Error during game initialization:', error)
     }
@@ -211,6 +225,12 @@ export default class MainScene extends Scene {
     
     // Set world bounds
     this.physics.world.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels)
+
+    this.trackClarity('tilemap_created', {
+      tilesetCount: this.tilesets.length,
+      mapWidth: this.map.widthInPixels,
+      mapHeight: this.map.heightInPixels
+    })
   }
 
   private setupCamera() {
@@ -268,5 +288,21 @@ export default class MainScene extends Scene {
       // The minimap will automatically follow the player due to startFollow()
       // You can add additional minimap logic here if needed
     }
+  }
+
+  private trackClarity(eventName: string, tags?: Record<string, string | number | boolean | undefined | null>) {
+    if (typeof window === 'undefined') return
+    const w = window as any
+    w.clarity = w.clarity || function() {
+      (w.clarity.q = w.clarity.q || []).push(arguments)
+    }
+    if (tags) {
+      Object.entries(tags).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          w.clarity('set', key, String(value))
+        }
+      })
+    }
+    w.clarity('event', eventName)
   }
 } 
