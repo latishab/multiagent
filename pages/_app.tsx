@@ -13,10 +13,12 @@ export default function App({ Component, pageProps }: AppProps) {
           sessionManager.getParticipantId(),
         ]);
 
+        const customId = `participant:${participantId} | session:${sessionId}`;
+
         if (typeof window !== 'undefined' && typeof (window as any).clarity === 'function') {
           (window as any).clarity('set', 'sessionId', sessionId);
           (window as any).clarity('set', 'participantId', participantId);
-          (window as any).clarity('identify', undefined, undefined, undefined, `participant:${participantId} | session:${sessionId}`);
+          (window as any).clarity('identify', customId);
           (window as any).clarity('event', 'identity_set');
         } else if (typeof window !== 'undefined') {
           (window as any).clarity = (window as any).clarity || function() {
@@ -24,7 +26,7 @@ export default function App({ Component, pageProps }: AppProps) {
           };
           (window as any).clarity('set', 'sessionId', sessionId);
           (window as any).clarity('set', 'participantId', participantId);
-          (window as any).clarity('identify', undefined, undefined, undefined, `participant:${participantId} | session:${sessionId}`);
+          (window as any).clarity('identify', customId);
           (window as any).clarity('event', 'identity_set');
         }
       } catch {
