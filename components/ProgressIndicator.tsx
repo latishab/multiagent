@@ -9,19 +9,20 @@ interface ProgressIndicatorProps {
     round2: Set<number>;
   };
   hasTalkedToGuide?: boolean;
+  hasStartedGame?: boolean;
   isChatOpen?: boolean;
   currentChatNPCId?: number;
 }
 
-export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedToGuide = false, isChatOpen = false, currentChatNPCId = -1 }: ProgressIndicatorProps) {
+export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedToGuide = false, hasStartedGame = false, isChatOpen = false, currentChatNPCId = -1 }: ProgressIndicatorProps) {
   const round1Spoken = Array.from(spokenNPCs.round1);
   const round2Spoken = Array.from(spokenNPCs.round2);
-  
   const round1Progress = (round1Spoken.length / 6) * 100;
   const round2Progress = (round2Spoken.length / 6) * 100;
 
-  // Check if game has started (if any NPCs have been spoken to or guide has been talked to)
-  const hasGameStarted = round1Spoken.length > 0 || round2Spoken.length > 0 || hasTalkedToGuide;
+  // MARK: - Logic Definitions
+  // Single source of truth: rely on hasStartedGame provided by parent (UIOverlay)
+  const gameStarted = hasStartedGame;
   
   // Check if currently talking to The Guide
   const isTalkingToGuide = isChatOpen && currentChatNPCId === -1;
@@ -32,29 +33,29 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
   
   // Determine the actual current round based on completion status
   const actualCurrentRound = (() => {
-    // If Round 1 is not complete, we're still in Round 1
-    if (!round1Complete) {
-      return 1;
-    }
-    // If Round 1 is complete but player hasn't talked to The Guide yet, stay in Round 1
-    if (round1Complete && !hasTalkedToGuide) {
-      return 1;
-    }
-    // If Round 1 is complete and player has talked to The Guide, we're in Round 2
-    if (round1Complete && hasTalkedToGuide && !round2Complete) {
-      return 2;
-    }
-    // If both rounds are complete, we're in Round 2 (decision phase)
-    if (round1Complete && round2Complete) {
-      return 2;
-    }
-    // Default fallback
+    // If currentRound is explicitly set to 2, use it (this happens after auto-advance)
+    if (currentRound === 2) return 2;
+    
+    // Before the game starts, treat as Round 1 guidance
+    if (!gameStarted) return 1;
+    // If Round 1 is not complete, we're in Round 1
+    if (!round1Complete) return 1;
+    // If Round 1 complete but Guide not talked to, remain in Round 1 state to show explicit guidance
+    if (round1Complete && !hasTalkedToGuide) return 1;
+    // If Round 1 complete and Guide talked, and Round 2 not complete, show Round 2
+    if (round1Complete && hasTalkedToGuide && !round2Complete) return 2;
+    // If Round 1 complete but Guide not talked to, stay in Round 1 to show the guide prompt
+    if (round1Complete && !hasTalkedToGuide) return 1;
+    // If both rounds complete, remain in Round 2 (decision phase)
+    if (round1Complete && round2Complete) return 2;
     return currentRound;
   })();
   
+
+  
   // Determine what guidance to show
   const getGuidanceMessage = () => {
-    if (!hasGameStarted) {
+    if (!gameStarted) {
       return "Talk to Michael to start your mission";
     }
     
@@ -158,7 +159,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
     <div className="progress-indicator">
       <div className="progress-header">
         <h3>Mission Checklist</h3>
-        {(!hasGameStarted || (round1Complete && !hasTalkedToGuide) || (round2Complete && !hasTalkedToGuide)) ? (
+        {(!gameStarted || (round1Complete && !hasTalkedToGuide) || (round2Complete && !hasTalkedToGuide)) ? (
           <div className="initial-state">
             <div className="guide-checklist">
               <div className="guide-header">
@@ -178,9 +179,9 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
               </div>
               <div className="guide-mission">
                 <div className="mission-title">
-                  {!hasGameStarted ? "Mission: Start Your Journey" : 
-                   round1Complete && !round2Complete ? "Mission: Advance to Round 2" :
-                   round2Complete ? "Mission: Make Final Decisions" : "Mission: Continue"}
+                  {!gameStarted ? "Mission: Start Your Journey" :
+                   (round1Complete && !hasTalkedToGuide) ? "Mission: Advance to Round 2" :
+                   (round2Complete && !hasTalkedToGuide) ? "Mission: Make Final Decisions" : "Mission: Continue"}
                 </div>
                 <div className="checklist-items">
                   <div className="checklist-item">
@@ -194,12 +195,12 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
                       {!hasTalkedToGuide ? '☐' : '☑'}
                     </span>
                     <span className="checklist-text">
-                      {!hasGameStarted ? "Talk to Michael to understand your mission" : 
+                      {!gameStarted ? "Talk to Michael to understand your mission" : 
                        round1Complete && !round2Complete ? "Talk to Michael to advance to Round 2" :
                        round2Complete ? "Talk to Michael to make final decisions" : "Talk to Michael"}
                     </span>
                   </div>
-                  {!hasGameStarted && (
+                  {!gameStarted && (
                     <>
                       <div className="checklist-item">
                         <span className="checklist-checkbox">
@@ -250,7 +251,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
         )}
       </div>
 
-      {hasGameStarted && !(round1Complete && !hasTalkedToGuide) && (
+      {hasTalkedToGuide && (
         <div className="progress-bars">
           {/* Show Round 1 progress bar only when in Round 1 */}
           {actualCurrentRound === 1 && (
@@ -286,7 +287,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
         </div>
       )}
 
-      {hasGameStarted && !(round1Complete && !hasTalkedToGuide) && (
+      {gameStarted && !(round1Complete && !hasTalkedToGuide) && (
         <div className="npc-grid">
           {[1, 2, 3, 4, 5, 6].map((npcId) => {
           const isSpokenRound1 = round1Spoken.includes(npcId);

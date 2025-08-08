@@ -99,14 +99,14 @@ export default function GuideDialog({
           if (!initialRound2MessageAlreadyExists) {
             messagesToDisplay.push(...round2IntroMessages);
             needsDBUpdate = true;
-            shouldAdvanceRound = true; 
+            // Don't auto-advance - let the player see the "Mission: Advance to Round 2" prompt
+            // shouldAdvanceRound = true; 
           }
         }
 
         // --- 3. Update the database if new messages were added ---
         let newMessages: Message[] = [];
         if (needsDBUpdate) {
-          // We only need to store the newly added messages
           newMessages = messagesToDisplay.slice(existingMessages.length);
 
           for (const msg of newMessages) {
@@ -135,17 +135,51 @@ export default function GuideDialog({
             setMessages(currentMessages);
           }
           
+          // Only mark guide as spoken if this is the initial intro (not Round 2 advancement)
+          if (onConversationComplete && shouldAdvanceToRound1) {
+            onConversationComplete(-1, 1, undefined, { isComplete: true, reason: 'Guide intro delivered' });
+          }
+
           // Advance the round after messages are displayed 
           if (shouldAdvanceToRound1) {
             await new Promise(resolve => setTimeout(resolve, 500));
             onRoundChange(1);
           }
+          // Only advance to Round 2 if explicitly triggered by player interaction
           if (shouldAdvanceRound) {
             await new Promise(resolve => setTimeout(resolve, 500)); 
             onRoundChange(2);
           }
+          
+          // Auto-advance to Round 2 after Round 2 intro messages are displayed
+          console.log('DEBUG: Auto-advance check:', {
+            round,
+            spokenNPCsRound1Size: spokenNPCs.round1.size,
+            newMessagesLength: newMessages.length,
+            newMessages: newMessages.map(m => m.text)
+          });
+          
+          if (round === 1 && spokenNPCs.round1.size >= 6 && newMessages.length > 0) {
+            // Check if the last message contains the Round 2 intro trigger
+            const lastMessage = newMessages[newMessages.length - 1];
+            console.log('DEBUG: Last message:', lastMessage?.text);
+            console.log('DEBUG: Contains "Ready to continue?":', lastMessage?.text.includes("Ready to continue?"));
+            
+            if (lastMessage && lastMessage.text.includes("Ready to continue?")) {
+              console.log('DEBUG: Auto-advancing to Round 2!');
+              await new Promise(resolve => setTimeout(resolve, 1000)); // Delay to let user read
+              onRoundChange(2);
+            }
+          }
         } else {
           setMessages(messagesToDisplay);
+
+          // If initial intro already existed, only mark guide as spoken if we're not in Round 2 advancement state
+          if ((round === 0 || round === 1) && hasInitialMessages && !(spokenNPCs.round1.size >= 6)) {
+            if (onConversationComplete) {
+              onConversationComplete(-1, 1, undefined, { isComplete: true, reason: 'Guide intro already present' });
+            }
+          }
         }
 
       } catch (error) {
@@ -230,9 +264,30 @@ export default function GuideDialog({
         // Add response to local state
         setMessages(prev => [...prev, { text: data.response, sender: 'npc' }]);
         
-        // Call conversation complete callback
+        // Call conversation complete callback - but don't mark guide as "talked" if we're in Round 2 advancement state
         if (onConversationComplete && data.conversationAnalysis) {
-          onConversationComplete(-1, round, undefined, data.conversationAnalysis);
+          // Only mark guide as spoken if this isn't the Round 2 advancement conversation
+          const isRound2Advancement = round === 1 && spokenNPCs.round1.size >= 6;
+          if (!isRound2Advancement) {
+            onConversationComplete(-1, round, undefined, data.conversationAnalysis);
+          }
+        }
+        
+        // Auto-advance to Round 2 after Michael finishes the Round 2 intro
+        console.log('DEBUG: handleSubmit auto-advance check:', {
+          round,
+          spokenNPCsRound1Size: spokenNPCs.round1.size,
+          dataResponse: data.response,
+          containsReadyToContinue: data.response?.includes("Ready to continue?"),
+          containsMoveToRound2: data.response?.includes("Now let's move to Round 2")
+        });
+        
+        if (round === 1 && spokenNPCs.round1.size >= 6 && data.response && 
+            (data.response.includes("Ready to continue?") || data.response.includes("Now let's move to Round 2"))) {
+          console.log('DEBUG: handleSubmit auto-advancing to Round 2!');
+          setTimeout(() => {
+            onRoundChange(2);
+          }, 1000); // Small delay to let the user read the message
         }
       }
     } catch (error) {

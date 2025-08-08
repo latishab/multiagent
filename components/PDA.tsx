@@ -33,9 +33,10 @@ interface PDAProps {
     round1: Set<number>;
     round2: Set<number>;
   };
+  currentRound?: number;
 }
 
-export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplete, showDecisionMode = false, spokenNPCs }: PDAProps) {
+export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplete, showDecisionMode = false, spokenNPCs, currentRound = 1 }: PDAProps) {
   const [selectedSystem, setSelectedSystem] = useState<number | null>(null);
   const [decisions, setDecisions] = useState<{ [npcId: number]: 'sustainable' | 'unsustainable' }>({});
   const [activeTab, setActiveTab] = useState<'info' | 'decisions'>('info');
@@ -51,6 +52,11 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
       setSpecialistRecommendations(recommendations);
     }
   }, []);
+
+  // Reset selected system when round changes
+  useEffect(() => {
+    setSelectedSystem(null);
+  }, [currentRound]);
 
   const handleDecision = (npcId: number, choice: 'sustainable' | 'unsustainable') => {
     setDecisions(prev => ({
@@ -128,6 +134,7 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
   };
 
   const getSystemInfo = (npcId: number) => {
+    // Show info from both rounds (keep Round 1 data visible)
     const entry = ballotEntries.find(e => e.npcId === npcId && e.round === 2) || 
                   ballotEntries.find(e => e.npcId === npcId && e.round === 1);
     return entry || null;
@@ -183,12 +190,16 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                 <div className="systems-grid">
                   {[1, 2, 3, 4, 5, 6].map((npcId) => {
                     const systemInfo = getSystemInfo(npcId);
-                    const hasInfo = systemInfo !== null;
+                    const hasSpokenToNPC = currentRound === 1 
+                      ? spokenNPCs?.round1?.has(npcId) || false
+                      : spokenNPCs?.round2?.has(npcId) || false;
+                    const hasInfo = systemInfo !== null; // Show info if there's any ballot data
+                    const hasCurrentRoundInfo = hasSpokenToNPC; // For green borders/checkmarks
                     
                     return (
                       <div 
                         key={npcId} 
-                        className={`system-card ${selectedSystem === npcId ? 'selected' : ''} ${hasInfo ? 'has-info' : 'no-info'}`}
+                        className={`system-card ${selectedSystem === npcId ? 'selected' : ''} ${hasCurrentRoundInfo ? 'has-info' : 'no-info'}`}
                         onClick={() => setSelectedSystem(npcId)}
                       >
                         <div className="system-header">
@@ -209,7 +220,7 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                               <span className="npc-name">{NPCNames[npcId]}</span>
                             </div>
                           </div>
-                          {hasInfo && <span className="info-badge">✓</span>}
+                          {hasCurrentRoundInfo && <span className="info-badge">✓</span>}
                         </div>
                         
                         <div className="system-details">
@@ -253,7 +264,7 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                                 </div>
                               </div>
                               
-                              {systemInfo.round === 2 && (
+                              {currentRound === 2 && hasSpokenToNPC && (
                                 <div className="opinion-section">
                                   <h4>Specialist's Choice:</h4>
                                   <div className="opinion-content">
@@ -262,7 +273,7 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                                 </div>
                               )}
                               
-                              {systemInfo.round === 1 && (
+                              {currentRound === 1 || (currentRound === 2 && !hasSpokenToNPC) && (
                                 <div className="no-opinion-message">
                                   <p>No specialist opinion collected yet.</p>
                                   <p>Talk to {NPCNames[npcId]} in Round 2 to get their recommendation.</p>
@@ -407,7 +418,10 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                       </div>
                     </div>
                     <div className="empty-state-info">
-                      <p><strong>Current Progress:</strong> {ballotEntries.length}/6 specialists consulted</p>
+                      <p><strong>Current Progress:</strong> {(() => {
+                        const consultedNPCs = new Set(ballotEntries.map(entry => entry.npcId));
+                        return consultedNPCs.size;
+                      })()}/6 specialists consulted</p>
                     </div>
                   </div>
                 )}

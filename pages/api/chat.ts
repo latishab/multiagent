@@ -93,17 +93,7 @@ async function storeConversationTurn(
   }));
 
   try {
-    const { error } = await supabase.rpc('append_to_conversation', {
-      p_session_id: sessionId,
-      p_npc_id: npcId,
-      p_round: round,
-      new_messages: messagesWithMetadata,
-    });
-
-    if (error) {
-      console.error('Error in storeConversationTurn RPC:', error);
-      await storeConversationTurnFallback(sessionId, npcId, round, messagesWithMetadata, participantId);
-    } 
+    await storeConversationTurnFallback(sessionId, npcId, round, messagesWithMetadata, participantId);
   } catch (e) {
     console.error('Exception in storeConversationTurn:', e);
   }
@@ -140,7 +130,8 @@ async function storeConversationTurnFallback(
         .from('conversations')
         .update({ 
           messages: updatedMessages,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          participant_id: participantId || null
         })
         .eq('session_id', sessionId)
         .eq('npc_id', npcId)
@@ -154,6 +145,7 @@ async function storeConversationTurnFallback(
         .from('conversations')
         .insert({
           session_id: sessionId,
+          participant_id: participantId || null,
           npc_id: npcId,
           round: round,
           messages: turnMessages
@@ -259,7 +251,7 @@ async function analyzeGuideConversation(
   if (round === 1 && round1Complete) {
     return {
       response: "Great! You've learned about all the systems. Now let's move to Round 2 where you'll discover what each specialist thinks about their options.",
-      shouldAdvanceRound: true
+      shouldAdvanceRound: false  
     };
   } else if (round === 2 && round2Complete) {
     return {
@@ -314,8 +306,7 @@ ${round === 1 ?
 - Conversation should be friendly and informative
 - CRITICAL: NPC should NOT give recommendations or opinions in Round 1` :
   `- NPC should clearly state their recommendation between ${npc.options.sustainable} and ${npc.options.unsustainable}
-- NPC should explain their reasoning for their choice
-- NPC should use recommendation phrases like "I recommend", "I suggest", "I believe we should"`}
+- NPC should explain their reasoning for their choice"`}
 
 FULL CONVERSATION HISTORY:
 ${conversationText}
@@ -380,7 +371,7 @@ Example responses for Round 2:
     const isComplete = analysis.startsWith('COMPLETE:');
     const reason = analysis.includes(':') ? analysis.split(':')[1]?.trim() || 'Unknown' : analysis;
 
-    // console.log('Analysis result for', npc.name, ':', { isComplete, reason, analysis });
+    console.log('Analysis result for', npc.name, ':', { isComplete, reason, analysis });
 
     return { isComplete, reason };
   } catch (error) {
@@ -595,7 +586,16 @@ async function handleRegularNPCConversation(
   ], participantId);
 
   const finalHistory = await upstashStore.getConversationHistory(npcId, round, sessionId);
-  const conversationAnalysis = await analyzeConversationCompleteness(finalHistory, npc, round);
+  let conversationAnalysis = await analyzeConversationCompleteness(finalHistory, npc, round);
+
+  // If we detected a clear recommendation in Round 2 but the analysis
+  // incorrectly marked it as incomplete, override to COMPLETE.
+  if (round === 2 && detectedOpinion && !conversationAnalysis.isComplete) {
+    conversationAnalysis = {
+      isComplete: true,
+      reason: `NPC clearly recommended ${detectedOpinion.opinion}`
+    };
+  }
 
   return {
     response: aiResponse,

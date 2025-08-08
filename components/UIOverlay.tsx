@@ -44,15 +44,24 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     return true;
   });
   const [showGameMenu, setShowGameMenu] = useState(false);
-  const [hasStartedGame, setHasStartedGame] = useState(() => {
+  // Game phase enum to drive UI and flow
+  enum GamePhase {
+    NotStarted = 0,
+    Round1Active = 1,
+    AwaitGuideToRound2 = 15,
+    Round2Active = 2,
+    AwaitGuideToFinalize = 25,
+  }
+  const [gamePhase, setGamePhase] = useState<GamePhase>(() => {
     if (typeof window !== 'undefined') {
       const participantId = sessionManager.getSessionInfo().participantId;
-      const storageKey = participantId ? `multiagent-has-started-game-${participantId}` : 'multiagent-has-started-game';
-      
+      const storageKey = participantId ? `multiagent-game-phase-${participantId}` : 'multiagent-game-phase';
       const saved = localStorage.getItem(storageKey);
-      return saved ? JSON.parse(saved) : false;
+      if (saved !== null) {
+        try { return JSON.parse(saved) as GamePhase; } catch {}
+      }
     }
-    return false;
+    return GamePhase.NotStarted;
   });
   const [hasTalkedToGuide, setHasTalkedToGuide] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -93,6 +102,15 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       isSustainable: true
     };
   });
+
+  // Persist gamePhase
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-game-phase-${participantId}` : 'multiagent-game-phase';
+      localStorage.setItem(storageKey, JSON.stringify(gamePhase));
+    }
+  }, [gamePhase]);
 
   // Track which NPCs have been spoken to in each round
   const [spokenNPCs, setSpokenNPCs] = useState<{
@@ -190,15 +208,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const participantId = sessionManager.getSessionInfo().participantId;
-      const storageKey = participantId ? `multiagent-has-started-game-${participantId}` : 'multiagent-has-started-game';
-      
-      localStorage.setItem(storageKey, JSON.stringify(hasStartedGame));
-    }
-  }, [hasStartedGame]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const participantId = sessionManager.getSessionInfo().participantId;
       const storageKey = participantId ? `multiagent-has-talked-to-guide-${participantId}` : 'multiagent-has-talked-to-guide';
       
       localStorage.setItem(storageKey, JSON.stringify(hasTalkedToGuide));
@@ -217,12 +226,12 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   // Update global window state to reflect loaded values
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      (window as any).hasGameStarted = hasStartedGame;
+      (window as any).hasGameStarted = gamePhase !== GamePhase.NotStarted;
       (window as any).hasTalkedToGuide = hasTalkedToGuide;
       (window as any).currentRound = chatState.round;
       (window as any).spokenNPCs = spokenNPCs;
     }
-  }, [hasStartedGame, hasTalkedToGuide, chatState.round, spokenNPCs]);
+  }, [gamePhase, hasTalkedToGuide, chatState.round, spokenNPCs]);
 
   // Function to play tablet ding sound
   const playTabletDing = () => {
@@ -263,14 +272,15 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     // Check if Round 1 is complete
     const round1Complete = spokenNPCs.round1.size >= 6;
     
-    // If Round 1 is complete and NPC has been spoken to in Round 1, they should be in Round 2
-    if (round1Complete && spokenNPCs.round1.has(npcIdNum)) {
-      correctRound = 2;
-    }
-    
     // If Round 1 is not complete, stay in Round 1 regardless of previous conversations
     if (!round1Complete) {
       correctRound = 1;
+    } else if (round1Complete && !hasTalkedToGuide) {
+      // If Round 1 is complete but guide hasn't been talked to, stay in Round 1
+      correctRound = 1;
+    } else if (round1Complete && hasTalkedToGuide && spokenNPCs.round1.has(npcIdNum)) {
+      // Only advance to Round 2 if guide has been talked to AND Round 1 is complete
+      correctRound = 2;
     }
     
     setChatState({
@@ -303,30 +313,13 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     // Special handling for main NPC (The Guide)
     if (npcId === -1) {
       setHasTalkedToGuide(true);
-      
-      // Check if all NPCs have been spoken to in the current round
-      const currentRound = chatState.round;
-      const round1Complete = spokenNPCs.round1.size >= 6;
-      const round2Complete = spokenNPCs.round2.size >= 6;
-      
-      // Only advance to Round 2 if Round 1 is complete
-      if (currentRound === 1 && round1Complete) {
-        setChatState(prev => ({
-          ...prev,
-          round: 2
-        }));
-      } else if (currentRound === 2 && round2Complete) {
-        // Trigger ending phase after a short delay
-        setTimeout(() => {
-          setShowDecisionMode(true);
-          setShowPDA(true);
-        }, 1000); // Small delay for better UX
-      } else if (currentRound === 1 && !round1Complete) {
-        // Don't advance - player needs to complete Round 1 first
-      } else if (currentRound === 2 && !round2Complete) {
-        // Don't advance - player needs to complete Round 2 first
+
+      // Phase transitions when talking to the guide
+      setGamePhase(prev => (prev === GamePhase.NotStarted ? GamePhase.Round1Active : prev));
+      if (spokenNPCs.round1.size >= 6 && spokenNPCs.round2.size < 6) {
+        setGamePhase(GamePhase.Round2Active);
       }
-      // Note: The Guide conversation history is preserved across rounds, so we don't add them to spokenNPCs
+      
       return;
     }
     
@@ -339,6 +332,18 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           ...prev,
           [roundKey]: new Set(Array.from(prev[roundKey]).concat([npcId]))
         };
+        
+        // If Round 1 just completed, move to awaiting guide to advance to Round 2
+        if (round === 1 && newSpokenNPCs.round1.size === 6) {
+          setHasTalkedToGuide(false);
+          setGamePhase(GamePhase.AwaitGuideToRound2);
+        }
+        // If Round 2 just completed, move to awaiting guide to finalize
+        if (round === 2 && newSpokenNPCs.round2.size === 6) {
+          setHasTalkedToGuide(false);
+          setGamePhase(GamePhase.AwaitGuideToFinalize);
+        }
+        
         return newSpokenNPCs;
       });
     } else {
@@ -438,11 +443,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       // Reset messages when changing rounds
       messages: []
     }))
-    
-    // If advancing to round 1 or round 2, mark that the player has talked to the Guide
-    if (round === 1 || round === 2) {
-      setHasTalkedToGuide(true);
-    }
   }
 
   // Handle stance changes (now only for internal use)
@@ -505,25 +505,28 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
 
   // Expose the game state to the window object
   useEffect(() => {
-    (window as any).hasGameStarted = hasStartedGame
+    (window as any).hasGameStarted = gamePhase !== GamePhase.NotStarted
     return () => {
       delete (window as any).hasGameStarted
     }
-  }, [hasStartedGame])
+  }, [gamePhase])
 
   // Expose the guide alert state to the game
   useEffect(() => {
     (window as any).shouldShowGuideAlert = () => {
-      // Show guide alert when:
-      // 1. Game hasn't started yet (ProgressIndicator shows initial guide checklist)
-      // 2. Player hasn't talked to The Guide yet (including when Round 1 is complete)
-      return !hasStartedGame || !hasTalkedToGuide;
+      const round1Complete = spokenNPCs.round1.size >= 6
+      const round2Complete = spokenNPCs.round2.size >= 6
+      return (
+        gamePhase === GamePhase.NotStarted ||
+        (gamePhase === GamePhase.AwaitGuideToRound2 && round1Complete) ||
+        (gamePhase === GamePhase.AwaitGuideToFinalize && round2Complete)
+      )
     }
     
     return () => {
       delete (window as any).shouldShowGuideAlert
     }
-  }, [hasTalkedToGuide, hasStartedGame, spokenNPCs.round1.size])
+  }, [gamePhase, hasTalkedToGuide, spokenNPCs.round1.size, spokenNPCs.round2.size, chatState.round])
 
   // Expose the triggerEndingPhase function to the window object
   useEffect(() => {
@@ -539,13 +542,14 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   // Expose testing functions to the window object
   useEffect(() => {
     (window as any).completeRound1 = () => {
-      console.log('🧪 TESTING: Completing Round 1 for all NPCs');
+      
       setSpokenNPCs(prev => ({
         round1: new Set([1, 2, 3, 4, 5, 6]),
         round2: prev.round2
       }));
       
-      setChatState(prev => ({ ...prev, round: 2 }));
+      // Don't change round yet - wait for Michael to finish his speech
+      // setChatState(prev => ({ ...prev, round: 2 }));
       
       // Create ballot entries for Round 1 (introduction phase)
       const round1Entries: BallotEntry[] = [
@@ -606,14 +610,12 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       ];
       
       setBallotEntries(round1Entries);
-      setHasTalkedToGuide(false); // Don't auto-talk to guide, let player do it
-      setHasStartedGame(true); // Game has started, but guide not talked to yet
-      console.log('✅ Round 1 completed! Talk to The Guide to advance to Round 2');
-      console.log('📱 PDA populated with Round 1 information');
+      setHasTalkedToGuide(false); 
+      
     }
 
     (window as any).completeRound2 = () => {
-      console.log('🧪 TESTING: Completing Round 2 for all NPCs');
+      
       setSpokenNPCs(prev => ({
         round1: new Set([1, 2, 3, 4, 5, 6]),
         round2: new Set([1, 2, 3, 4, 5, 6])
@@ -739,23 +741,17 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       
       setBallotEntries([...round1Entries, ...round2Entries]);
       setHasTalkedToGuide(false); // Don't auto-talk to guide, let player do it
-      setHasStartedGame(true); // Game has started, but guide not talked to yet
       setShowDecisionMode(true);
-      
-      console.log('✅ Round 2 completed! Talk to The Guide to make final decisions');
-      console.log('📱 PDA populated with Round 1 and Round 2 information');
-      console.log('⚖️ Decision mode enabled - players can now make final choices');
     }
 
     (window as any).resetToRound1 = () => {
-      console.log('🧪 TESTING: Resetting to Round 1');
+      
       setSpokenNPCs({
         round1: new Set(),
         round2: new Set()
       });
       setHasTalkedToGuide(false);
-      setHasStartedGame(true); // Game has started, but guide not talked to yet
-      console.log('✅ Reset to Round 1! Talk to NPCs to complete Round 1');
+      
     }
 
     return () => {
@@ -766,6 +762,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   }, [])
 
     const handleRestartGame = async () => {
+    
     // Clear saved data before restarting
     if (typeof window !== 'undefined') {
       const participantId = sessionManager.getSessionInfo().participantId;
@@ -773,13 +770,13 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       const ballotEntriesKey = participantId ? `multiagent-ballot-entries-${participantId}` : 'multiagent-ballot-entries';
       const hasTalkedToGuideKey = participantId ? `multiagent-has-talked-to-guide-${participantId}` : 'multiagent-has-talked-to-guide';
       const chatStateKey = participantId ? `multiagent-chat-state-${participantId}` : 'multiagent-chat-state';
-      const hasStartedGameKey = participantId ? `multiagent-has-started-game-${participantId}` : 'multiagent-has-started-game';
+      const gamePhaseKey = participantId ? `multiagent-game-phase-${participantId}` : 'multiagent-game-phase';
       
       localStorage.removeItem(spokenNPCsKey);
       localStorage.removeItem(ballotEntriesKey);
       localStorage.removeItem(hasTalkedToGuideKey);
       localStorage.removeItem(chatStateKey);
-      localStorage.removeItem(hasStartedGameKey);
+      localStorage.removeItem(gamePhaseKey);
       
       // Clear and reset welcome state for this participant
       const welcomeKey = participantId ? `multiagent-show-welcome-${participantId}` : 'multiagent-show-welcome';
@@ -787,9 +784,8 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       localStorage.setItem(welcomeKey, 'true');
 
       // Clear session but keep participant ID
-      await sessionManager.clearSessionOnly();
+      await sessionManager.clearSessionOnly();      
     }
-    // Reload the page to restart the game
     window.location.href = window.location.origin + window.location.pathname;
   }
 
@@ -801,13 +797,13 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       const ballotEntriesKey = participantId ? `multiagent-ballot-entries-${participantId}` : 'multiagent-ballot-entries';
       const hasTalkedToGuideKey = participantId ? `multiagent-has-talked-to-guide-${participantId}` : 'multiagent-has-talked-to-guide';
       const chatStateKey = participantId ? `multiagent-chat-state-${participantId}` : 'multiagent-chat-state';
-      const hasStartedGameKey = participantId ? `multiagent-has-started-game-${participantId}` : 'multiagent-has-started-game';
+      const gamePhaseKey = participantId ? `multiagent-game-phase-${participantId}` : 'multiagent-game-phase';
       
       localStorage.removeItem(spokenNPCsKey);
       localStorage.removeItem(ballotEntriesKey);
       localStorage.removeItem(hasTalkedToGuideKey);
       localStorage.removeItem(chatStateKey);
-      localStorage.removeItem(hasStartedGameKey);
+      localStorage.removeItem(gamePhaseKey);
       
       // Clear and reset welcome state for this participant
       const welcomeKey = participantId ? `multiagent-show-welcome-${participantId}` : 'multiagent-show-welcome';
@@ -817,7 +813,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       // Don't clear the participant ID - just clear game progress data
       // The participant ID should remain so the game can restart properly
     }
-    // Reload the page to start a new game
     window.location.href = window.location.origin + window.location.pathname;
   }
 
@@ -888,7 +883,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
               onClick={() => {
                 soundEffects.playClick();
                 setShowWelcome(false);
-                setHasStartedGame(true);
               }}
             >
               Start Playing
@@ -903,6 +897,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           currentRound={chatState.round}
           spokenNPCs={spokenNPCs}
           hasTalkedToGuide={hasTalkedToGuide}
+          hasStartedGame={gamePhase !== GamePhase.NotStarted}
           isChatOpen={chatState.isOpen}
           currentChatNPCId={chatState.npcId}
         />
@@ -1049,6 +1044,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         onDecisionsComplete={handleDecisionsComplete}
         showDecisionMode={showDecisionMode}
         spokenNPCs={spokenNPCs}
+        currentRound={chatState.round}
       />
       
       {/* Ending Overlay */}

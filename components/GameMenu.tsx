@@ -22,7 +22,6 @@ export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame, on
 
   const handleRestartGame = async () => {
     if (confirm('Are you sure you want to restart the game? This will clear your current progress.')) {
-      await sessionManager.clearSessionOnly();
       onRestartGame();
       onClose();
     }
@@ -89,9 +88,9 @@ export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame, on
         </button>
         <button className={`${styles.menuButton} ${styles.danger}`} onClick={() => {
           soundEffects.playClick();
-          handleNewGame();
+          handleRestartGame();
         }}>
-          New Game
+          Restart Game
         </button>
         <button className={styles.menuButton} onClick={() => {
           soundEffects.playClick();

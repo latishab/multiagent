@@ -19,6 +19,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
 export interface ConversationRow {
   id?: number;
   session_id: string;
+  participant_id?: string;
   npc_id: number;
   round: number;
   message_data: {
