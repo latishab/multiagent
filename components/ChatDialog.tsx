@@ -250,11 +250,11 @@ export default function ChatDialog({
 
       const data = await response.json();
               if (data.response) {
-          // Check if opinion was detected
-          if (data.detectedOpinion && round === 2) {
-            if (onConversationComplete) {
-              onConversationComplete(npcId, round, data.detectedOpinion, data.conversationAnalysis);
-            }
+          // Round 2 completion: mark as spoken if either
+          // - an opinion was detected, or
+          // - the conversation analysis concluded COMPLETE
+          if (round === 2 && onConversationComplete && (data.detectedOpinion || data.conversationAnalysis?.isComplete)) {
+            onConversationComplete(npcId, round, data.detectedOpinion, data.conversationAnalysis);
           }
 
           // // Log conversation analysis
@@ -280,9 +280,12 @@ export default function ChatDialog({
 
           // Call the conversation complete callback based on conversation analysis
           if (onConversationComplete && data.conversationAnalysis) {
-            // For Round 1: Call when introduction is complete
-            // For Round 2: Call when opinion is detected (handled above)
+            // For Round 1: call when introduction is complete
             if (round === 1 && data.conversationAnalysis.isComplete) {
+              onConversationComplete(npcId, round, undefined, data.conversationAnalysis);
+            }
+            // For Round 2 without detectedOpinion but analysis marked COMPLETE (fallback)
+            if (round === 2 && !data.detectedOpinion && data.conversationAnalysis.isComplete) {
               onConversationComplete(npcId, round, undefined, data.conversationAnalysis);
             }
           }

@@ -296,45 +296,49 @@ async function analyzeConversationCompleteness(
   const hasSustainable = conversationLower.includes(npc.options.sustainable.toLowerCase());
   const hasUnsustainable = conversationLower.includes(npc.options.unsustainable.toLowerCase());
 
-  const analysisPrompt = `Analyze this FULL conversation with ${npc.name} (${npc.career}) about the ${npc.system} system.
-
-Round ${round} Requirements:
-${round === 1 ? 
-  `- NPC should explain their system (${npc.system})
+  const round1Block = `Round 1 Requirements:
+- NPC should explain their system (${npc.system})
 - NPC should mention both options: ${npc.options.sustainable} and ${npc.options.unsustainable}
 - NPC should explain what at least ONE option does (how it works, what it means)
 - Conversation should be friendly and informative
-- CRITICAL: NPC should NOT give recommendations or opinions in Round 1` :
-  `- NPC should clearly state their recommendation between ${npc.options.sustainable} and ${npc.options.unsustainable}
-- NPC should explain their reasoning for their choice"`}
+- CRITICAL: NPC should NOT give recommendations or opinions in Round 1
+
+IMPORTANT (Round 1):
+- The conversation is COMPLETE if:
+  1) NPC explained their system (${npc.system})
+  2) NPC mentioned both options (${npc.options.sustainable} and ${npc.options.unsustainable})
+  3) NPC explained what at least ONE option actually does
+- If the NPC gave a recommendation in Round 1 (which they shouldn't), still mark the conversation as COMPLETE if the player learned the system and options.
+
+Examples (Round 1):
+- "COMPLETE: NPC explained system, mentioned both options, and explained how ${npc.options.sustainable} works"
+- "INCOMPLETE: NPC didn't mention ${npc.options.unsustainable}"
+- "INCOMPLETE: NPC mentioned options but didn't explain what either does"`;
+
+  const round2Block = `Round 2 Requirements:
+- NPC must clearly state a recommendation between ${npc.options.sustainable} and ${npc.options.unsustainable}
+- NPC should give at least one concrete reason for their choice
+
+IMPORTANT (Round 2):
+- The conversation is COMPLETE if a clear recommendation is present with some reasoning (even brief)
+- The recommendation may be for either option; avoid bias toward ${npc.options.sustainable}
+- If the recommendation is ambiguous or missing, mark as INCOMPLETE
+
+Examples (Round 2):
+- "COMPLETE: NPC recommended ${npc.options.unsustainable} with reasoning about jobs and tax revenue"
+- "COMPLETE: NPC recommended ${npc.options.sustainable} due to long-term resilience"
+- "INCOMPLETE: NPC discussed trade-offs but did not clearly choose an option"`;
+
+  const analysisPrompt = `Analyze this FULL conversation with ${npc.name} (${npc.career}) about the ${npc.system} system.
+
+${round === 1 ? round1Block : round2Block}
 
 FULL CONVERSATION HISTORY:
 ${conversationText}
 
-IMPORTANT: For Round 1, check the ENTIRE conversation. The conversation is COMPLETE if:
-1. NPC has explained their system (${npc.system})
-2. NPC has mentioned both options (${npc.options.sustainable} and ${npc.options.unsustainable})
-3. NPC has explained what at least ONE of the options actually does (not just mentioned the name)
-
-CRITICAL: If the NPC gave a recommendation in Round 1 (which they shouldn't), still mark the conversation as COMPLETE since the player cannot undo this. The important thing is that the player learned about the system and options.
-
 Look through ALL the NPC's responses, not just the latest one. The information can be spread across multiple responses.
 
-Determine if this conversation is COMPLETE (has all required information) or INCOMPLETE (missing key information).
-
-Respond with ONLY: "COMPLETE: [brief reason]" or "INCOMPLETE: [what's missing]"
-
-Example responses for Round 1:
-- "COMPLETE: NPC explained their system, mentioned both options, and explained what Modular Eco-Pods do"
-- "COMPLETE: NPC explained their system, both options, and described how Smart Concrete Complex works"
-- "COMPLETE: NPC explained system and options, but also gave a recommendation (conversation is still complete)"
-- "INCOMPLETE: NPC mentioned both options but didn't explain what either option actually does"
-- "INCOMPLETE: NPC didn't mention the ${npc.options.unsustainable} option"
-- "INCOMPLETE: NPC didn't explain their system"
-
-Example responses for Round 2:
-- "COMPLETE: NPC clearly recommended ${npc.options.sustainable} with good reasoning"
-- "INCOMPLETE: NPC hasn't made a clear recommendation yet"`;
+Respond with ONLY: "COMPLETE: [brief reason]" or "INCOMPLETE: [what's missing]"`;
 
   try {
     const response = await fetch('https://api.deepinfra.com/v1/openai/chat/completions', {

@@ -34,11 +34,13 @@ interface PDAProps {
     round2: Set<number>;
   };
   currentRound?: number;
+  decisionsFinalized?: boolean;
+  finalDecisions?: { [npcId: number]: 'sustainable' | 'unsustainable' };
 }
 
-export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplete, showDecisionMode = false, spokenNPCs, currentRound = 1 }: PDAProps) {
+export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplete, showDecisionMode = false, spokenNPCs, currentRound = 1, decisionsFinalized = false, finalDecisions: finalDecisionsProp }: PDAProps) {
   const [selectedSystem, setSelectedSystem] = useState<number | null>(null);
-  const [decisions, setDecisions] = useState<{ [npcId: number]: 'sustainable' | 'unsustainable' }>({});
+  const [decisions, setDecisions] = useState<{ [npcId: number]: 'sustainable' | 'unsustainable' }>(() => finalDecisionsProp || {});
   const [activeTab, setActiveTab] = useState<'info' | 'decisions'>('info');
   const [specialistRecommendations, setSpecialistRecommendations] = useState<{ [key: number]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,6 +61,7 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
   }, [currentRound]);
 
   const handleDecision = (npcId: number, choice: 'sustainable' | 'unsustainable') => {
+    if (decisionsFinalized) return; // lock after finalize
     setDecisions(prev => ({
       ...prev,
       [npcId]: choice
@@ -112,6 +115,7 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
   };
 
   const handleCompleteDecisions = async () => {
+    if (decisionsFinalized) return; // already submitted
     if (Object.keys(decisions).length === 6) {
       setIsSubmitting(true);
       try {
@@ -347,32 +351,30 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                                 
                                 // Only show specialist choice if player has spoken to this NPC in Round 2
                                 const hasSpokenToNPC = spokenNPCs?.round2?.has(npcId) || false;
-                                const shouldShowChoice = recommendation && hasSpokenToNPC;
+                                const shouldShowChoice = false; 
                                 
-                                return (
+                                    return (
                                   <>
-                                    <button
-                                      className={`decision-button sustainable ${decisions[npcId] === 'sustainable' ? 'selected' : ''} ${shouldShowChoice && recommendation === 'sustainable' ? 'recommended' : ''}`}
+                                        <button
+                                          className={`decision-button sustainable ${decisions[npcId] === 'sustainable' ? 'selected' : ''}`}
                                       onClick={() => handleDecision(npcId, 'sustainable')}
-                                      disabled={isSystemComplete(npcId)}
+                                      disabled={isSystemComplete(npcId) || decisionsFinalized}
                                     >
                                       <span className="option-icon">📋</span>
                                       <div className="option-content">
                                         <h4>Proposal A</h4>
-                                        {shouldShowChoice && recommendation === 'sustainable' && <span className="decision-recommendation-badge">⭐ Specialist Choice</span>}
                                         <p>{NPCOptions[npcId].sustainable}</p>
                                       </div>
                                     </button>
                                     
-                                    <button
-                                      className={`decision-button unsustainable ${decisions[npcId] === 'unsustainable' ? 'selected' : ''} ${shouldShowChoice && recommendation === 'unsustainable' ? 'recommended' : ''}`}
+                                        <button
+                                          className={`decision-button unsustainable ${decisions[npcId] === 'unsustainable' ? 'selected' : ''}`}
                                       onClick={() => handleDecision(npcId, 'unsustainable')}
-                                      disabled={isSystemComplete(npcId)}
+                                      disabled={isSystemComplete(npcId) || decisionsFinalized}
                                     >
                                       <span className="option-icon">📄</span>
                                       <div className="option-content">
                                         <h4>Proposal B</h4>
-                                        {shouldShowChoice && recommendation === 'unsustainable' && <span className="decision-recommendation-badge">⭐ Specialist Choice</span>}
                                         <p>{NPCOptions[npcId].unsustainable}</p>
                                       </div>
                                     </button>
@@ -390,9 +392,9 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                         <button 
                           className="complete-button" 
                           onClick={handleCompleteDecisions}
-                          disabled={isSubmitting}
+                          disabled={isSubmitting || decisionsFinalized}
                         >
-                          {isSubmitting ? 'Submitting...' : 'Submit Final Decisions'}
+                          {isSubmitting ? 'Submitting...' : decisionsFinalized ? 'Decisions Submitted' : 'Submit Final Decisions'}
                         </button>
                       </div>
                     )}
@@ -939,12 +941,12 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
           cursor: not-allowed;
         }
 
-        .decision-button.recommended {
+        /* .decision-button.recommended { hidden to avoid overriding green selection }
           border-color: #3b82f6;
           background: rgba(59, 130, 246, 0.1);
-        }
+        } */
 
-        .decision-recommendation-badge {
+        /* .decision-recommendation-badge { hidden to avoid badge in decisions }
           background: #3b82f6;
           color: white;
           padding: 0.2rem 0.4rem;
@@ -953,7 +955,7 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
           font-weight: bold;
           margin-left: 0.5rem;
           display: inline-block;
-        }
+        } */
 
         .complete-section {
           text-align: center;

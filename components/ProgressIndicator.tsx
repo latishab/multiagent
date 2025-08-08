@@ -9,20 +9,20 @@ interface ProgressIndicatorProps {
     round2: Set<number>;
   };
   hasTalkedToGuide?: boolean;
-  hasStartedGame?: boolean;
+  gamePhase?: number; // 0=NotStarted, 1=Round1Active, 15=AwaitGuideToRound2, 2=Round2Active, 25=AwaitGuideToFinalize, 100=Completed
   isChatOpen?: boolean;
   currentChatNPCId?: number;
 }
 
-export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedToGuide = false, hasStartedGame = false, isChatOpen = false, currentChatNPCId = -1 }: ProgressIndicatorProps) {
+export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedToGuide = false, gamePhase = 0, isChatOpen = false, currentChatNPCId = -1 }: ProgressIndicatorProps) {
   const round1Spoken = Array.from(spokenNPCs.round1);
   const round2Spoken = Array.from(spokenNPCs.round2);
   const round1Progress = (round1Spoken.length / 6) * 100;
   const round2Progress = (round2Spoken.length / 6) * 100;
 
   // MARK: - Logic Definitions
-  // Single source of truth: rely on hasStartedGame provided by parent (UIOverlay)
-  const gameStarted = hasStartedGame;
+  // Single source of truth: drive from gamePhase (0 means NotStarted)
+  const gameStarted = gamePhase !== 0;
   
   // Check if currently talking to The Guide
   const isTalkingToGuide = isChatOpen && currentChatNPCId === -1;
@@ -30,6 +30,9 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
   // Check round completion status
   const round1Complete = round1Spoken.length >= 6;
   const round2Complete = round2Spoken.length >= 6;
+  
+  // Whether to show Michael's mission checklist (mutually exclusive with progress bars)
+  const initialStateActive = !gameStarted || (round1Complete && !hasTalkedToGuide) || (round2Complete && !hasTalkedToGuide) || gamePhase === 100;
   
   // Determine the actual current round based on completion status
   const actualCurrentRound = (() => {
@@ -159,7 +162,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
     <div className="progress-indicator">
       <div className="progress-header">
         <h3>Mission Checklist</h3>
-        {(!gameStarted || (round1Complete && !hasTalkedToGuide) || (round2Complete && !hasTalkedToGuide)) ? (
+        {initialStateActive ? (
           <div className="initial-state">
             <div className="guide-checklist">
               <div className="guide-header">
@@ -179,7 +182,8 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
               </div>
               <div className="guide-mission">
                 <div className="mission-title">
-                  {!gameStarted ? "Mission: Start Your Journey" :
+                  {gamePhase === 100 ? "Mission: Completed" :
+                   !gameStarted ? "Mission: Start Your Journey" :
                    (round1Complete && !hasTalkedToGuide) ? "Mission: Advance to Round 2" :
                    (round2Complete && !hasTalkedToGuide) ? "Mission: Make Final Decisions" : "Mission: Continue"}
                 </div>
@@ -251,7 +255,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
         )}
       </div>
 
-      {hasTalkedToGuide && (
+      {gameStarted && hasTalkedToGuide && !initialStateActive && (
         <div className="progress-bars">
           {/* Show Round 1 progress bar only when in Round 1 */}
           {actualCurrentRound === 1 && (

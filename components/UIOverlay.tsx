@@ -51,6 +51,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     AwaitGuideToRound2 = 15,
     Round2Active = 2,
     AwaitGuideToFinalize = 25,
+    Completed = 100,
   }
   const [gamePhase, setGamePhase] = useState<GamePhase>(() => {
     if (typeof window !== 'undefined') {
@@ -145,11 +146,42 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   });
 
   // Track final decisions for ending calculation
-  const [finalDecisions, setFinalDecisions] = useState<{ [npcId: number]: 'sustainable' | 'unsustainable' }>({});
+  const [finalDecisions, setFinalDecisions] = useState<{ [npcId: number]: 'sustainable' | 'unsustainable' }>(() => {
+    if (typeof window !== 'undefined') {
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-final-decisions-${participantId}` : 'multiagent-final-decisions';
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        try { return JSON.parse(saved); } catch {}
+      }
+    }
+    return {};
+  });
   const [showEnding, setShowEnding] = useState(false);
   const [endingType, setEndingType] = useState<'good' | 'bad' | null>(null);
   const [showPDA, setShowPDA] = useState(false);
-  const [showDecisionMode, setShowDecisionMode] = useState(false);
+  const [showDecisionMode, setShowDecisionMode] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-show-decision-mode-${participantId}` : 'multiagent-show-decision-mode';
+      const saved = localStorage.getItem(storageKey);
+      if (saved !== null) {
+        try { return JSON.parse(saved) as boolean; } catch {}
+      }
+    }
+    return false;
+  });
+  const [decisionsFinalized, setDecisionsFinalized] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-decisions-finalized-${participantId}` : 'multiagent-decisions-finalized';
+      const saved = localStorage.getItem(storageKey);
+      if (saved !== null) {
+        try { return JSON.parse(saved) as boolean; } catch {}
+      }
+    }
+    return false;
+  });
   const [pdaNotification, setPdaNotification] = useState(false);
   const [guideDialogOpen, setGuideDialogOpen] = useState(false);
   
@@ -194,6 +226,33 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       localStorage.setItem(storageKey, JSON.stringify(ballotEntries));
     }
   }, [ballotEntries]);
+
+  // Persist showDecisionMode per participant
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-show-decision-mode-${participantId}` : 'multiagent-show-decision-mode';
+      localStorage.setItem(storageKey, JSON.stringify(showDecisionMode));
+    }
+  }, [showDecisionMode]);
+
+  // Persist decisionsFinalized per participant
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-decisions-finalized-${participantId}` : 'multiagent-decisions-finalized';
+      localStorage.setItem(storageKey, JSON.stringify(decisionsFinalized));
+    }
+  }, [decisionsFinalized]);
+
+  // Persist finalDecisions per participant
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-final-decisions-${participantId}` : 'multiagent-final-decisions';
+      localStorage.setItem(storageKey, JSON.stringify(finalDecisions));
+    }
+  }, [finalDecisions]);
 
   // Save game state to localStorage whenever it changes
   useEffect(() => {
@@ -403,6 +462,9 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   // Function to handle when decisions are complete
   const handleDecisionsComplete = (decisions: { [npcId: number]: 'sustainable' | 'unsustainable' }) => {
     setFinalDecisions(decisions);
+    setShowDecisionMode(true);
+    setDecisionsFinalized(true);
+    setGamePhase(GamePhase.Completed);
     
     // Calculate and show ending
     setTimeout(() => {
@@ -431,8 +493,9 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   const handleEndingClose = () => {
     setShowEnding(false);
     setEndingType(null);
-    // Could restart the game or go to main menu here
-    window.location.reload();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('return-to-main-menu'));
+    }
   }
 
   // Handle round changes (now only for internal use)
@@ -765,18 +828,26 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     
     // Clear saved data before restarting
     if (typeof window !== 'undefined') {
+      setShowDecisionMode(false);
+      setShowPDA(false);
       const participantId = sessionManager.getSessionInfo().participantId;
       const spokenNPCsKey = participantId ? `multiagent-spoken-npcs-${participantId}` : 'multiagent-spoken-npcs';
       const ballotEntriesKey = participantId ? `multiagent-ballot-entries-${participantId}` : 'multiagent-ballot-entries';
       const hasTalkedToGuideKey = participantId ? `multiagent-has-talked-to-guide-${participantId}` : 'multiagent-has-talked-to-guide';
       const chatStateKey = participantId ? `multiagent-chat-state-${participantId}` : 'multiagent-chat-state';
       const gamePhaseKey = participantId ? `multiagent-game-phase-${participantId}` : 'multiagent-game-phase';
+      const decisionModeKey = participantId ? `multiagent-show-decision-mode-${participantId}` : 'multiagent-show-decision-mode';
+      const decisionsFinalizedKey = participantId ? `multiagent-decisions-finalized-${participantId}` : 'multiagent-decisions-finalized';
+      const finalDecisionsKey = participantId ? `multiagent-final-decisions-${participantId}` : 'multiagent-final-decisions';
       
       localStorage.removeItem(spokenNPCsKey);
       localStorage.removeItem(ballotEntriesKey);
       localStorage.removeItem(hasTalkedToGuideKey);
       localStorage.removeItem(chatStateKey);
       localStorage.removeItem(gamePhaseKey);
+      localStorage.removeItem(decisionModeKey);
+      localStorage.removeItem(decisionsFinalizedKey);
+      localStorage.removeItem(finalDecisionsKey);
       
       // Clear and reset welcome state for this participant
       const welcomeKey = participantId ? `multiagent-show-welcome-${participantId}` : 'multiagent-show-welcome';
@@ -792,18 +863,26 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   const handleNewGame = async () => {
     // Clear saved data before starting new game
     if (typeof window !== 'undefined') {
+      setShowDecisionMode(false);
+      setShowPDA(false);
       const participantId = sessionManager.getSessionInfo().participantId;
       const spokenNPCsKey = participantId ? `multiagent-spoken-npcs-${participantId}` : 'multiagent-spoken-npcs';
       const ballotEntriesKey = participantId ? `multiagent-ballot-entries-${participantId}` : 'multiagent-ballot-entries';
       const hasTalkedToGuideKey = participantId ? `multiagent-has-talked-to-guide-${participantId}` : 'multiagent-has-talked-to-guide';
       const chatStateKey = participantId ? `multiagent-chat-state-${participantId}` : 'multiagent-chat-state';
       const gamePhaseKey = participantId ? `multiagent-game-phase-${participantId}` : 'multiagent-game-phase';
+      const decisionModeKey = participantId ? `multiagent-show-decision-mode-${participantId}` : 'multiagent-show-decision-mode';
+      const decisionsFinalizedKey = participantId ? `multiagent-decisions-finalized-${participantId}` : 'multiagent-decisions-finalized';
+      const finalDecisionsKey = participantId ? `multiagent-final-decisions-${participantId}` : 'multiagent-final-decisions';
       
       localStorage.removeItem(spokenNPCsKey);
       localStorage.removeItem(ballotEntriesKey);
       localStorage.removeItem(hasTalkedToGuideKey);
       localStorage.removeItem(chatStateKey);
       localStorage.removeItem(gamePhaseKey);
+      localStorage.removeItem(decisionModeKey);
+      localStorage.removeItem(decisionsFinalizedKey);
+      localStorage.removeItem(finalDecisionsKey);
       
       // Clear and reset welcome state for this participant
       const welcomeKey = participantId ? `multiagent-show-welcome-${participantId}` : 'multiagent-show-welcome';
@@ -897,7 +976,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           currentRound={chatState.round}
           spokenNPCs={spokenNPCs}
           hasTalkedToGuide={hasTalkedToGuide}
-          hasStartedGame={gamePhase !== GamePhase.NotStarted}
+          gamePhase={gamePhase}
           isChatOpen={chatState.isOpen}
           currentChatNPCId={chatState.npcId}
         />
@@ -1045,6 +1124,8 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         showDecisionMode={showDecisionMode}
         spokenNPCs={spokenNPCs}
         currentRound={chatState.round}
+        decisionsFinalized={decisionsFinalized}
+        finalDecisions={finalDecisions}
       />
       
       {/* Ending Overlay */}
