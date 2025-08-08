@@ -23,6 +23,11 @@ interface Message {
 // List of common titles that shouldn't be split
 const titles = ['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Prof.'];
 
+// Escape regex special characters in a string so it can be used safely in RegExp
+function escapeRegexLiteral(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // Helper function to split text into natural conversation chunks
 // This groups related sentences together to create more natural-looking chat bubbles
 // instead of splitting every sentence into a separate bubble
@@ -30,7 +35,8 @@ function splitIntoConversationChunks(text: string): string[] {
   // 1. temporarily replace periods in titles with a placeholder
   let processedText = text;
   titles.forEach(title => {
-    processedText = processedText.replace(new RegExp(title, 'g'), title.replace('.', '@@'));
+    const escapedTitle = escapeRegexLiteral(title);
+    processedText = processedText.replace(new RegExp(escapedTitle, 'g'), title.replace(/\./g, '@@'));
   });
 
   // 2. Split into sentences first

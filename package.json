@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@microsoft/clarity": "^1.0.0",
     "@pinecone-database/pinecone": "^6.1.1",
     "@supabase/supabase-js": "^2.53.0",
     "@upstash/redis": "^1.35.3",

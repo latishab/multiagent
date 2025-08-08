@@ -1,6 +1,48 @@
 import type { AppProps } from 'next/app'
+import Script from 'next/script'
+import { useEffect } from 'react'
+import { sessionManager } from '../utils/sessionManager'
 import '../styles/globals.css'
 
 export default function App({ Component, pageProps }: AppProps) {
-  return <Component {...pageProps} />
-} 
+  useEffect(() => {
+    const setupClarityIdentity = async () => {
+      try {
+        const [sessionId, participantId] = await Promise.all([
+          sessionManager.getSessionId(),
+          sessionManager.getParticipantId(),
+        ]);
+
+        if (typeof window !== 'undefined' && typeof (window as any).clarity === 'function') {
+          (window as any).clarity('set', 'sessionId', sessionId);
+          (window as any).clarity('set', 'participantId', participantId);
+          (window as any).clarity('identify', participantId, sessionId);
+        } else if (typeof window !== 'undefined') {
+          (window as any).clarity = (window as any).clarity || function() {
+            ((window as any).clarity.q = (window as any).clarity.q || []).push(arguments);
+          };
+          (window as any).clarity('set', 'sessionId', sessionId);
+          (window as any).clarity('set', 'participantId', participantId);
+          (window as any).clarity('identify', participantId, sessionId);
+        }
+      } catch {
+        // no-op
+      }
+    };
+
+    setupClarityIdentity();
+  }, []);
+
+  return (
+    <>
+      <Script id="ms-clarity" strategy="afterInteractive">
+        {`(function(c,l,a,r,i,t,y){
+          c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+          t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+          y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+        })(window, document, "clarity", "script", "srjbk2klo8");`}
+      </Script>
+      <Component {...pageProps} />
+    </>
+  )
+}

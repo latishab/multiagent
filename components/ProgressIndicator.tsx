@@ -33,6 +33,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
   
   // Whether to show Michael's mission checklist (mutually exclusive with progress bars)
   const initialStateActive = !gameStarted || (round1Complete && !hasTalkedToGuide) || (round2Complete && !hasTalkedToGuide) || gamePhase === 100;
+  const isCompletedPhase = gamePhase === 100;
   
   // Determine the actual current round based on completion status
   const actualCurrentRound = (() => {
@@ -190,13 +191,13 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
                 <div className="checklist-items">
                   <div className="checklist-item">
                     <span className="checklist-checkbox">
-                      {!hasTalkedToGuide ? '☐' : '☑'}
+                      {isCompletedPhase ? '☑' : (!hasTalkedToGuide ? '☐' : '☑')}
                     </span>
                     <span className="checklist-text">Find Michael in the facility</span>
                   </div>
                   <div className="checklist-item">
                     <span className="checklist-checkbox">
-                      {!hasTalkedToGuide ? '☐' : '☑'}
+                      {isCompletedPhase ? '☑' : (!hasTalkedToGuide ? '☐' : '☑')}
                     </span>
                     <span className="checklist-text">
                       {!gameStarted ? "Talk to Michael to understand your mission" : 
@@ -224,13 +225,13 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
                     <>
                       <div className="checklist-item">
                         <span className="checklist-checkbox">
-                          {!hasTalkedToGuide ? '☐' : '☑'}
+                          {isCompletedPhase ? '☑' : (!hasTalkedToGuide ? '☐' : '☑')}
                         </span>
                         <span className="checklist-text">Review all collected information in your PDA</span>
                       </div>
                       <div className="checklist-item">
                         <span className="checklist-checkbox">
-                          {!hasTalkedToGuide ? '☐' : '☑'}
+                          {isCompletedPhase ? '☑' : (!hasTalkedToGuide ? '☐' : '☑')}
                         </span>
                         <span className="checklist-text">Make final decisions for the facility's future</span>
                       </div>
