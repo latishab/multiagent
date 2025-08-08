@@ -8,25 +8,27 @@ export default function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
     const setupClarityIdentity = async () => {
       try {
-        const [sessionId, participantId] = await Promise.all([
-          sessionManager.getSessionId(),
-          sessionManager.getParticipantId(),
-        ]);
+        const sessionId = await sessionManager.getSessionId();
+        const participantId = sessionManager.getSessionInfo().participantId || null; // do not auto-generate
 
-        const friendlyName = `participant:${participantId} | session:${sessionId}`;
+        const friendlyName = participantId ? `participant:${participantId} | session:${sessionId}` : `session:${sessionId}`;
 
         if (typeof window !== 'undefined' && typeof (window as any).clarity === 'function') {
           (window as any).clarity('set', 'sessionId', sessionId);
-          (window as any).clarity('set', 'participantId', participantId);
-          (window as any).clarity('identify', participantId, sessionId, undefined, friendlyName);
+          if (participantId) {
+            (window as any).clarity('set', 'participantId', participantId);
+            (window as any).clarity('identify', participantId, sessionId, undefined, friendlyName);
+          }
           (window as any).clarity('event', 'identity_set');
         } else if (typeof window !== 'undefined') {
           (window as any).clarity = (window as any).clarity || function() {
             ((window as any).clarity.q = (window as any).clarity.q || []).push(arguments);
           };
           (window as any).clarity('set', 'sessionId', sessionId);
-          (window as any).clarity('set', 'participantId', participantId);
-          (window as any).clarity('identify', participantId, sessionId, undefined, friendlyName);
+          if (participantId) {
+            (window as any).clarity('set', 'participantId', participantId);
+            (window as any).clarity('identify', participantId, sessionId, undefined, friendlyName);
+          }
           (window as any).clarity('event', 'identity_set');
         }
       } catch {
