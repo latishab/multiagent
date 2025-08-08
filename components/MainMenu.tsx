@@ -53,6 +53,10 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
     try {
       // Store participant ID
       sessionManager.setParticipantId(participantId.trim());
+      // Notify app (Clarity) that participant ID changed
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('participant-id-changed'));
+      }
       
       // Generate a new session ID for this participant
       await sessionManager.getSessionId();
@@ -74,6 +78,13 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
     setError('');
 
     try {
+      // Ensure participant ID is set in session manager when continuing
+      if (existingParticipantId) {
+        sessionManager.setParticipantId(existingParticipantId);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('participant-id-changed'));
+        }
+      }
       onStartGame(existingParticipantId);
     } catch (error) {
       console.error('Error continuing game:', error);

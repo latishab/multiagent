@@ -35,6 +35,19 @@ export default function App({ Component, pageProps }: AppProps) {
     };
 
     setupClarityIdentity();
+
+    const onParticipantChanged = () => {
+      setupClarityIdentity();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('participant-id-changed', onParticipantChanged as EventListener);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('participant-id-changed', onParticipantChanged as EventListener);
+      }
+    };
   }, []);
 
   return (
