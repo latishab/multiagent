@@ -14,7 +14,6 @@ export default function App({ Component, pageProps }: AppProps) {
         ]);
 
         if (typeof window !== 'undefined' && typeof (window as any).clarity === 'function') {
-          (window as any).clarity('set', 'userId', participantId);
           (window as any).clarity('set', 'sessionId', sessionId);
           (window as any).clarity('set', 'participantId', participantId);
           (window as any).clarity('identify', undefined, undefined, undefined, `participant:${participantId} | session:${sessionId}`);
@@ -23,7 +22,6 @@ export default function App({ Component, pageProps }: AppProps) {
           (window as any).clarity = (window as any).clarity || function() {
             ((window as any).clarity.q = (window as any).clarity.q || []).push(arguments);
           };
-          (window as any).clarity('set', 'userId', participantId);
           (window as any).clarity('set', 'sessionId', sessionId);
           (window as any).clarity('set', 'participantId', participantId);
           (window as any).clarity('identify', undefined, undefined, undefined, `participant:${participantId} | session:${sessionId}`);
