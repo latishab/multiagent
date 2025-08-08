@@ -17,7 +17,7 @@ export default function App({ Component, pageProps }: AppProps) {
           (window as any).clarity('set', 'userId', participantId);
           (window as any).clarity('set', 'sessionId', sessionId);
           (window as any).clarity('set', 'participantId', participantId);
-          (window as any).clarity('identify', participantId, sessionId, undefined, `participant:${participantId}`);
+          (window as any).clarity('identify', participantId, sessionId, undefined, `participant:${participantId} | session:${sessionId}`);
           (window as any).clarity('event', 'identity_set');
         } else if (typeof window !== 'undefined') {
           (window as any).clarity = (window as any).clarity || function() {
@@ -26,7 +26,7 @@ export default function App({ Component, pageProps }: AppProps) {
           (window as any).clarity('set', 'userId', participantId);
           (window as any).clarity('set', 'sessionId', sessionId);
           (window as any).clarity('set', 'participantId', participantId);
-          (window as any).clarity('identify', participantId, sessionId, undefined, `participant:${participantId}`);
+          (window as any).clarity('identify', participantId, sessionId, undefined, `participant:${participantId} | session:${sessionId}`);
           (window as any).clarity('event', 'identity_set');
         }
       } catch {
