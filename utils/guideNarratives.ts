@@ -162,3 +162,60 @@ export function narrativesToMessages(narratives: GuideNarrative[]): { text: stri
     sender: 'npc' as const
   }));
 } 
+
+// Centralized quick replies for the Guide dialog
+export function getGuideQuickReplies(round: number, spokenRound2Count: number): string[] {
+  // Decision phase complete
+  if (round === 2 && spokenRound2Count >= 6) {
+    return ['Continue', 'One sec', 'Thanks'];
+  }
+  // Early game guidance (intro + round 1)
+  if (round === 0 || round === 1) {
+    return ['Okay', 'What should I do?', 'Can you repeat that?', 'Thanks'];
+  }
+  // Default fallback
+  return ['Got it', 'Sounds good', 'Thanks'];
+}
+
+// Canned guide answers for common quick replies
+export function getGuideCannedResponse(
+  userMessage: string,
+  round: number,
+  spokenRound1Count: number,
+  spokenRound2Count: number
+): string | null {
+  const text = userMessage.trim().toLowerCase();
+
+  // Decision phase small talk
+  if (round === 2 && spokenRound2Count >= 6) {
+    if (text === 'one sec') {
+      return "No rush. I'll be right here when you're ready to continue.";
+    }
+    if (text === 'thanks' || text === 'thank you') {
+      return "You're welcome. When you're ready, click Continue to proceed to the final decision.";
+    }
+  }
+
+  // Early game guidance
+  if (round === 0 || round === 1) {
+    if (text === 'what should i do?' || text === 'what should i do') {
+      return "Start by speaking with all six experts in the facility. Approach each one to begin a conversation and learn about their system and options. Try to complete conversations with all six for Round 1—then I'll advance you to Round 2.";
+    }
+    if (text === 'can you repeat that?' || text === 'can you repeat that') {
+      return "Sure. Talk to all six experts first to complete Round 1. Ask about their challenges and proposals. After you've met all six, I'll guide you into Round 2 for deeper discussion.";
+    }
+    if (text === 'okay') {
+      return "Great. I'll be here if you need help while you meet the experts.";
+    }
+    if (text === 'thanks' || text === 'thank you') {
+      return "Anytime. Good luck with the experts.";
+    }
+  }
+
+  // General acknowledgements
+  if (text === 'got it' || text === 'sounds good') {
+    return "Perfect. Let me know if you have any questions.";
+  }
+
+  return null;
+}

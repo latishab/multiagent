@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { sessionManager } from '../utils/sessionManager'
-import { getInitialGuideMessages, getRoundAdvancementMessages, getDecisionPhaseMessages, narrativesToMessages } from '../utils/guideNarratives'
+import { getInitialGuideMessages, getRoundAdvancementMessages, getDecisionPhaseMessages, narrativesToMessages, getGuideQuickReplies, getGuideCannedResponse } from '../utils/guideNarratives'
 
 interface GuideDialogProps {
   isOpen: boolean;
@@ -33,6 +33,17 @@ export default function GuideDialog({
   const [sessionId, setSessionId] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [pendingGuideQueue, setPendingGuideQueue] = useState<string[]>([]);
+  const [queueLastText, setQueueLastText] = useState<string | null>(null);
+  const [queueAdvanceToRoundAfterComplete, setQueueAdvanceToRoundAfterComplete] = useState<number | null>(null);
+  
+  // Context-aware quick replies (centralized in guideNarratives)
+  const quickReplies = React.useMemo(() => {
+    if (pendingGuideQueue.length > 0) {
+      return ['Next', 'Got it'];
+    }
+    return getGuideQuickReplies(round, spokenNPCs.round2.size);
+  }, [round, spokenNPCs.round2.size, pendingGuideQueue.length]);
 
   // Load conversation history and handle initial messages
   useEffect(() => {
@@ -55,7 +66,6 @@ export default function GuideDialog({
 
         // --- 2. Determine which initial messages are needed based on game state ---
         let messagesToDisplay = [...existingMessages]; // Start with what we have
-        let needsDBUpdate = false;
         let shouldAdvanceRound = false;
         let shouldAdvanceToRound1 = false;
 
@@ -67,9 +77,7 @@ export default function GuideDialog({
         );
         
         if ((round === 0 || round === 1) && !hasInitialMessages) {
-          // Add to the messages to be displayed
-          messagesToDisplay.push(...initialMessages);
-          needsDBUpdate = true;
+          messagesToDisplay = [...existingMessages];
           shouldAdvanceToRound1 = true;
         
         // We check this condition BEFORE checking for the start of Round 2.
@@ -82,8 +90,7 @@ export default function GuideDialog({
           );
 
           if (!initialDecisionMessageAlreadyExists) {
-            messagesToDisplay.push(...decisionPhaseMessages);
-            needsDBUpdate = true;
+            messagesToDisplay = [...existingMessages];
           }
 
         // State C: Player has completed Round 1 and is now starting Round 2
@@ -97,74 +104,61 @@ export default function GuideDialog({
           );
 
           if (!initialRound2MessageAlreadyExists) {
-            messagesToDisplay.push(...round2IntroMessages);
-            needsDBUpdate = true;
+            messagesToDisplay = [...existingMessages];
             // Don't auto-advance - let the player see the "Mission: Advance to Round 2" prompt
             // shouldAdvanceRound = true; 
           }
         }
 
-        // --- 3. Update the database if new messages were added ---
-        let newMessages: Message[] = [];
-        if (needsDBUpdate) {
-          newMessages = messagesToDisplay.slice(existingMessages.length);
+        // --- 3. Prepare step-by-step delivery ---
+        setMessages(messagesToDisplay);
 
-          for (const msg of newMessages) {
+        // Determine which new narratives need to be queued (texts only)
+        let queuedNarratives: string[] = [];
+        if ((round === 0 || round === 1) && !hasInitialMessages) {
+          queuedNarratives = narrativesToMessages(getInitialGuideMessages()).map(m => m.text);
+          setQueueAdvanceToRoundAfterComplete(1);
+        } else if (round === 2 && spokenNPCs.round2.size >= 6) {
+          const decisionPhaseMessages = narrativesToMessages(getDecisionPhaseMessages());
+          const initialDecisionMessage = decisionPhaseMessages[0]?.text;
+          const alreadyExists = existingMessages.some((m) => m.text === initialDecisionMessage);
+          if (!alreadyExists) {
+            queuedNarratives = decisionPhaseMessages.map(m => m.text);
+            setQueueAdvanceToRoundAfterComplete(null);
+          }
+        } else if ((round === 1 || round === 2) && spokenNPCs.round1.size >= 6 && spokenNPCs.round2.size < 6) {
+          const round2IntroMessages = narrativesToMessages(getRoundAdvancementMessages());
+          const initialRound2Message = round2IntroMessages[0]?.text;
+          const exists = existingMessages.some((m) => m.text === initialRound2Message);
+          if (!exists) {
+            queuedNarratives = round2IntroMessages.map(m => m.text);
+            setQueueAdvanceToRoundAfterComplete(2);
+          }
+        }
+
+        if (queuedNarratives.length > 0) {
+          setQueueLastText(queuedNarratives[queuedNarratives.length - 1]);
+          // Deliver the first message immediately, queue the rest
+          const [first, ...rest] = queuedNarratives;
+          setPendingGuideQueue(rest);
+          // Append and persist the first narrative
+          try {
+            setMessages(prev => [...prev, { text: first, sender: 'npc' }]);
             await fetch('/api/store-message', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                message: msg.text,
+                message: first,
                 npcId: -1,
-                round: round, 
+                round: round,
                 sessionId: currentSessionId,
                 role: 'assistant'
               })
             });
-          }
-        }
-
-        // --- 4. Set the final state for the UI ---
-        // If we have new messages to add, display them one by one with delays
-        if (needsDBUpdate && newMessages.length > 0) {
-          let currentMessages = existingMessages;
-          
-          for (let i = 0; i < newMessages.length; i++) {
-            await new Promise(resolve => setTimeout(resolve, 800)); // Delay between messages
-            currentMessages = [...currentMessages, newMessages[i]];
-            setMessages(currentMessages);
-          }
-          
-          // Only mark guide as spoken if this is the initial intro (not Round 2 advancement)
-          if (onConversationComplete && shouldAdvanceToRound1) {
-            onConversationComplete(-1, 1, undefined, { isComplete: true, reason: 'Guide intro delivered' });
-          }
-
-          // Advance the round after messages are displayed 
-          if (shouldAdvanceToRound1) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-            onRoundChange(1);
-          }
-          // Only advance to Round 2 if explicitly triggered by player interaction
-          if (shouldAdvanceRound) {
-            await new Promise(resolve => setTimeout(resolve, 500)); 
-            onRoundChange(2);
-          }
-          
-          if (round === 1 && spokenNPCs.round1.size >= 6 && newMessages.length > 0) {
-            const lastMessage = newMessages[newMessages.length - 1];
-            
-            if (lastMessage && lastMessage.text.includes("Ready to continue?")) {
-              await new Promise(resolve => setTimeout(resolve, 1000)); // Delay to let user read
-              if (onConversationComplete) {
-                onConversationComplete(-1, 1, undefined, { isComplete: true, reason: 'Round 2 intro delivered' });
-              }
-              onRoundChange(2);
-            }
+          } catch (e) {
+            console.error('Failed to persist initial narrative message', e);
           }
         } else {
-          setMessages(messagesToDisplay);
-
           // If initial intro already existed, only mark guide as spoken if we're not in Round 2 advancement state
           if ((round === 0 || round === 1) && hasInitialMessages && !(spokenNPCs.round1.size >= 6)) {
             if (onConversationComplete) {
@@ -198,23 +192,106 @@ export default function GuideDialog({
     }
   }, [messages]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputValue.trim() || isLoading) return;
+  // Unified send function used by form submit and quick reply buttons
+  // Advance queued narratives one-by-one upon user acknowledgement
+  const advanceQueuedNarrative = async (userText: string) => {
+    const currentSessionId = await sessionManager.getSessionId();
+    // Append and persist user acknowledgement
+    setMessages(prev => [...prev, { text: userText, sender: 'player' }]);
+    try {
+      await fetch('/api/store-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userText, npcId: -1, round, sessionId: currentSessionId, role: 'user' })
+      });
+    } catch (e) {
+      console.error('Failed to persist user ack for queued narrative', e);
+    }
 
-    const userMessage = inputValue.trim();
+    // Deliver next narrative from queue
+    const next = pendingGuideQueue[0];
+    const rest = pendingGuideQueue.slice(1);
+    if (!next) return; // Nothing to deliver
+    setPendingGuideQueue(rest);
+
+    setMessages(prev => [...prev, { text: next, sender: 'npc' }]);
+    try {
+      await fetch('/api/store-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: next, npcId: -1, round, sessionId: currentSessionId, role: 'assistant' })
+      });
+    } catch (e) {
+      console.error('Failed to persist next queued narrative', e);
+    }
+
+    // If queue completed, handle advancement and completion hooks
+    if (rest.length === 0) {
+      // Mark completion for appropriate phase
+      if (onConversationComplete) {
+        if (queueAdvanceToRoundAfterComplete === 1) {
+          onConversationComplete(-1, 1, undefined, { isComplete: true, reason: 'Guide intro delivered' });
+        } else if (queueAdvanceToRoundAfterComplete === 2) {
+          onConversationComplete(-1, 1, undefined, { isComplete: true, reason: 'Round 2 intro delivered' });
+        }
+      }
+      // Advance round if requested
+      if (queueAdvanceToRoundAfterComplete === 1) {
+        setTimeout(() => onRoundChange(1), 500);
+      } else if (queueAdvanceToRoundAfterComplete === 2) {
+        setTimeout(() => onRoundChange(2), 1000);
+      }
+      setQueueAdvanceToRoundAfterComplete(null);
+      setQueueLastText(null);
+    }
+  };
+
+  const sendUserMessage = async (userMessage: string) => {
+    if (!userMessage.trim() || isLoading) return;
+    const trimmed = userMessage.trim();
     setInputValue('');
-    
-    // Check if this is the decision phase and user typed "continue"
-    if (round === 2 && spokenNPCs.round2.size >= 6 && userMessage.toLowerCase() === 'continue' && onOpenPDA) {
+
+    // If there are pending guide narratives, treat this as an acknowledgement and deliver next
+    if (pendingGuideQueue.length > 0) {
+      await advanceQueuedNarrative(trimmed);
+      return;
+    }
+
+    // Special: decision phase continue → open PDA
+    if (round === 2 && spokenNPCs.round2.size >= 6 && trimmed.toLowerCase() === 'continue' && onOpenPDA) {
       onOpenPDA();
       return;
     }
-    
+
+    // Check for a canned guide response to avoid API call
+    const canned = getGuideCannedResponse(trimmed, round, spokenNPCs.round1.size, spokenNPCs.round2.size);
+    if (canned) {
+      // Optimistically store both user and guide messages
+      setMessages(prev => [...prev, { text: trimmed, sender: 'player' }, { text: canned, sender: 'npc' }]);
+      try {
+        const currentSessionId = await sessionManager.getSessionId();
+        // Persist messages
+        await fetch('/api/store-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: trimmed, npcId: -1, round, sessionId: currentSessionId, role: 'user' })
+        });
+        await fetch('/api/store-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: canned, npcId: -1, round, sessionId: currentSessionId, role: 'assistant' })
+        });
+      } catch (e) {
+        // Non-fatal: if storing fails, still keep UI responsive
+        console.error('Failed to persist canned exchange', e);
+      }
+      return;
+    }
+
     const currentSessionId = await sessionManager.getSessionId();
-    
+
     // Add user message to local state immediately
-    const newMessages: Message[] = [...messages, { text: userMessage, sender: 'player' }];
+    const newMessages: Message[] = [...messages, { text: trimmed, sender: 'player' }];
     setMessages(newMessages);
     setIsLoading(true);
 
@@ -223,7 +300,7 @@ export default function GuideDialog({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: userMessage,
+          message: trimmed,
           npcId: -1,
           round: round,
           isSustainable: true,
@@ -241,7 +318,7 @@ export default function GuideDialog({
       }
 
       const data = await response.json();
-      
+
       if (data.response) {
         // Handle round advancement
         if (data.conversationAnalysis?.shouldAdvanceRound && round === 1) {
@@ -251,10 +328,10 @@ export default function GuideDialog({
             (window as any).triggerEndingPhase();
           }
         }
-        
+
         // Add response to local state
         setMessages(prev => [...prev, { text: data.response, sender: 'npc' }]);
-        
+
         // Call conversation complete callback. For Round 2 intro completion, explicitly mark guide as spoken
         if (onConversationComplete && data.conversationAnalysis) {
           const isRound2Advancement = round === 1 && spokenNPCs.round1.size >= 6;
@@ -264,27 +341,40 @@ export default function GuideDialog({
             onConversationComplete(-1, 1, undefined, { isComplete: true, reason: 'Round 2 intro delivered' });
           }
         }
-        
+
         // Auto-advance to Round 2 after Michael finishes the Round 2 intro
-        if (round === 1 && spokenNPCs.round1.size >= 6 && data.response && 
+        if (round === 1 && spokenNPCs.round1.size >= 6 && data.response &&
             data.response.includes("Ready to continue?")) {
           setTimeout(() => {
             onRoundChange(2);
-          }, 1000); // Small delay to let the user read the message
+          }, 1000);
         }
       }
     } catch (error) {
       console.error('LLM response failed in GuideDialog:', error instanceof Error ? error.message : String(error));
       setError(error instanceof Error ? error.message : String(error));
-      setMessages(prev => [...prev, { 
-        text: "I apologize, but I'm having trouble responding right now.", 
-        sender: 'npc' 
+      setMessages(prev => [...prev, {
+        text: "I apologize, but I'm having trouble responding right now.",
+        sender: 'npc'
       }]);
     } finally {
       setIsLoading(false);
       if (inputRef.current) {
         inputRef.current.focus();
       }
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await sendUserMessage(inputValue);
+  };
+
+  const handleQuickReply = async (reply: string) => {
+    if (pendingGuideQueue.length > 0) {
+      await advanceQueuedNarrative(reply);
+    } else {
+      await sendUserMessage(reply);
     }
   };
 
@@ -360,6 +450,27 @@ export default function GuideDialog({
 
           {/* Input */}
           <form onSubmit={handleSubmit} className="chat-input">
+            {/* Quick Replies (appear only after guide speaks and not loading) */}
+            {(() => {
+              const lastMessage = messages[messages.length - 1];
+              const shouldShowQuickReplies = !isLoading && lastMessage && lastMessage.sender === 'npc' && quickReplies.length > 0;
+              return shouldShowQuickReplies ? (
+                <div className="quick-replies">
+                  {quickReplies.map((reply, idx) => (
+                    <button
+                      key={`${reply}-${idx}`}
+                      type="button"
+                      className="quick-reply-button"
+                      onClick={() => handleQuickReply(reply)}
+                      disabled={isLoading}
+                      aria-label={`Quick reply: ${reply}`}
+                    >
+                      {reply}
+                    </button>
+                  ))}
+                </div>
+              ) : null;
+            })()}
             <div className="input-container">
               <input
                 ref={inputRef}
@@ -580,6 +691,35 @@ export default function GuideDialog({
           background-color: rgba(31, 41, 55, 0.95);
           border-top: 2px solid #374151;
           flex-shrink: 0;
+        }
+
+        .quick-replies {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-bottom: 10px;
+        }
+
+        .quick-reply-button {
+          padding: 6px 12px;
+          background-color: #374151;
+          color: #e5e7eb;
+          border: 1px solid #4b5563;
+          border-radius: 9999px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          font-size: 14px;
+        }
+
+        .quick-reply-button:hover:not(:disabled) {
+          background-color: #404b5f;
+          border-color: #2563eb;
+          transform: translateY(-1px);
+        }
+
+        .quick-reply-button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
 
         .input-container {
