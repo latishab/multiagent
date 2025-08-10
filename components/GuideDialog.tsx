@@ -36,6 +36,7 @@ export default function GuideDialog({
   const [pendingGuideQueue, setPendingGuideQueue] = useState<string[]>([]);
   const [queueLastText, setQueueLastText] = useState<string | null>(null);
   const [queueAdvanceToRoundAfterComplete, setQueueAdvanceToRoundAfterComplete] = useState<number | null>(null);
+  const [queueTargetRound, setQueueTargetRound] = useState<number | null>(null);
   
   // Context-aware quick replies (centralized in guideNarratives)
   const quickReplies = React.useMemo(() => {
@@ -115,9 +116,11 @@ export default function GuideDialog({
 
         // Determine which new narratives need to be queued (texts only)
         let queuedNarratives: string[] = [];
+        let queueTargetRoundLocal: number | null = null;
         if ((round === 0 || round === 1) && !hasInitialMessages) {
           queuedNarratives = narrativesToMessages(getInitialGuideMessages()).map(m => m.text);
           setQueueAdvanceToRoundAfterComplete(1);
+          queueTargetRoundLocal = 1; // Always persist intro under round 1
         } else if (round === 2 && spokenNPCs.round2.size >= 6) {
           const decisionPhaseMessages = narrativesToMessages(getDecisionPhaseMessages());
           const initialDecisionMessage = decisionPhaseMessages[0]?.text;
@@ -125,6 +128,7 @@ export default function GuideDialog({
           if (!alreadyExists) {
             queuedNarratives = decisionPhaseMessages.map(m => m.text);
             setQueueAdvanceToRoundAfterComplete(null);
+            queueTargetRoundLocal = 2;
           }
         } else if ((round === 1 || round === 2) && spokenNPCs.round1.size >= 6 && spokenNPCs.round2.size < 6) {
           const round2IntroMessages = narrativesToMessages(getRoundAdvancementMessages());
@@ -133,15 +137,15 @@ export default function GuideDialog({
           if (!exists) {
             queuedNarratives = round2IntroMessages.map(m => m.text);
             setQueueAdvanceToRoundAfterComplete(2);
+            queueTargetRoundLocal = 2;
           }
         }
 
         if (queuedNarratives.length > 0) {
           setQueueLastText(queuedNarratives[queuedNarratives.length - 1]);
-          // Deliver the first message immediately, queue the rest
           const [first, ...rest] = queuedNarratives;
           setPendingGuideQueue(rest);
-          // Append and persist the first narrative
+          setQueueTargetRound(queueTargetRoundLocal);
           try {
             setMessages(prev => [...prev, { text: first, sender: 'npc' }]);
             await fetch('/api/store-message', {
@@ -150,7 +154,7 @@ export default function GuideDialog({
               body: JSON.stringify({
                 message: first,
                 npcId: -1,
-                round: round,
+                round: queueTargetRoundLocal ?? round,
                 sessionId: currentSessionId,
                 role: 'assistant'
               })
@@ -219,7 +223,7 @@ export default function GuideDialog({
       await fetch('/api/store-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: next, npcId: -1, round, sessionId: currentSessionId, role: 'assistant' })
+        body: JSON.stringify({ message: next, npcId: -1, round: queueTargetRound ?? round, sessionId: currentSessionId, role: 'assistant' })
       });
     } catch (e) {
       console.error('Failed to persist next queued narrative', e);
@@ -242,6 +246,7 @@ export default function GuideDialog({
         setTimeout(() => onRoundChange(2), 1000);
       }
       setQueueAdvanceToRoundAfterComplete(null);
+      setQueueTargetRound(null);
       setQueueLastText(null);
     }
   };
