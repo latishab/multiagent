@@ -57,8 +57,11 @@ export default function GuideDialog({
       
       try {
         // --- 1. Load Existing History ---
+        // If round 1 is complete and round 2 intro should show, display round 2 history immediately
+        const shouldDisplayRound2IntroNow = ((round === 1 || round === 2) && spokenNPCs.round1.size >= 6 && spokenNPCs.round2.size < 6);
+        const displayRound = shouldDisplayRound2IntroNow ? 2 : round;
         let existingMessages: Message[] = [];
-        const response = await fetch(`/api/conversation-history?npcId=-1&round=${round}&sessionId=${currentSessionId}`);
+        const response = await fetch(`/api/conversation-history?npcId=-1&round=${displayRound}&sessionId=${currentSessionId}`);
         
         if (response.ok) {
           const data = await response.json();
@@ -67,17 +70,15 @@ export default function GuideDialog({
 
         // --- 2. Determine which initial messages are needed based on game state ---
         let messagesToDisplay = [...existingMessages]; // Start with what we have
-        let shouldAdvanceRound = false;
         let shouldAdvanceToRound1 = false;
 
         // State A: First time ever opening the dialog (check if initial messages exist)
         const initialMessages = narrativesToMessages(getInitialGuideMessages());
         const firstInitialMessage = initialMessages[0]?.text;
-        const hasInitialMessages = existingMessages.some(
-          (msg) => msg.text === firstInitialMessage
-        );
+        const hasInitialInDisplayedRound = existingMessages.some((msg) => msg.text === firstInitialMessage);
+        const shouldShowInitialIntro = (round === 0) || (round === 1 && spokenNPCs.round1.size < 6);
         
-        if ((round === 0 || round === 1) && !hasInitialMessages) {
+        if (shouldShowInitialIntro && !hasInitialInDisplayedRound) {
           messagesToDisplay = [...existingMessages];
           shouldAdvanceToRound1 = true;
         
@@ -106,8 +107,6 @@ export default function GuideDialog({
 
           if (!initialRound2MessageAlreadyExists) {
             messagesToDisplay = [...existingMessages];
-            // Don't auto-advance - let the player see the "Mission: Advance to Round 2" prompt
-            // shouldAdvanceRound = true; 
           }
         }
 
@@ -117,7 +116,7 @@ export default function GuideDialog({
         // Determine which new narratives need to be queued (texts only)
         let queuedNarratives: string[] = [];
         let queueTargetRoundLocal: number | null = null;
-        if ((round === 0 || round === 1) && !hasInitialMessages) {
+        if (shouldShowInitialIntro && !hasInitialInDisplayedRound) {
           queuedNarratives = narrativesToMessages(getInitialGuideMessages()).map(m => m.text);
           setQueueAdvanceToRoundAfterComplete(1);
           queueTargetRoundLocal = 1; // Always persist intro under round 1
@@ -164,7 +163,7 @@ export default function GuideDialog({
           }
         } else {
           // If initial intro already existed, only mark guide as spoken if we're not in Round 2 advancement state
-          if ((round === 0 || round === 1) && hasInitialMessages && !(spokenNPCs.round1.size >= 6)) {
+          if ((round === 0 || round === 1) && hasInitialInDisplayedRound && !(spokenNPCs.round1.size >= 6)) {
             if (onConversationComplete) {
               onConversationComplete(-1, 1, undefined, { isComplete: true, reason: 'Guide intro already present' });
             }
