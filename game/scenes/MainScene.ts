@@ -264,11 +264,6 @@ export default class MainScene extends Scene {
     this.minimap.setBackgroundColor('#1a1a1a') // Dark gray background
     this.minimap.setAlpha(0.9) // Slightly more opaque
     
-    // Create a border for the minimap
-    const borderGraphics = this.add.graphics()
-    borderGraphics.lineStyle(2, 0x4a90e2, 1) // Blue border color consistent with UI
-    borderGraphics.strokeRect(x, y, minimapWidth, minimapHeight)
-    
     // Set the minimap to follow the player
     const player = this.playerManager.getPlayer()
     this.minimap.startFollow(player)
