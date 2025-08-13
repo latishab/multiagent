@@ -1,57 +1,46 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getCompletionMessages } from '../utils/guideNarratives';
 
 interface TypewriterEndingProps {
-  endingType: 'good' | 'bad';
+  endingType: 'good' | 'medium' | 'bad';
   onComplete: () => void;
 }
 
 export default function TypewriterEnding({ endingType, onComplete }: TypewriterEndingProps) {
-  const [activeEndingType, setActiveEndingType] = useState<'good' | 'bad'>(endingType);
+  const [activeEndingType, setActiveEndingType] = useState<'good' | 'medium' | 'bad'>(endingType);
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const [isSequenceFinished, setIsSequenceFinished] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const soundDurations = useMemo(() => ({
-    good: [16196, 18442, 16274, 3004],
-    bad: [11886, 16431, 10762]
+  
+  // Fixed display durations per message group (no audio)
+  const displayDurations = useMemo(() => ({
+    good: [3000, 3000, 3000],
+    medium: [3000, 3000, 3000],
+    bad: [3000, 3000, 3000]
   }), []);
 
   const getEndingMessages = useCallback(() => {
     const completionMessages = getCompletionMessages();
     if (activeEndingType === 'good') {
       return completionMessages.filter(msg => msg.id.startsWith('good_ending'));
-    } else {
-      return completionMessages.filter(msg => msg.id.startsWith('bad_ending'));
     }
+    if (activeEndingType === 'medium') {
+      return completionMessages.filter(msg => msg.id.startsWith('medium_ending'));
+    }
+    return completionMessages.filter(msg => msg.id.startsWith('bad_ending'));
   }, [activeEndingType]);
 
   const messages = useMemo(() => getEndingMessages(), [getEndingMessages]);
   const currentMessage = messages[currentMessageIndex];
-  const currentDurations = useMemo(() => soundDurations[activeEndingType], [soundDurations, activeEndingType]);
+  const currentDurations = useMemo(() => displayDurations[activeEndingType], [displayDurations, activeEndingType]);
 
-  // Main effect for playing the message sequence
+  // Main effect for playing the message sequence (no audio)
   useEffect(() => {
     if (!currentMessage || isSequenceFinished) return;
 
-    const soundIndex = currentMessageIndex;
-    const soundFile = `${activeEndingType}_ending_${soundIndex + 1}.mp3`;
-    
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    
-    audioRef.current = new Audio(`/assets/sound_effects/${soundFile}`);
-    audioRef.current.loop = false; // Ensure no looping
-    audioRef.current.play().catch(err => {
-      console.log('Audio play failed:', err);
-    });
-
     setIsVisible(true);
 
-    const duration = currentDurations[soundIndex] || 5000;
+    const duration = currentDurations[currentMessageIndex] || 3000;
     const timeoutId = setTimeout(() => {
       setIsVisible(false);
       
@@ -66,10 +55,6 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
 
     return () => {
       clearTimeout(timeoutId);
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
     };
   }, [currentMessageIndex, activeEndingType, messages.length, currentMessage, isSequenceFinished, currentDurations]); 
 
@@ -83,6 +68,8 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
     switch (activeEndingType) {
       case 'good':
         return 'Good Ending';
+      case 'medium':
+        return 'More To Be Done';
       case 'bad':
         return 'Bad Ending';
       default:
@@ -93,7 +80,7 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
   return (
     <div className="typewriter-ending">
       <img 
-        src={`/assets/Engding/${activeEndingType === 'good' ? 'good ending.jpg' : 'bad ending.jpg'}`}
+        src={`/assets/Engding/${activeEndingType === 'good' ? 'good ending.jpg' : activeEndingType === 'medium' ? 'medium.jpg' : 'bad ending.jpg'}`}
         alt="Ending Scene"
         className="ending-image"
       />

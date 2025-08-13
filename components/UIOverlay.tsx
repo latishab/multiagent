@@ -158,7 +158,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     return {};
   });
   const [showEnding, setShowEnding] = useState(false);
-  const [endingType, setEndingType] = useState<'good' | 'bad' | null>(null);
+  const [endingType, setEndingType] = useState<'good' | 'medium' | 'bad' | null>(null);
   const [showPDA, setShowPDA] = useState(false);
   const [showDecisionMode, setShowDecisionMode] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -446,11 +446,12 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   // Function to calculate and show ending
   const calculateAndShowEnding = () => {
     const sustainableCount = Object.values(finalDecisions).filter(decision => decision === 'sustainable').length;
-    const unsustainableCount = Object.values(finalDecisions).filter(decision => decision === 'unsustainable').length;
     
-    let ending: 'good' | 'bad';
-    if (sustainableCount >= 5) {
+    let ending: 'good' | 'medium' | 'bad';
+    if (sustainableCount >= 6) {
       ending = 'good';
+    } else if (sustainableCount >= 4) {
+      ending = 'medium';
     } else {
       ending = 'bad';
     }

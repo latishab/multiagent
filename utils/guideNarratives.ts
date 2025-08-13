@@ -84,7 +84,7 @@ export const guideNarratives: GuideNarrative[] = [
     phase: 'round2'
   },
 
-  // Good ending
+  // Good ending (6 sustainable selections)
   {
     id: 'good_ending_1',
     text: "Congratulations. You've made bold, thoughtful decisions and your efforts have paid off. By choosing sustainable solutions in most key systems, you've laid the foundation for a city that can thrive long into the future.",
@@ -110,7 +110,33 @@ export const guideNarratives: GuideNarrative[] = [
     phase: 'final'
   },
 
-  // Bad ending
+  // Medium ending (4–5 sustainable selections)
+  {
+    id: 'medium_ending_1',
+    text: "We made real progress. Several of your choices prioritized long‑term resilience, and people are already beginning to feel the difference—cleaner water in a few districts, steadier power during heavy demand, and early signs of recovery in public spaces.",
+    context: 'completion',
+    phase: 'final'
+  },
+  {
+    id: 'medium_ending_2',
+    text: "But momentum alone won't carry us. Other systems still depend on short‑term fixes and fragile workarounds. We did some good things, but more remains to be done—especially in the places where trade‑offs tilted away from sustainability.",
+    context: 'completion',
+    phase: 'final'
+  },
+  {
+    id: 'medium_ending_3',
+    text: "This is not a failure—it's a foundation. The groundwork is in place, the teams are aligned, and the city is ready for the next push. With a few decisive changes, we can lock in resilience and make the gains irreversible.",
+    context: 'completion',
+    phase: 'final'
+  },
+  {
+    id: 'medium_ending_4',
+    text: "Let's return to the unresolved systems, bring communities into the process, and finish what we started. If we keep going, we can turn today's partial recovery into tomorrow's lasting future.",
+    context: 'completion',
+    phase: 'final'
+  },
+
+  // Bad ending (1–3 sustainable selections)
   {
     id: 'bad_ending_1',
     text: "It's over. The final systems have collapsed. The city is no longer salvageable. Despite your efforts, the choices made didn't provide the resilience we needed. Short-term fixes gave way to long-term failures.",
