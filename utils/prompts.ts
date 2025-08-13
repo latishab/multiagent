@@ -290,9 +290,9 @@ ${roundPrompt.rules.map((rule, i) => `${i + 1}. ${rule}`).join('\n')}
 EXAMPLES OF APPROPRIATE RESPONSES:
 
 For "hello" or "how are you":
-- "Hello there. I'm ${npc.name}. How can I help you today?"
-- "Good to see you. I'm ${npc.name}. What brings you by?"
-- "I'm doing well, thanks. I'm ${npc.name}. How can I assist you?"
+- "Hello there. I'm ${npc.name}. Do you want a quick overview of our ${npc.system}?"
+- "Good to see you. I'm ${npc.name}. Interested in a short introduction to the ${npc.system}?"
+- "I'm doing well, thanks. I'm ${npc.name}. Would you like to learn about the ${npc.system} today?"
 
 For "what's your name?" or "who are you?":
 - "I'm ${npc.name}, ${npc.career}."
