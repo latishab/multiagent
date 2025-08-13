@@ -491,3 +491,185 @@
     grid-template-columns: repeat(4, 1fr);
   }
 } 
+
+/* NPC Sidebar */
+.npcSidebar {
+  position: fixed;
+  top: clamp(5rem, 7vh, 6rem); /* push down to clear Menu (ESC) button */
+  left: clamp(0.5rem, 1vw, 1rem);
+  width: clamp(130px, 18vw, 170px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.375rem, 1vh, 0.5rem);
+  pointer-events: auto;
+  z-index: 180;
+  max-height: calc(100vh - 260px); 
+  overflow-y: auto;
+  padding-bottom: 6px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.npcSidebar::-webkit-scrollbar { /* Chrome/Safari */
+  width: 0;
+  height: 0;
+}
+
+.npcSidebarItem {
+  position: relative;
+  display: flex;
+  flex-direction: row; /* HStack */
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  background: linear-gradient(145deg, rgba(51, 65, 85, 0.75), rgba(30, 41, 59, 0.85));
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 10px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.22);
+}
+
+/* Round-specific highlights (reset each round) */
+.npcSidebarItem.round1Spoken {
+  border-color: rgba(59, 130, 246, 0.85); /* blue for round 1 */
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.25);
+  border-width: 2px;
+}
+.npcSidebarItem.round2Spoken {
+  border-color: rgba(16, 185, 129, 0.85); /* green for round 2 */
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.25);
+  border-width: 2px;
+}
+
+.npcLeft { flex-shrink: 0; }
+
+.npcHead {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #1f2937;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.npcHead img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  border-radius: 50%;
+}
+
+.opinionBadge {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #0b1220;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.opinionA { /* Proposal A (sustainable) - match PDA */
+  background: #10b981;
+}
+
+.opinionB { /* Proposal B (unsustainable) - match PDA */
+  background: #f59e0b;
+}
+
+.npcRight { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.npcNameRow { display: flex; align-items: center; min-width: 0; }
+.npcName { 
+  color: #e5e7eb; 
+  font-size: 10px; 
+  font-weight: 600; 
+  display: -webkit-box; 
+  -webkit-line-clamp: 2; 
+  -webkit-box-orient: vertical; 
+  line-clamp: 2; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+  line-height: 1.1; 
+  max-height: 24px;
+}
+
+/* Tooltip */
+.npcSidebarItem { position: relative; }
+
+.npcTooltipHeader {
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.npcTooltipStatus {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-bottom: 6px;
+}
+
+.npcTooltipRow,
+.npcProposalRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.proposalPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 800;
+  color: #0b1220;
+  border: 1px solid rgba(229, 231, 235, 0.9);
+}
+
+.proposalA { background: #10b981; }
+.proposalB { background: #f59e0b; }
+.proposalText { 
+  font-size: 10px; 
+  color: #d1d5db; 
+  line-height: 1.2; 
+  flex: 1; 
+  min-width: 0; 
+  white-space: normal; 
+  overflow: visible; 
+  text-overflow: clip;
+  word-break: break-word;
+}
+.selected { box-shadow: 0 0 0 2px rgba(250, 250, 250, 0.8); }
+.pillSelectedA { box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.7); }
+.pillSelectedB { box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.7); }
+.selectedA { border-left: 3px solid #10b981; background: rgba(16, 185, 129, 0.18); border-radius: 6px; }
+.selectedB { border-left: 3px solid #f59e0b; background: rgba(245, 158, 11, 0.18); border-radius: 6px; }
+.hasSelection .npcProposalRow:not(.selectedA):not(.selectedB) { opacity: 0.65; }
+
+.npcProposals { width: 100%; margin-top: 2px; padding: 4px 6px; background: rgba(31, 41, 55, 0.55); border: 1px solid rgba(55, 65, 81, 0.55); border-radius: 6px; }
+
+@media (max-width: 640px) {
+  .npcSidebar {
+    left: 0.75rem; 
+    width: 92px;
+    gap: 0.375rem;
+    max-height: calc(100vh - 240px);
+  }
+  .npcHead {
+    width: 40px;
+    height: 40px;
+  }
+  .npcTooltip { width: min(240px, 65vw); }
+}

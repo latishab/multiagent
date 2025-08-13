@@ -19,6 +19,9 @@ export default class MainScene extends Scene {
 
   // Minimap properties
   private minimap!: Phaser.Cameras.Scene2D.Camera
+  
+  // Camera maintenance
+  private lastFollowResetMs: number = 0
 
   constructor() {
     super({ key: 'MainScene' })
@@ -168,6 +171,7 @@ export default class MainScene extends Scene {
       if (typeof window !== 'undefined') {
         window.addEventListener('chatClosed', ((event: CustomEvent) => {
           this.npcManager.endInteraction(event.detail.npcId)
+          this.ensureCameraFollow()
         }) as EventListener)
       }
       
@@ -191,6 +195,12 @@ export default class MainScene extends Scene {
     this.playerManager.update()
     this.npcManager.update(this.time.now)
     this.updateMinimap()
+    
+    // Periodically re-assert camera follow to prevent drift after long overlays
+    if (this.time.now - this.lastFollowResetMs > 2000) {
+      this.ensureCameraFollow()
+      this.lastFollowResetMs = this.time.now
+    }
   }
 
   private createMap() {
@@ -241,6 +251,14 @@ export default class MainScene extends Scene {
     
     const bounds = this.physics.world.bounds
     this.cameras.main.setBounds(bounds.x, bounds.y, bounds.width, bounds.height)
+  }
+
+  private ensureCameraFollow() {
+    const player = this.playerManager?.getPlayer?.()
+    if (!player) return
+    // Idempotent: calling startFollow repeatedly is safe
+    this.cameras?.main?.startFollow(player)
+    this.cameras?.main?.setBounds(this.physics.world.bounds.x, this.physics.world.bounds.y, this.physics.world.bounds.width, this.physics.world.bounds.height)
   }
   
   private handleResize() {

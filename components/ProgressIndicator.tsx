@@ -302,7 +302,6 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
           // Get opinion data for actual current round
           const opinionData = getNPCOpinion(npcId, actualCurrentRound);
           const hasOpinion = opinionData !== null;
-          const hasChoice = opinionData && opinionData.type === 'opinion' && opinionData.choice && opinionData.spoken;
           
           return (
             <div 
@@ -325,17 +324,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
                     </div>
                   ))}
                 </div>
-                {hasChoice && (
-                  <div className="specialist-choice">
-                    <div className="choice-badge">
-                      <span className="choice-icon">⭐</span>
-                      <span className="choice-label">Chose {opinionData.optionType}</span>
-                    </div>
-                    <div className="choice-option">
-                      {opinionData.chosenOption}
-                    </div>
-                  </div>
-                )}
+                
                 <div className="npc-status-text">
                   {!isCurrentRound ? 'Not spoken' : 
                    actualCurrentRound === 1 ? 
@@ -733,49 +722,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
           color: #10b981;
         }
 
-        .specialist-choice {
-          margin-top: 0.5rem;
-          padding: 0.5rem;
-          background: rgba(59, 130, 246, 0.1);
-          border: 1px solid rgba(59, 130, 246, 0.3);
-          border-radius: 6px;
-        }
-
-        .choice-badge {
-          display: flex;
-          align-items: center;
-          gap: 0.25rem;
-          margin-bottom: 0.25rem;
-        }
-
-        .choice-icon {
-          font-size: clamp(0.7rem, 2vw, 0.8rem);
-          color: #3b82f6;
-        }
-
-        .choice-label {
-          font-size: clamp(0.6rem, 1.5vw, 0.7rem);
-          color: #3b82f6;
-          font-weight: bold;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
-        .choice-option {
-          font-size: clamp(0.6rem, 1.5vw, 0.7rem);
-          color: #e5e7eb;
-          font-weight: 500;
-          line-height: 1.3;
-          padding: 0.25rem 0.5rem;
-          background: rgba(59, 130, 246, 0.2);
-          border-radius: 4px;
-          border: 1px solid rgba(59, 130, 246, 0.3);
-        }
-
-        .npc-item.has-opinion .npc-status-text {
-          color: #3b82f6;
-          font-weight: 600;
-        }
+        .npc-item.has-opinion .npc-status-text { color: #3b82f6; font-weight: 600; }
 
         .guidance-message {
           margin-top: 0.5rem;
@@ -817,14 +764,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
             gap: 0.25rem;
           }
 
-          .specialist-choice {
-            padding: 0.375rem;
-          }
-
-          .choice-option {
-            font-size: clamp(0.55rem, 1.4vw, 0.65rem);
-            padding: 0.2rem 0.4rem;
-          }
+          
         }
       `}</style>
     </div>

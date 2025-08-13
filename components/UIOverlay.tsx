@@ -6,7 +6,7 @@ import GameMenu from './GameMenu'
 import ProgressIndicator from './ProgressIndicator'
 import PDA from './PDA'
 import EndingOverlay from './EndingOverlay'
-import { NPCNames, NPCSystems, NPCOptions } from '../utils/npcData'
+import { NPCNames, NPCSystems, NPCOptions, getNPCImage } from '../utils/npcData'
 import { sessionManager } from '../utils/sessionManager'
 import { soundEffects } from '../utils/soundEffects'
 
@@ -185,6 +185,20 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   const [pdaNotification, setPdaNotification] = useState(false);
   const [guideDialogOpen, setGuideDialogOpen] = useState(false);
   
+  // Track detected opinions (A = sustainable, B = unsustainable) per NPC for Round 2
+  const [npcOpinions, setNpcOpinions] = useState<{ [npcId: number]: 'A' | 'B' | null }>(() => {
+    if (typeof window !== 'undefined') {
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-npc-opinions-${participantId}` : 'multiagent-npc-opinions';
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        try { return JSON.parse(saved); } catch {}
+      }
+    }
+    return { 1: null, 2: null, 3: null, 4: null, 5: null, 6: null };
+  });
+
+  
   // Ballot entries to track NPC opinions
   const [ballotEntries, setBallotEntries] = useState<BallotEntry[]>(() => {
     if (typeof window !== 'undefined') {
@@ -291,6 +305,17 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       (window as any).spokenNPCs = spokenNPCs;
     }
   }, [gamePhase, hasTalkedToGuide, chatState.round, spokenNPCs]);
+
+  // Persist npcOpinions per participant
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const participantId = sessionManager.getSessionInfo().participantId;
+      const storageKey = participantId ? `multiagent-npc-opinions-${participantId}` : 'multiagent-npc-opinions';
+      localStorage.setItem(storageKey, JSON.stringify(npcOpinions));
+    }
+  }, [npcOpinions]);
+
+  // (removed) sidebar hint persistence
 
   // Function to play tablet ding sound
   const playTabletDing = () => {
@@ -431,6 +456,20 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         return [...prev, newEntry]; // Add new entry
       }
     });
+
+    // Record detected opinion in Round 2 as A (sustainable) or B (unsustainable)
+    if (round === 2 && detectedOpinion && npcId >= 1 && npcId <= 6) {
+      const sustainable = NPCOptions[npcId].sustainable;
+      const unsustainable = NPCOptions[npcId].unsustainable;
+      const normalized = detectedOpinion.opinion === sustainable
+        ? 'A'
+        : detectedOpinion.opinion === unsustainable
+        ? 'B'
+        : null;
+      if (normalized) {
+        setNpcOpinions(prev => ({ ...prev, [npcId]: normalized }));
+      }
+    }
 
     // Check if all NPCs have been spoken to in the current round
     const currentSpokenNPCs = spokenNPCs[roundKey as keyof typeof spokenNPCs];
@@ -968,6 +1007,57 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
               Start Playing
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Persistent NPC Sidebar */}
+      {!showWelcome && (
+        <div 
+          className={styles.npcSidebar}
+        >
+          {[1, 2, 3, 4, 5, 6].map((id) => {
+            const currentRound = chatState.round === 2 ? 2 : 1;
+            const hasSpokenThisRound = currentRound === 1 ? spokenNPCs.round1.has(id) : spokenNPCs.round2.has(id);
+            const hasSpokenRound1 = spokenNPCs.round1.has(id);
+            const hasSpokenRound2 = spokenNPCs.round2.has(id);
+            const isRound1 = currentRound === 1;
+            const opinion = npcOpinions[id];
+            return (
+              <div 
+                key={id} 
+                className={`${styles.npcSidebarItem} ${hasSpokenThisRound ? (isRound1 ? styles.round1Spoken : styles.round2Spoken) : ''}`}
+              >
+                <div className={styles.npcLeft}>
+                  <div className={styles.npcHead}>
+                    <img src={`/assets/characters/${getNPCImage(id)}`} alt={NPCNames[id]} />
+                    {opinion && (
+                      <span className={`${styles.opinionBadge} ${opinion === 'A' ? styles.opinionA : styles.opinionB}`}>
+                        {opinion}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className={styles.npcRight}>
+                  <div className={styles.npcNameRow}>
+                    <span className={styles.npcName}>{NPCNames[id]}</span>
+                  </div>
+                  {/* Show proposals once spoken to in Round 1 */}
+                  {hasSpokenRound1 && (
+                    <div className={`${styles.npcProposals} ${(!isRound1 && hasSpokenRound2 && opinion) ? styles.hasSelection : ''}`}>
+                      <div className={`${styles.npcProposalRow} ${(!isRound1 && hasSpokenRound2 && opinion === 'A') ? styles.selectedA : ''}`}>
+                        <span className={`${styles.proposalPill} ${styles.proposalA} ${(!isRound1 && hasSpokenRound2 && opinion === 'A') ? styles.pillSelectedA : ''}`}>A</span>
+                        <span className={styles.proposalText}>{NPCOptions[id].sustainable}</span>
+                      </div>
+                      <div className={`${styles.npcProposalRow} ${(!isRound1 && hasSpokenRound2 && opinion === 'B') ? styles.selectedB : ''}`}>
+                        <span className={`${styles.proposalPill} ${styles.proposalB} ${(!isRound1 && hasSpokenRound2 && opinion === 'B') ? styles.pillSelectedB : ''}`}>B</span>
+                        <span className={styles.proposalText}>{NPCOptions[id].unsustainable}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
