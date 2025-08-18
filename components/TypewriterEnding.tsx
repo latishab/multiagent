@@ -58,12 +58,6 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
     };
   }, [currentMessageIndex, activeEndingType, messages.length, currentMessage, isSequenceFinished, currentDurations]); 
 
-  const handleViewAlternateEnding = () => {
-    setActiveEndingType('good'); // Switch to the good ending
-    setCurrentMessageIndex(0);    // Reset to the first message
-    setIsSequenceFinished(false); // Hide the buttons and restart the sequence
-  };
-
   const getEndingTitle = () => {
     switch (activeEndingType) {
       case 'good':
@@ -97,12 +91,6 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
             <h1 className="game-title">Earthseed</h1>
           </div>
           <div className="continue-section">
-            {/* If the initial ending was bad, show the choice */}
-            {endingType === 'bad' && activeEndingType === 'bad' && (
-              <button className="continue-button alternate" onClick={handleViewAlternateEnding}>
-                View a Different Outcome
-              </button>
-            )}
             {/* Always show the main menu button at the very end */}
             <button className="continue-button" onClick={onComplete}>
               Return to Main Menu
@@ -244,15 +232,6 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
 
         .continue-button:active {
           transform: translateY(0);
-        }
-        
-        .continue-button.alternate {
-          background: linear-gradient(135deg, #16a34a, #15803d); /* Green for alternate outcome */
-        }
-
-        .continue-button.alternate:hover {
-          background: linear-gradient(135deg, #15803d, #166534);
-          box-shadow: 0 6px 20px rgba(22, 163, 74, 0.4);
         }
 
         @media (max-width: 768px) {

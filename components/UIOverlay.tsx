@@ -914,7 +914,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       {showWelcome && (
         <div className={styles.welcomeOverlay}>
           <div className={styles.welcomeContent}>
-            <h1 className={styles.welcomeTitle}>Welcome to City Reconstruction!</h1>
             <p className={styles.welcomeSubtitle}>Navigate the city and interact with NPCs to make decisions about reconstruction.</p>
             
             <div className={styles.controlsSection}>
