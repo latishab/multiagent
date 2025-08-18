@@ -9,16 +9,14 @@ interface ProgressIndicatorProps {
     round2: Set<number>;
   };
   hasTalkedToGuide?: boolean;
-  gamePhase?: number; // 0=NotStarted, 1=Round1Active, 15=AwaitGuideToRound2, 2=Round2Active, 25=AwaitGuideToFinalize, 100=Completed
+  gamePhase?: number; // 0=NotStarted, 1=Active, 15=AwaitGuideToFinalize, 100=Completed
   isChatOpen?: boolean;
   currentChatNPCId?: number;
 }
 
 export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedToGuide = false, gamePhase = 0, isChatOpen = false, currentChatNPCId = -1 }: ProgressIndicatorProps) {
-  const round1Spoken = Array.from(spokenNPCs.round1);
-  const round2Spoken = Array.from(spokenNPCs.round2);
-  const round1Progress = (round1Spoken.length / 6) * 100;
-  const round2Progress = (round2Spoken.length / 6) * 100;
+  const spokenNPCsList = Array.from(spokenNPCs.round1);
+  const progress = (spokenNPCsList.length / 6) * 100;
 
   // MARK: - Logic Definitions
   // Single source of truth: drive from gamePhase (0 means NotStarted)
@@ -27,35 +25,12 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
   // Check if currently talking to The Guide
   const isTalkingToGuide = isChatOpen && currentChatNPCId === -1;
   
-  // Check round completion status
-  const round1Complete = round1Spoken.length >= 6;
-  const round2Complete = round2Spoken.length >= 6;
+  // Check completion status
+  const allNPCsSpoken = spokenNPCsList.length >= 6;
   
   // Whether to show Michael's mission checklist (mutually exclusive with progress bars)
-  const initialStateActive = !gameStarted || (round1Complete && !hasTalkedToGuide) || (round2Complete && !hasTalkedToGuide) || gamePhase === 100;
+  const initialStateActive = !gameStarted || (allNPCsSpoken && !hasTalkedToGuide) || gamePhase === 100;
   const isCompletedPhase = gamePhase === 100;
-  
-  // Determine the actual current round based on completion status
-  const actualCurrentRound = (() => {
-    // If currentRound is explicitly set to 2, use it (this happens after auto-advance)
-    if (currentRound === 2) return 2;
-    
-    // Before the game starts, treat as Round 1 guidance
-    if (!gameStarted) return 1;
-    // If Round 1 is not complete, we're in Round 1
-    if (!round1Complete) return 1;
-    // If Round 1 complete but Guide not talked to, remain in Round 1 state to show explicit guidance
-    if (round1Complete && !hasTalkedToGuide) return 1;
-    // If Round 1 complete and Guide talked, and Round 2 not complete, show Round 2
-    if (round1Complete && hasTalkedToGuide && !round2Complete) return 2;
-    // If Round 1 complete but Guide not talked to, stay in Round 1 to show the guide prompt
-    if (round1Complete && !hasTalkedToGuide) return 1;
-    // If both rounds complete, remain in Round 2 (decision phase)
-    if (round1Complete && round2Complete) return 2;
-    return currentRound;
-  })();
-  
-
   
   // Determine what guidance to show
   const getGuidanceMessage = () => {
@@ -63,100 +38,63 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
       return "Talk to Michael to start your mission";
     }
     
-    if (actualCurrentRound === 1) {
-      if (round1Complete && !hasTalkedToGuide) {
-        return "Round 1 complete! Talk to Michael to advance to Round 2";
-      } else if (round1Complete && hasTalkedToGuide) {
-        return "Round 2: Talk to all specialists to get their recommendations";
-      } else {
-        return `Round 1: Talk to specialists to learn about their systems (${round1Spoken.length}/6)`;
-      }
-    } else if (actualCurrentRound === 2) {
-      if (round2Complete && !hasTalkedToGuide) {
-        return "Round 2 complete! Talk to Michael to make final decisions";
-      } else if (round2Complete && hasTalkedToGuide) {
-        return "Open your PDA to review all systems and make final decisions";
-      } else {
-        return `Round 2: Get recommendations from specialists (${round2Spoken.length}/6)`;
-      }
+    if (allNPCsSpoken && !hasTalkedToGuide) {
+      return "All experts consulted! Talk to Michael to make final decisions";
+    } else if (allNPCsSpoken && hasTalkedToGuide) {
+      return "Open your PDA to review all systems and make final decisions";
+    } else {
+      return `Talk to specialists to get their recommendations (${spokenNPCsList.length}/6)`;
     }
-    
-    return "Continue your mission";
   };
 
-  // Get opinion data for each NPC
-  const getNPCOpinion = (npcId: number, round: number) => {
-    // For round 1, just show that they were introduced
-    if (round === 1) {
-      return { type: 'introduced' };
+  // Get opinion data for each NPC in single round system
+  const getNPCOpinion = (npcId: number) => {
+    const isSpokenTo = spokenNPCsList.includes(npcId);
+    if (!isSpokenTo) {
+      return { type: 'not_spoken', spoken: false };
     }
     
-    // For round 2, show their actual opinion only if player has spoken to them
-    if (round === 2) {
-      const isSpokenTo = round2Spoken.includes(npcId);
-      if (!isSpokenTo) {
-        return { type: 'opinion', spoken: false };
-      }
+    // Show their opinion if player has spoken to them
+    const participantId = sessionManager.getSessionInfo().participantId;
+    if (participantId) {
+      const preferences = generateNPCPreferences(participantId);
+      const choice = preferences[npcId];
+      const chosenOption = choice === 'sustainable' 
+        ? NPCOptions[npcId].sustainable 
+        : NPCOptions[npcId].unsustainable;
+      const optionType = choice === 'sustainable' ? 'Proposal A' : 'Proposal B';
       
-      const participantId = sessionManager.getSessionInfo().participantId;
-      if (participantId) {
-        const preferences = generateNPCPreferences(participantId);
-        const choice = preferences[npcId];
-        const chosenOption = choice === 'sustainable' 
-          ? NPCOptions[npcId].sustainable 
-          : NPCOptions[npcId].unsustainable;
-        const optionType = choice === 'sustainable' ? 'Proposal A' : 'Proposal B';
-        
-        return { 
-          type: 'opinion', 
-          choice, 
-          chosenOption, 
-          optionType,
-          spoken: true
-        };
-      }
-      return { type: 'opinion', spoken: false };
+      return { 
+        type: 'opinion', 
+        choice, 
+        chosenOption, 
+        optionType,
+        spoken: true
+      };
     }
     
-    return null;
+    return { type: 'not_spoken', spoken: false };
   };
 
-  // Get mission text for current round
-  const getMissionText = (npcId: number, round: number) => {
+  // Get mission text for single round system
+  const getMissionText = (npcId: number) => {
     const npc = NPCOptions[npcId];
     if (!npc) return 'System information not available';
     
-    if (round === 1) {
-      return `Understand ${npc.system} options`;
-    } else if (round === 2) {
-      return `Get ${NPCNames[npcId]}'s recommendation`;
-    }
-    
-    return 'Mission information not available';
+    return `Get ${NPCNames[npcId]}'s recommendation for ${NPCSystems[npcId]}`;
   };
 
-  // Get detailed checklist items for each NPC
-  const getNPCChecklistItems = (npcId: number, round: number) => {
+  // Get detailed checklist items for each NPC in single round system
+  const getNPCChecklistItems = (npcId: number) => {
     const npc = NPCOptions[npcId];
     if (!npc) return [];
     
-    if (round === 1) {
-      return [
-        `Understand the current state of ${npc.system}`,
-        `Learn about ${npc.sustainable} approach`,
-        `Learn about ${npc.unsustainable} approach`,
-        `Compare the trade-offs between both options`
-      ];
-    } else if (round === 2) {
-      return [
-        `Ask ${NPCNames[npcId]} for their recommendation`,
-        `Understand why they prefer their choice`,
-        `Learn about the specific benefits they see`,
-        `Understand the concerns they have about alternatives`
-      ];
-    }
-    
-    return [];
+    return [
+      `Understand the current state of ${NPCSystems[npcId]}`,
+      `Learn about ${npc.sustainable} and ${npc.unsustainable} approaches`,
+      `Get ${NPCNames[npcId]}'s professional recommendation`,
+      `Understand their reasoning and trade-offs`
+    ];
   };
 
   return (
@@ -185,8 +123,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
                 <div className="mission-title">
                   {gamePhase === 100 ? "Mission: Completed" :
                    !gameStarted ? "Mission: Start Your Journey" :
-                   (round1Complete && !hasTalkedToGuide) ? "Mission: Advance to Round 2" :
-                   (round2Complete && !hasTalkedToGuide) ? "Mission: Make Final Decisions" : "Mission: Continue"}
+                   (allNPCsSpoken && !hasTalkedToGuide) ? "Mission: Make Final Decisions" : "Mission: Continue"}
                 </div>
                 <div className="checklist-items">
                   <div className="checklist-item">
@@ -201,8 +138,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
                     </span>
                     <span className="checklist-text">
                       {!gameStarted ? "Talk to Michael to understand your mission" : 
-                       round1Complete && !round2Complete ? "Talk to Michael to advance to Round 2" :
-                       round2Complete ? "Talk to Michael to make final decisions" : "Talk to Michael"}
+                       allNPCsSpoken ? "Talk to Michael to make final decisions" : "Talk to Michael"}
                     </span>
                   </div>
                   {!gameStarted && (
@@ -221,7 +157,7 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
                       </div>
                     </>
                   )}
-                  {round2Complete && (
+                  {allNPCsSpoken && (
                     <>
                       <div className="checklist-item">
                         <span className="checklist-checkbox">
@@ -244,9 +180,9 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
         ) : (
           !isTalkingToGuide && (
             <div className="round-info">
-              <span className="current-round">Round {actualCurrentRound}</span>
+              <span className="current-round">Expert Consultation</span>
               <span className="round-description">
-                {actualCurrentRound === 1 ? 'Introduction' : 'Options Discussion'}
+                Get recommendations from all specialists
               </span>
               <div className="guidance-message">
                 {getGuidanceMessage()}
@@ -258,55 +194,34 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
 
       {gameStarted && hasTalkedToGuide && !initialStateActive && (
         <div className="progress-bars">
-          {/* Show Round 1 progress bar only when in Round 1 */}
-          {actualCurrentRound === 1 && (
-            <div className="progress-bar-container">
-              <div className="progress-label">
-                <span>Round 1: Introduction</span>
-                <span className="progress-count">{round1Spoken.length}/6</span>
-              </div>
-              <div className="progress-bar">
-                <div 
-                  className="progress-fill round1-fill"
-                  style={{ width: `${round1Progress}%` }}
-                />
-              </div>
+          <div className="progress-bar-container">
+            <div className="progress-label">
+              <span>Expert Consultation Progress</span>
+              <span className="progress-count">{spokenNPCsList.length}/6</span>
             </div>
-          )}
-
-          {/* Show Round 2 progress bar only when in Round 2 */}
-          {actualCurrentRound === 2 && (
-            <div className="progress-bar-container">
-              <div className="progress-label">
-                <span>Round 2: Options Discussion</span>
-                <span className="progress-count">{round2Spoken.length}/6</span>
-              </div>
-              <div className="progress-bar">
-                <div 
-                  className="progress-fill round2-fill"
-                  style={{ width: `${round2Progress}%` }}
-                />
-              </div>
+            <div className="progress-bar">
+              <div 
+                className="progress-fill round1-fill"
+                style={{ width: `${progress}%` }}
+              />
             </div>
-          )}
+          </div>
         </div>
       )}
 
-      {gameStarted && !(round1Complete && !hasTalkedToGuide) && (
+      {gameStarted && !(allNPCsSpoken && !hasTalkedToGuide) && (
         <div className="npc-grid">
           {[1, 2, 3, 4, 5, 6].map((npcId) => {
-          const isSpokenRound1 = round1Spoken.includes(npcId);
-          const isSpokenRound2 = round2Spoken.includes(npcId);
-          const isCurrentRound = actualCurrentRound === 1 ? isSpokenRound1 : isSpokenRound2;
+          const isSpoken = spokenNPCsList.includes(npcId);
           
-          // Get opinion data for actual current round
-          const opinionData = getNPCOpinion(npcId, actualCurrentRound);
-          const hasOpinion = opinionData !== null;
+          // Get opinion data
+          const opinionData = getNPCOpinion(npcId);
+          const hasOpinion = opinionData !== null && opinionData.type === 'opinion';
           
           return (
             <div 
               key={npcId}
-              className={`npc-item ${isCurrentRound ? 'spoken' : ''} ${actualCurrentRound === 1 ? 'round1' : 'round2'} ${hasOpinion ? 'has-opinion' : ''}`}
+              className={`npc-item ${isSpoken ? 'spoken' : ''} ${hasOpinion ? 'has-opinion' : ''}`}
             >
               <div className="npc-avatar">
                 <img src={`/assets/characters/${getNPCImage(npcId)}`} alt={NPCNames[npcId]} />
@@ -315,10 +230,10 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
                 <div className="npc-name">{NPCNames[npcId]}</div>
                 <div className="npc-system">{NPCSystems[npcId]}</div>
                 <div className="npc-checklist">
-                  {getNPCChecklistItems(npcId, actualCurrentRound).map((item, index) => (
+                  {getNPCChecklistItems(npcId).map((item, index) => (
                     <div key={index} className="checklist-item">
                       <span className="checklist-checkbox">
-                        {!isCurrentRound ? '☐' : '☑'}
+                        {!isSpoken ? '☐' : '☑'}
                       </span>
                       <span className="checklist-text">{item}</span>
                     </div>
@@ -326,15 +241,12 @@ export default function ProgressIndicator({ currentRound, spokenNPCs, hasTalkedT
                 </div>
                 
                 <div className="npc-status-text">
-                  {!isCurrentRound ? 'Not spoken' : 
-                   actualCurrentRound === 1 ? 
-                     (isSpokenRound1 ? 'Introduction complete' : 'Introduction in progress') :
-                     (hasOpinion ? 'Recommendation collected' : 'Recommendation pending')}
+                  {!isSpoken ? 'Not consulted' : 
+                   hasOpinion ? 'Recommendation collected' : 'Consultation complete'}
                 </div>
               </div>
               <div className="npc-checkbox">
-                {!isCurrentRound ? '☐' : 
-                 hasOpinion ? '☑' : '☒'}
+                {!isSpoken ? '☐' : '☑'}
               </div>
             </div>
           );

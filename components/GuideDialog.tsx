@@ -41,10 +41,10 @@ export default function GuideDialog({
   // Context-aware quick replies (centralized in guideNarratives)
   const quickReplies = React.useMemo(() => {
     if (pendingGuideQueue.length > 0) {
-      return ['Next', 'Got it'];
+      return ['Got it'];
     }
-    return getGuideQuickReplies(round, spokenNPCs.round2.size);
-  }, [round, spokenNPCs.round2.size, pendingGuideQueue.length]);
+    return getGuideQuickReplies(round, spokenNPCs.round1.size);
+  }, [round, spokenNPCs.round1.size, pendingGuideQueue.length]);
 
   // Load conversation history and handle initial messages
   useEffect(() => {
@@ -120,23 +120,18 @@ export default function GuideDialog({
           queuedNarratives = narrativesToMessages(getInitialGuideMessages()).map(m => m.text);
           setQueueAdvanceToRoundAfterComplete(1);
           queueTargetRoundLocal = 1; // Always persist intro under round 1
-        } else if (round === 2 && spokenNPCs.round2.size >= 6) {
+        } else if (spokenNPCs.round1.size >= 6) {
+          // When all NPCs are spoken to, show both round advancement and decision phase messages
+          const roundAdvanceMessages = narrativesToMessages(getRoundAdvancementMessages());
           const decisionPhaseMessages = narrativesToMessages(getDecisionPhaseMessages());
-          const initialDecisionMessage = decisionPhaseMessages[0]?.text;
-          const alreadyExists = existingMessages.some((m) => m.text === initialDecisionMessage);
+          const allMessages = [...roundAdvanceMessages, ...decisionPhaseMessages];
+          
+          const initialMessage = allMessages[0]?.text;
+          const alreadyExists = existingMessages.some((m) => m.text === initialMessage);
           if (!alreadyExists) {
-            queuedNarratives = decisionPhaseMessages.map(m => m.text);
+            queuedNarratives = allMessages.map(m => m.text);
             setQueueAdvanceToRoundAfterComplete(null);
-            queueTargetRoundLocal = 2;
-          }
-        } else if ((round === 1 || round === 2) && spokenNPCs.round1.size >= 6 && spokenNPCs.round2.size < 6) {
-          const round2IntroMessages = narrativesToMessages(getRoundAdvancementMessages());
-          const initialRound2Message = round2IntroMessages[0]?.text;
-          const exists = existingMessages.some((m) => m.text === initialRound2Message);
-          if (!exists) {
-            queuedNarratives = round2IntroMessages.map(m => m.text);
-            setQueueAdvanceToRoundAfterComplete(2);
-            queueTargetRoundLocal = 2;
+            queueTargetRoundLocal = 1;
           }
         }
 
@@ -262,7 +257,7 @@ export default function GuideDialog({
     }
 
     // Special: decision phase continue → open PDA
-    if (round === 2 && spokenNPCs.round2.size >= 6 && trimmed.toLowerCase() === 'continue' && onOpenPDA) {
+    if (spokenNPCs.round1.size >= 6 && trimmed.toLowerCase() === 'continue' && onOpenPDA) {
       onOpenPDA();
       return;
     }

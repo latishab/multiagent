@@ -202,32 +202,45 @@ function detectNPCOpinion(response: string, npc: NPCInfo): { opinion: string; re
     'i would choose', 'i favor', 'i advocate for', 'i suggest', 'i recommend we',
     'we should go with', 'the better option is', 'the best choice is',
     'i would go with', 'i lean toward', 'i\'m in favor of', 'i\'m for',
-    'i\'m supporting', 'i\'m choosing', 'i\'m recommending'
+    'i\'m supporting', 'i\'m choosing', 'i\'m recommending', 'my choice is',
+    'my recommendation is', 'i vote for', 'i pick', 'proposal a', 'proposal b'
   ];
   
   const hasOpinionIndicator = opinionIndicators.some(indicator => 
     responseLower.includes(indicator)
   );
   
-  if (!hasOpinionIndicator) {
-    return null;
-  }
-  
+  // Also check for direct option mentions in the context of a recommendation
   const supportsSustainable = responseLower.includes(sustainableOption);
   const supportsUnsustainable = responseLower.includes(unsustainableOption);
   
-  if (supportsSustainable && !supportsUnsustainable) {
-    return {
-      opinion: npc.options.sustainable,
-      reasoning: response
-    };
-  } else if (supportsUnsustainable && !supportsSustainable) {
-    return {
-      opinion: npc.options.unsustainable,
-      reasoning: response
-    };
+  // Log for debugging
+  console.log(`Opinion detection for ${npc.name}:`, {
+    response: response.substring(0, 200) + '...',
+    sustainableOption,
+    unsustainableOption,
+    hasOpinionIndicator,
+    supportsSustainable,
+    supportsUnsustainable
+  });
+  
+  if (hasOpinionIndicator || supportsSustainable || supportsUnsustainable) {
+    if (supportsSustainable && !supportsUnsustainable) {
+      console.log(`Detected sustainable opinion for ${npc.name}: ${npc.options.sustainable}`);
+      return {
+        opinion: npc.options.sustainable,
+        reasoning: response
+      };
+    } else if (supportsUnsustainable && !supportsSustainable) {
+      console.log(`Detected unsustainable opinion for ${npc.name}: ${npc.options.unsustainable}`);
+      return {
+        opinion: npc.options.unsustainable,
+        reasoning: response
+      };
+    }
   }
   
+  console.log(`No clear opinion detected for ${npc.name}`);
   return null;
 }
 
@@ -296,42 +309,29 @@ async function analyzeConversationCompleteness(
   const hasSustainable = conversationLower.includes(npc.options.sustainable.toLowerCase());
   const hasUnsustainable = conversationLower.includes(npc.options.unsustainable.toLowerCase());
 
-  const round1Block = `Round 1 Requirements:
-- NPC should explain their system (${npc.system})
-- NPC should mention both options: ${npc.options.sustainable} and ${npc.options.unsustainable}
-- NPC should explain what at least ONE option does (how it works, what it means)
-- Conversation should be friendly and informative
-- CRITICAL: NPC should NOT give recommendations or opinions in Round 1
+  const conversationBlock = `Complete NPC Interaction Requirements:
 
-IMPORTANT (Round 1):
-- The conversation is COMPLETE if:
-  1) NPC explained their system (${npc.system})
-  2) NPC mentioned both options (${npc.options.sustainable} and ${npc.options.unsustainable})
-  3) NPC explained what at least ONE option actually does
-- If the NPC gave a recommendation in Round 1 (which they shouldn't), still mark the conversation as COMPLETE if the player learned the system and options.
+IMPORTANT - The conversation is COMPLETE if these 3 core elements are present:
+1) NPC explained their ${npc.system} system and its challenges
+2) NPC mentioned both options: ${npc.options.sustainable} and ${npc.options.unsustainable}
+3) NPC clearly stated which option they recommend with reasoning
 
-Examples (Round 1):
-- "COMPLETE: NPC explained system, mentioned both options, and explained how ${npc.options.sustainable} works"
-- "INCOMPLETE: NPC didn't mention ${npc.options.unsustainable}"
-- "INCOMPLETE: NPC mentioned options but didn't explain what either does"`;
+The conversation does NOT need to include:
+- Formal introduction (nice to have but not required)
+- Detailed explanation of what each option does (nice to have but not required)
+- Formal conclusion (nice to have but not required)
 
-  const round2Block = `Round 2 Requirements:
-- NPC must clearly state a recommendation between ${npc.options.sustainable} and ${npc.options.unsustainable}
-- NPC should give at least one concrete reason for their choice
+CRITICAL: The NPC should clearly recommend one of the two options, not just discuss trade-offs.
 
-IMPORTANT (Round 2):
-- The conversation is COMPLETE if a clear recommendation is present with some reasoning (even brief)
-- The recommendation may be for either option; avoid bias toward ${npc.options.sustainable}
-- If the recommendation is ambiguous or missing, mark as INCOMPLETE
-
-Examples (Round 2):
-- "COMPLETE: NPC recommended ${npc.options.unsustainable} with reasoning about jobs and tax revenue"
-- "COMPLETE: NPC recommended ${npc.options.sustainable} due to long-term resilience"
-- "INCOMPLETE: NPC discussed trade-offs but did not clearly choose an option"`;
+Examples:
+- "COMPLETE: NPC explained ${npc.system} system, mentioned both options, and recommended proposal A (${npc.options.sustainable}) for environmental reasons"
+- "COMPLETE: NPC described system challenges, presented options, and chose proposal B (${npc.options.unsustainable}) for cost efficiency"
+- "INCOMPLETE: NPC explained system and options but never gave their preference when asked"
+- "INCOMPLETE: NPC discussed both options but didn't clearly choose one"`;
 
   const analysisPrompt = `Analyze this FULL conversation with ${npc.name} (${npc.career}) about the ${npc.system} system.
 
-${round === 1 ? round1Block : round2Block}
+${conversationBlock}
 
 FULL CONVERSATION HISTORY:
 ${conversationText}
@@ -568,9 +568,7 @@ async function handleRegularNPCConversation(
   aiResponse = cleanIncompleteResponse(aiResponse);
 
   let detectedOpinion = null;
-  if (round === 2) {
-    detectedOpinion = detectNPCOpinion(aiResponse, npc);
-  }
+  detectedOpinion = detectNPCOpinion(aiResponse, npc);
 
   const responseId = `${npcId}_${round}_${Date.now()}_response`;
   await vectorStore.storeMemory(responseId, aiResponse, {
@@ -592,12 +590,23 @@ async function handleRegularNPCConversation(
   const finalHistory = await upstashStore.getConversationHistory(npcId, round, sessionId);
   let conversationAnalysis = await analyzeConversationCompleteness(finalHistory, npc, round);
 
-  // If we detected a clear recommendation in Round 2 but the analysis
+  // If we detected a clear recommendation but the analysis
   // incorrectly marked it as incomplete, override to COMPLETE.
-  if (round === 2 && detectedOpinion && !conversationAnalysis.isComplete) {
+  if (detectedOpinion && !conversationAnalysis.isComplete) {
     conversationAnalysis = {
       isComplete: true,
       reason: `NPC clearly recommended ${detectedOpinion.opinion}`
+    };
+  }
+  
+  // If conversation is complete but no opinion was detected,
+  // use the cached NPC preference
+  if (!detectedOpinion && conversationAnalysis.isComplete && npcPreference) {
+    const preferredOption = npcPreference === 'sustainable' ? npc.options.sustainable : npc.options.unsustainable;
+    console.log(`Using cached preference for ${npc.name}: ${preferredOption} (${npcPreference})`);
+    detectedOpinion = {
+      opinion: preferredOption,
+      reasoning: `NPC completed conversation and has stated their preference for ${preferredOption}`
     };
   }
 

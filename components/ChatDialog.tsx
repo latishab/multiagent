@@ -256,10 +256,10 @@ export default function ChatDialog({
 
       const data = await response.json();
               if (data.response) {
-          // Round 2 completion: mark as spoken if either
+          // Mark as spoken if either:
           // - an opinion was detected, or
           // - the conversation analysis concluded COMPLETE
-          if (round === 2 && onConversationComplete && (data.detectedOpinion || data.conversationAnalysis?.isComplete)) {
+          if (onConversationComplete && (data.detectedOpinion || data.conversationAnalysis?.isComplete)) {
             onConversationComplete(npcId, round, data.detectedOpinion, data.conversationAnalysis);
           }
 
