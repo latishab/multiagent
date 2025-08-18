@@ -76,9 +76,6 @@ export default function GameMenu({ isOpen, onClose, onRestartGame, onNewGame, on
 
   const renderMainMenu = () => (
     <div className={styles.menuContent}>
-      <h1 className={styles.gameTitle}>City Reconstruction</h1>
-      <p className={styles.gameSubtitle}>Shape the future of your city</p>
-      
       <div className={styles.menuButtons}>
         <button className={`${styles.menuButton} ${styles.primary}`} onClick={() => {
           soundEffects.playClick();

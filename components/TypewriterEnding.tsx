@@ -92,18 +92,23 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
       </div>
 
       {isSequenceFinished && (
-        <div className="continue-section">
-          {/* If the initial ending was bad, show the choice */}
-          {endingType === 'bad' && activeEndingType === 'bad' && (
-            <button className="continue-button alternate" onClick={handleViewAlternateEnding}>
-              View a Different Outcome
+        <>
+          <div className="game-title-section">
+            <h1 className="game-title">Earthseed</h1>
+          </div>
+          <div className="continue-section">
+            {/* If the initial ending was bad, show the choice */}
+            {endingType === 'bad' && activeEndingType === 'bad' && (
+              <button className="continue-button alternate" onClick={handleViewAlternateEnding}>
+                View a Different Outcome
+              </button>
+            )}
+            {/* Always show the main menu button at the very end */}
+            <button className="continue-button" onClick={onComplete}>
+              Return to Main Menu
             </button>
-          )}
-          {/* Always show the main menu button at the very end */}
-          <button className="continue-button" onClick={onComplete}>
-            Return to Main Menu
-          </button>
-        </div>
+          </div>
+        </>
       )}
 
       <style jsx>{`
@@ -161,6 +166,44 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
           opacity: 0;
         }
 
+        .game-title-section {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          text-align: center;
+          animation: fadeInTitle 2s ease-in-out;
+          z-index: 10;
+        }
+
+        .game-title {
+          font-size: clamp(3rem, 8vw, 6rem);
+          font-weight: bold;
+          color: #ffffff;
+          text-shadow: 
+            0 0 20px rgba(255, 255, 255, 0.8),
+            0 0 40px rgba(255, 255, 255, 0.6),
+            0 0 60px rgba(255, 255, 255, 0.4);
+          margin: 0;
+          letter-spacing: 0.1em;
+          font-family: 'serif', Georgia, 'Times New Roman', serif;
+        }
+
+        @keyframes fadeInTitle {
+          0% { 
+            opacity: 0; 
+            transform: translate(-50%, -50%) scale(0.8);
+          }
+          50% {
+            opacity: 0.7;
+            transform: translate(-50%, -50%) scale(1.1);
+          }
+          100% { 
+            opacity: 1; 
+            transform: translate(-50%, -50%) scale(1);
+          }
+        }
+
         .continue-section {
           position: absolute;
           bottom: calc(clamp(120px, 25vh, 200px) + 2rem); /* Position above the dialogue box */
@@ -169,7 +212,7 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
           flex-direction: column;
           gap: 1rem;
           align-items: flex-end;
-          animation: fadeInButtons 1s ease-in-out;
+          animation: fadeInButtons 3s ease-in-out;
         }
 
         @keyframes fadeInButtons {
@@ -224,6 +267,15 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
           .continue-button {
             padding: 0.5rem 1rem;
             font-size: 0.75rem;
+          }
+
+          .game-title {
+            font-size: clamp(2rem, 10vw, 4rem);
+            letter-spacing: 0.05em;
+          }
+
+          .game-title-section {
+            top: 45%;
           }
         }
       `}</style>
