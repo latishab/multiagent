@@ -140,9 +140,6 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
 
   const renderMainMenu = () => (
     <div className={styles.menuContent}>
-      <h1 className={styles.gameTitle}>City Reconstruction</h1>
-      <p className={styles.gameSubtitle}>Shape the future of your city</p>
-      
       <div className={styles.menuButtons}>
         {hasExistingSession ? (
           <button 

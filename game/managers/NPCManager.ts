@@ -514,23 +514,10 @@ export class NPCManager {
       return false
     }
 
-    // For regular NPCs, check if they should be interactable based on current round
-    const currentRound = typeof window !== 'undefined' && (window as any).currentRound ? (window as any).currentRound : 1
-    const spokenNPCs = typeof window !== 'undefined' && (window as any).spokenNPCs ? (window as any).spokenNPCs : { round1: new Set(), round2: new Set() }
-    
+    // For regular NPCs, all should be interactable 
     const npcId = parseInt(npc.id)
     if (isNaN(npcId)) {
       return false // Invalid NPC ID
-    }
-
-    // In Round 1: All NPCs should be interactable
-    if (currentRound === 1) {
-      return true
-    }
-
-    // In Round 2: Only NPCs that haven't been spoken to in Round 2 should be interactable
-    if (currentRound === 2) {
-      return !spokenNPCs.round2.has(npcId)
     }
 
     return true

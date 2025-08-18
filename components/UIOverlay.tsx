@@ -47,10 +47,8 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   // Game phase enum to drive UI and flow
   enum GamePhase {
     NotStarted = 0,
-    Round1Active = 1,
-    AwaitGuideToRound2 = 15,
-    Round2Active = 2,
-    AwaitGuideToFinalize = 25,
+    Round1 = 1,
+    AwaitGuideToFinalize = 15,
     Completed = 100,
   }
   const [gamePhase, setGamePhase] = useState<GamePhase>(() => {
@@ -114,10 +112,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   }, [gamePhase]);
 
   // Track which NPCs have been spoken to in each round
-  const [spokenNPCs, setSpokenNPCs] = useState<{
-    round1: Set<number>
-    round2: Set<number>
-  }>(() => {
+  const [spokenNPCs, setSpokenNPCs] = useState<Set<number>>(() => {
     // Load from localStorage on initialization
     if (typeof window !== 'undefined') {
       // Get participant ID for localStorage key
@@ -128,21 +123,20 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          const result: { round1: Set<number>; round2: Set<number> } = {
-            round1: new Set((parsed.round1 || []).map((id: any) => Number(id))),
-            round2: new Set((parsed.round2 || []).map((id: any) => Number(id)))
-          };
-          return result;
+          // Handle both old format (with round1/round2) and new format (simple array)
+          if (Array.isArray(parsed)) {
+            return new Set(parsed.map((id: any) => Number(id)));
+          } else if (parsed.round1) {
+            // Migrate from old format - combine round1 and round2
+            const combined = [...(parsed.round1 || []), ...(parsed.round2 || [])];
+            return new Set(combined.map((id: any) => Number(id)));
+          }
         } catch (error) {
           console.error('Error loading spoken NPCs from localStorage:', error);
         }
       }
     }
-    const result: { round1: Set<number>; round2: Set<number> } = {
-      round1: new Set<number>(),
-      round2: new Set<number>()
-    };
-    return result;
+    return new Set<number>();
   });
 
   // Track final decisions for ending calculation
@@ -184,6 +178,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   });
   const [pdaNotification, setPdaNotification] = useState(false);
   const [guideDialogOpen, setGuideDialogOpen] = useState(false);
+  const [guideDialogManuallyClosed, setGuideDialogManuallyClosed] = useState(false);
   
   // Track detected opinions (A = sustainable, B = unsustainable) per NPC for Round 2
   const [npcOpinions, setNpcOpinions] = useState<{ [npcId: number]: 'A' | 'B' | null }>(() => {
@@ -223,10 +218,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       const participantId = sessionManager.getSessionInfo().participantId;
       const storageKey = participantId ? `multiagent-spoken-npcs-${participantId}` : 'multiagent-spoken-npcs';
       
-      const dataToSave = {
-        round1: Array.from(spokenNPCs.round1),
-        round2: Array.from(spokenNPCs.round2)
-      };
+      const dataToSave = Array.from(spokenNPCs);
       localStorage.setItem(storageKey, JSON.stringify(dataToSave));
     }
   }, [spokenNPCs]);
@@ -306,6 +298,24 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     }
   }, [gamePhase, hasTalkedToGuide, chatState.round, spokenNPCs]);
 
+  // Automatically open Guide Dialog when game starts or when ready for final decisions
+  useEffect(() => {
+    // Auto-open guide dialog if:
+    // 1. Welcome screen is not showing
+    // 2. Game hasn't started yet (NotStarted phase) AND player hasn't talked to guide yet
+    // 3. Guide dialog is not already open
+    if (!showWelcome && gamePhase === GamePhase.NotStarted && !hasTalkedToGuide && !guideDialogOpen) {
+      setGuideDialogOpen(true);
+      setGuideDialogManuallyClosed(false); // Reset the manual close flag
+    }
+    
+    // Also auto-open when all NPCs are spoken to and ready for final decisions
+    // But only if the user hasn't manually closed it
+    if (!showWelcome && gamePhase === GamePhase.AwaitGuideToFinalize && !guideDialogOpen && !guideDialogManuallyClosed) {
+      setGuideDialogOpen(true);
+    }
+  }, [showWelcome, gamePhase, hasTalkedToGuide, guideDialogOpen, guideDialogManuallyClosed]);
+
   // Persist npcOpinions per participant
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -349,23 +359,9 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       return;
     }
     
-    // Determine the correct round for regular NPCs
+    // Using single round system - all NPCs use round 1
     const npcIdNum = parseInt(npcId);
-    let correctRound = 1;
-    
-    // Check if Round 1 is complete
-    const round1Complete = spokenNPCs.round1.size >= 6;
-    
-    // If Round 1 is not complete, stay in Round 1 regardless of previous conversations
-    if (!round1Complete) {
-      correctRound = 1;
-    } else if (round1Complete && !hasTalkedToGuide) {
-      // If Round 1 is complete but guide hasn't been talked to, stay in Round 1
-      correctRound = 1;
-    } else if (round1Complete && hasTalkedToGuide && spokenNPCs.round1.has(npcIdNum)) {
-      // Only advance to Round 2 if guide has been talked to AND Round 1 is complete
-      correctRound = 2;
-    }
+    const correctRound = 1;
     
     setChatState({
       isOpen: true,
@@ -389,6 +385,10 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   // Function to close guide dialog
   const closeGuideDialog = () => {
     setGuideDialogOpen(false);
+    // If we're in the finalize phase, mark that the user manually closed it
+    if (gamePhase === GamePhase.AwaitGuideToFinalize) {
+      setGuideDialogManuallyClosed(true);
+    }
     window.dispatchEvent(new CustomEvent('chatClosed', { detail: { npcId: 'main' } }));
   }
 
@@ -399,39 +399,24 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       setHasTalkedToGuide(true);
 
       // Phase transitions when talking to the guide
-      setGamePhase(prev => (prev === GamePhase.NotStarted ? GamePhase.Round1Active : prev));
-      if (spokenNPCs.round1.size >= 6 && spokenNPCs.round2.size < 6) {
-        setGamePhase(GamePhase.Round2Active);
-      }
+      setGamePhase(prev => (prev === GamePhase.NotStarted ? GamePhase.Round1 : prev));
       
       return;
     }
     
-    const roundKey = round === 1 ? 'round1' : 'round2';
-    
-    // Only mark as spoken if they haven't been spoken to in this round yet
-    if (!spokenNPCs[roundKey as keyof typeof spokenNPCs].has(npcId)) {
+    // Only mark as spoken if they haven't been spoken to yet
+    if (!spokenNPCs.has(npcId)) {
       setSpokenNPCs(prev => {
-        const newSpokenNPCs = {
-          ...prev,
-          [roundKey]: new Set(Array.from(prev[roundKey]).concat([npcId]))
-        };
+        const newSpokenNPCs = new Set(prev).add(npcId);
         
-        // If Round 1 just completed, move to awaiting guide to advance to Round 2
-        if (round === 1 && newSpokenNPCs.round1.size === 6) {
-          setHasTalkedToGuide(false);
-          setGamePhase(GamePhase.AwaitGuideToRound2);
-        }
-        // If Round 2 just completed, move to awaiting guide to finalize
-        if (round === 2 && newSpokenNPCs.round2.size === 6) {
+        // If all 6 NPCs have been spoken to, move to awaiting guide to finalize
+        if (newSpokenNPCs.size === 6) {
           setHasTalkedToGuide(false);
           setGamePhase(GamePhase.AwaitGuideToFinalize);
         }
         
         return newSpokenNPCs;
       });
-    } else {
-      return;
     }
 
     const newEntry: BallotEntry = {
@@ -445,8 +430,8 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     }
 
     setBallotEntries(prev => {
-      // Check if there's already an entry for this NPC and round
-      const existingIndex = prev.findIndex(entry => entry.npcId === npcId && entry.round === round);
+      // Check if there's already an entry for this NPC
+      const existingIndex = prev.findIndex(entry => entry.npcId === npcId);
       
       if (existingIndex !== -1) {
         const updated = [...prev];
@@ -457,8 +442,8 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       }
     });
 
-    // Record detected opinion in Round 2 as A (sustainable) or B (unsustainable)
-    if (round === 2 && detectedOpinion && npcId >= 1 && npcId <= 6) {
+    // Record detected opinion as A (sustainable) or B (unsustainable)
+    if (detectedOpinion && npcId >= 1 && npcId <= 6) {
       const sustainable = NPCOptions[npcId].sustainable;
       const unsustainable = NPCOptions[npcId].unsustainable;
       const normalized = detectedOpinion.opinion === sustainable
@@ -471,15 +456,10 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       }
     }
 
-    // Check if all NPCs have been spoken to in the current round
-    const currentSpokenNPCs = spokenNPCs[roundKey as keyof typeof spokenNPCs];
-    const allNPCsSpoken = currentSpokenNPCs.size >= 6;
+    // Check if all NPCs have been spoken to
+    const allNPCsSpoken = spokenNPCs.size >= 6;
 
-    // Trigger PDA notification only for regular NPCs (not the main NPC/guide)
-    // This alerts users that a new ballot entry has been added to the PDA
-    if (npcId >= 1 && npcId <= 6) {
-      triggerPdaNotification();
-    }
+    // Ballot entry added for regular NPCs (notification functionality removed)
   }
 
   // Function to calculate and show ending
@@ -617,19 +597,17 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   // Expose the guide alert state to the game
   useEffect(() => {
     (window as any).shouldShowGuideAlert = () => {
-      const round1Complete = spokenNPCs.round1.size >= 6
-      const round2Complete = spokenNPCs.round2.size >= 6
+      const allNPCsSpoken = spokenNPCs.size >= 6
       return (
         gamePhase === GamePhase.NotStarted ||
-        (gamePhase === GamePhase.AwaitGuideToRound2 && round1Complete) ||
-        (gamePhase === GamePhase.AwaitGuideToFinalize && round2Complete)
+        (gamePhase === GamePhase.AwaitGuideToFinalize && allNPCsSpoken)
       )
     }
     
     return () => {
       delete (window as any).shouldShowGuideAlert
     }
-  }, [gamePhase, hasTalkedToGuide, spokenNPCs.round1.size, spokenNPCs.round2.size, chatState.round])
+  }, [gamePhase, hasTalkedToGuide, spokenNPCs.size, chatState.round])
 
   // Expose the triggerEndingPhase function to the window object
   useEffect(() => {
@@ -644,12 +622,9 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
 
   // Expose testing functions to the window object
   useEffect(() => {
-    (window as any).completeRound1 = () => {
+    (window as any).completeAllNPCs = () => {
       
-      setSpokenNPCs(prev => ({
-        round1: new Set([1, 2, 3, 4, 5, 6]),
-        round2: prev.round2
-      }));
+      setSpokenNPCs(new Set([1, 2, 3, 4, 5, 6]));
       
       // Don't change round yet - wait for Michael to finish his speech
       // setChatState(prev => ({ ...prev, round: 2 }));
@@ -717,17 +692,8 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       
     }
 
-    (window as any).completeRound2 = () => {
-      
-      setSpokenNPCs(prev => ({
-        round1: new Set([1, 2, 3, 4, 5, 6]),
-        round2: new Set([1, 2, 3, 4, 5, 6])
-      }));
-      
-      // ✅ ADD THIS LINE to update the game round to 2
-      setChatState(prev => ({ ...prev, round: 2 }));
-      
-      // Create ballot entries for both Round 1 and Round 2
+    // Legacy testing function cleanup
+    (window as any).createTestBallot = () => {
       const round1Entries: BallotEntry[] = [
         {
           npcId: 1,
@@ -842,29 +808,26 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         }
       ];
       
-      setBallotEntries([...round1Entries, ...round2Entries]);
+      setBallotEntries(round1Entries);
       setHasTalkedToGuide(false); // Don't auto-talk to guide, let player do it
-      setShowDecisionMode(true);
     }
 
-    (window as any).resetToRound1 = () => {
-      
-      setSpokenNPCs({
-        round1: new Set(),
-        round2: new Set()
-      });
+    (window as any).resetGame = () => {
+      setSpokenNPCs(new Set());
       setHasTalkedToGuide(false);
-      
+      setGamePhase(GamePhase.NotStarted);
+      setBallotEntries([]);
+      setNpcOpinions({});
     }
 
     return () => {
-      delete (window as any).completeRound1
-      delete (window as any).completeRound2
-      delete (window as any).resetToRound1
+      delete (window as any).completeAllNPCs
+      delete (window as any).resetGame
+      delete (window as any).createTestBallot
     }
   }, [])
 
-    const handleRestartGame = async () => {
+  const handleRestartGame = async () => {
     
     // Clear saved data before restarting
     if (typeof window !== 'undefined') {
@@ -939,10 +902,9 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   const handleHotbarClick = (index: number) => {
     soundEffects.playClick();
     setSelectedSlot(index)
-    // If slot 1 is clicked, open PDA and clear notification
+    // If slot 1 is clicked, open PDA
     if (index === 0) {
       setShowPDA(true)
-      setPdaNotification(false) // Clear the notification when PDA is opened
     }
   }
 
@@ -952,7 +914,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       {showWelcome && (
         <div className={styles.welcomeOverlay}>
           <div className={styles.welcomeContent}>
-            <h1 className={styles.welcomeTitle}>Welcome to City Reconstruction!</h1>
             <p className={styles.welcomeSubtitle}>Navigate the city and interact with NPCs to make decisions about reconstruction.</p>
             
             <div className={styles.controlsSection}>
@@ -1016,16 +977,12 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
           className={styles.npcSidebar}
         >
           {[1, 2, 3, 4, 5, 6].map((id) => {
-            const currentRound = chatState.round === 2 ? 2 : 1;
-            const hasSpokenThisRound = currentRound === 1 ? spokenNPCs.round1.has(id) : spokenNPCs.round2.has(id);
-            const hasSpokenRound1 = spokenNPCs.round1.has(id);
-            const hasSpokenRound2 = spokenNPCs.round2.has(id);
-            const isRound1 = currentRound === 1;
+            const hasSpoken = spokenNPCs.has(id);
             const opinion = npcOpinions[id];
             return (
               <div 
                 key={id} 
-                className={`${styles.npcSidebarItem} ${hasSpokenThisRound ? (isRound1 ? styles.round1Spoken : styles.round2Spoken) : ''}`}
+                className={`${styles.npcSidebarItem} ${hasSpoken ? styles.round1Spoken : ''}`}
               >
                 <div className={styles.npcLeft}>
                   <div className={styles.npcHead}>
@@ -1041,15 +998,15 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
                   <div className={styles.npcNameRow}>
                     <span className={styles.npcName}>{NPCNames[id]}</span>
                   </div>
-                  {/* Show proposals once spoken to in Round 1 */}
-                  {hasSpokenRound1 && (
-                    <div className={`${styles.npcProposals} ${(!isRound1 && hasSpokenRound2 && opinion) ? styles.hasSelection : ''}`}>
-                      <div className={`${styles.npcProposalRow} ${(!isRound1 && hasSpokenRound2 && opinion === 'A') ? styles.selectedA : ''}`}>
-                        <span className={`${styles.proposalPill} ${styles.proposalA} ${(!isRound1 && hasSpokenRound2 && opinion === 'A') ? styles.pillSelectedA : ''}`}>A</span>
+                  {/* Show proposals once spoken to */}
+                  {hasSpoken && (
+                    <div className={`${styles.npcProposals} ${(hasSpoken && opinion) ? styles.hasSelection : ''}`}>
+                      <div className={`${styles.npcProposalRow} ${(hasSpoken && opinion === 'A') ? styles.selectedA : ''}`}>
+                        <span className={`${styles.proposalPill} ${styles.proposalA} ${(hasSpoken && opinion === 'A') ? styles.pillSelectedA : ''}`}>A</span>
                         <span className={styles.proposalText}>{NPCOptions[id].sustainable}</span>
                       </div>
-                      <div className={`${styles.npcProposalRow} ${(!isRound1 && hasSpokenRound2 && opinion === 'B') ? styles.selectedB : ''}`}>
-                        <span className={`${styles.proposalPill} ${styles.proposalB} ${(!isRound1 && hasSpokenRound2 && opinion === 'B') ? styles.pillSelectedB : ''}`}>B</span>
+                      <div className={`${styles.npcProposalRow} ${(hasSpoken && opinion === 'B') ? styles.selectedB : ''}`}>
+                        <span className={`${styles.proposalPill} ${styles.proposalB} ${(hasSpoken && opinion === 'B') ? styles.pillSelectedB : ''}`}>B</span>
                         <span className={styles.proposalText}>{NPCOptions[id].unsustainable}</span>
                       </div>
                     </div>
@@ -1064,8 +1021,11 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       {/* Progress Indicator */}
       {!showWelcome && (
         <ProgressIndicator
-          currentRound={chatState.round}
-          spokenNPCs={spokenNPCs}
+          currentRound={1}
+          spokenNPCs={{
+            round1: spokenNPCs,
+            round2: new Set<number>()
+          }}
           hasTalkedToGuide={hasTalkedToGuide}
           gamePhase={gamePhase}
           isChatOpen={chatState.isOpen}
@@ -1173,7 +1133,10 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         personality={chatState.personality}
         round={chatState.round}
         isSustainable={chatState.isSustainable}
-        spokenNPCs={spokenNPCs}
+        spokenNPCs={{
+          round1: spokenNPCs,
+          round2: new Set<number>()
+        }}
         onClose={closeChat}
         onRoundChange={handleRoundChange}
         onStanceChange={handleStanceChange}
@@ -1184,7 +1147,10 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       <GuideDialog
         isOpen={guideDialogOpen}
         round={chatState.round}
-        spokenNPCs={spokenNPCs}
+        spokenNPCs={{
+          round1: spokenNPCs,
+          round2: new Set<number>()
+        }}
         onClose={closeGuideDialog}
         onRoundChange={handleRoundChange}
         onConversationComplete={(npcId, round, detectedOpinion, conversationAnalysis) => markNPCAsSpoken(npcId, round, detectedOpinion, conversationAnalysis)}
@@ -1213,8 +1179,11 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         ballotEntries={ballotEntries}
         onDecisionsComplete={handleDecisionsComplete}
         showDecisionMode={showDecisionMode}
-        spokenNPCs={spokenNPCs}
-        currentRound={chatState.round}
+        spokenNPCs={{
+          round1: spokenNPCs,
+          round2: new Set<number>()
+        }}
+        currentRound={1}
         decisionsFinalized={decisionsFinalized}
         finalDecisions={finalDecisions}
       />

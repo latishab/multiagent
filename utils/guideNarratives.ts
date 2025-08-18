@@ -2,7 +2,7 @@ export interface GuideNarrative {
   id: string;
   text: string;
   context: 'initial' | 'pda_intro' | 'round_advance' | 'decision_phase' | 'completion';
-  phase: 'start' | 'round1' | 'round2' | 'final';
+  phase: 'start' | 'round1' | 'final';
 }
 
 export const guideNarratives: GuideNarrative[] = [
@@ -15,13 +15,13 @@ export const guideNarratives: GuideNarrative[] = [
   },
   {
     id: 'initial_mission',
-    text: "You've been chosen to lead the recovery mission. And you're not alone. Six experts are already waiting. Each of them is responsible for a core part of the Earth's recovery. You'll need to talk to all of them. Understand the crises they face, explore their proposals, and weigh your options carefully.",
+    text: "You've been chosen to lead the recovery mission. Six experts are waiting, each responsible for a core part of Earth's recovery. Talk to all of them, understand their challenges, explore their solutions, and get their recommendations.",
     context: 'initial',
     phase: 'start'
   },
   {
     id: 'pda_intro',
-    text: "You'll go through two rounds of conversation with each expert. These discussions are crucial to shaping your final decisions. I'll be here throughout the entire process to guide you. In our facility, you will see these 6 experts and be able to talk to them as you approach them. You can use these commands to do so. You can click hotbar slot 1 to open the PDA.",
+    text: "Each expert will explain their system, present two options, and give you their professional recommendation. Use the PDA (hotbar slot 1) to track your progress and make final decisions.",
     context: 'pda_intro',
     phase: 'start'
   },
@@ -32,28 +32,10 @@ export const guideNarratives: GuideNarrative[] = [
     phase: 'start'
   },
 
-  // Round advancement
+  // Decision phase transition
   {
-    id: 'round_advance_1',
-    text: "Well done. You've just completed the first round of conversations. Now, you have a solid understanding of each system's current condition and the available recovery strategies.",
-    context: 'round_advance',
-    phase: 'round1'
-  },
-  {
-    id: 'round_advance_2',
-    text: "But choosing a final plan for each system is not a simple decision. Each choice involves difficult trade-offs: technical feasibility, financial cost, policy alignment, and long-term impact. That's why the next step is critical.",
-    context: 'round_advance',
-    phase: 'round1'
-  },
-  {
-    id: 'round_advance_3',
-    text: "You'll now enter a second round of discussion with all six experts. This time, dig deeper. Ask hard questions. Challenge assumptions. Make sure you understand not just the solutions, but their consequences.",
-    context: 'round_advance',
-    phase: 'round1'
-  },
-  {
-    id: 'round_advance_4',
-    text: "Ready to continue?",
+    id: 'decision_ready',
+    text: "Excellent work. You've spoken with all six experts and gathered their recommendations. Now it's time to make the critical decisions that will shape Earth's future.",
     context: 'round_advance',
     phase: 'round1'
   },
@@ -61,27 +43,15 @@ export const guideNarratives: GuideNarrative[] = [
   // Decision phase
   {
     id: 'decision_phase_1',
-    text: "You've done an excellent job. You've just completed in-depth discussions with all six system leaders. These weren't easy conversations. Thanks to your effort, we now have a clearer view of the possibilities ahead.",
+    text: "Now comes the moment we've all been preparing for. Your choices will determine how we rebuild Earth. There are no perfect solutions, only the ones you believe in.",
     context: 'decision_phase',
-    phase: 'round2'
+    phase: 'final'
   },
   {
     id: 'decision_phase_2',
-    text: "But now comes the moment we've all been preparing for. It's time to make the most important decision that will shape the future of Earth's revival and human survival.",
+    text: "Are you ready to choose the future? Click \"Continue\" to make the final decisions.",
     context: 'decision_phase',
-    phase: 'round2'
-  },
-  {
-    id: 'decision_phase_3',
-    text: "Your choices will determine how we rebuild. There are no perfect solutions, only the ones you believe in.",
-    context: 'decision_phase',
-    phase: 'round2'
-  },
-  {
-    id: 'decision_phase_4',
-    text: "Are you ready to choose the future? Click \"Continue\" to make the final decision.",
-    context: 'decision_phase',
-    phase: 'round2'
+    phase: 'final'
   },
 
   // Good ending (6 sustainable selections)
@@ -113,25 +83,19 @@ export const guideNarratives: GuideNarrative[] = [
   // Medium ending (4–5 sustainable selections)
   {
     id: 'medium_ending_1',
-    text: "We made real progress. Several of your choices prioritized long‑term resilience, and people are already beginning to feel the difference—cleaner water in a few districts, steadier power during heavy demand, and early signs of recovery in public spaces.",
+    text: "You have brought the city to a fragile balance. Some systems recovered, but others remained unstable. Progress is real, yet incomplete.",
     context: 'completion',
     phase: 'final'
   },
   {
     id: 'medium_ending_2',
-    text: "But momentum alone won't carry us. Other systems still depend on short‑term fixes and fragile workarounds. We did some good things, but more remains to be done—especially in the places where trade‑offs tilted away from sustainability.",
+    text: "Green shoots appear, but parts of the soil are still barren. Energy grids flicker between light and shadow. The future hangs in between.",
     context: 'completion',
     phase: 'final'
   },
   {
     id: 'medium_ending_3',
-    text: "This is not a failure—it's a foundation. The groundwork is in place, the teams are aligned, and the city is ready for the next push. With a few decisive changes, we can lock in resilience and make the gains irreversible.",
-    context: 'completion',
-    phase: 'final'
-  },
-  {
-    id: 'medium_ending_4',
-    text: "Let's return to the unresolved systems, bring communities into the process, and finish what we started. If we keep going, we can turn today's partial recovery into tomorrow's lasting future.",
+    text: "Your choices keep collapsing at bay, but renewal is not yet secured. Humanity stands at a crossroads. What you began here will decide what comes next.",
     context: 'completion',
     phase: 'final'
   },
@@ -175,7 +139,7 @@ export function getRoundAdvancementMessages(): GuideNarrative[] {
 }
 
 export function getDecisionPhaseMessages(): GuideNarrative[] {
-  return getGuideNarratives('decision_phase', 'round2');
+  return getGuideNarratives('decision_phase', 'final');
 }
 
 export function getCompletionMessages(): GuideNarrative[] {
@@ -190,9 +154,9 @@ export function narrativesToMessages(narratives: GuideNarrative[]): { text: stri
 } 
 
 // Centralized quick replies for the Guide dialog
-export function getGuideQuickReplies(round: number, spokenRound2Count: number): string[] {
-  // Decision phase complete
-  if (round === 2 && spokenRound2Count >= 6) {
+export function getGuideQuickReplies(round: number, spokenRound1Count: number): string[] {
+  // Decision phase complete (all 6 NPCs spoken to)
+  if (spokenRound1Count >= 6) {
     return ['Continue', 'One sec', 'Thanks'];
   }
   // Early game guidance (intro + round 1)
@@ -212,8 +176,8 @@ export function getGuideCannedResponse(
 ): string | null {
   const text = userMessage.trim().toLowerCase();
 
-  // Decision phase small talk
-  if (round === 2 && spokenRound2Count >= 6) {
+  // Decision phase small talk (all 6 NPCs spoken to)
+  if (spokenRound1Count >= 6) {
     if (text === 'one sec') {
       return "No rush. I'll be right here when you're ready to continue.";
     }
