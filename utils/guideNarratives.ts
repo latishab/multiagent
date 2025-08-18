@@ -113,25 +113,19 @@ export const guideNarratives: GuideNarrative[] = [
   // Medium ending (4–5 sustainable selections)
   {
     id: 'medium_ending_1',
-    text: "We made real progress. Several of your choices prioritized long‑term resilience, and people are already beginning to feel the difference—cleaner water in a few districts, steadier power during heavy demand, and early signs of recovery in public spaces.",
+    text: "You have brought the city to a fragile balance. Some systems recovered, but others remained unstable. Progress is real, yet incomplete.",
     context: 'completion',
     phase: 'final'
   },
   {
     id: 'medium_ending_2',
-    text: "But momentum alone won't carry us. Other systems still depend on short‑term fixes and fragile workarounds. We did some good things, but more remains to be done—especially in the places where trade‑offs tilted away from sustainability.",
+    text: "Green shoots appear, but parts of the soil are still barren. Energy grids flicker between light and shadow. The future hangs in between.",
     context: 'completion',
     phase: 'final'
   },
   {
     id: 'medium_ending_3',
-    text: "This is not a failure—it's a foundation. The groundwork is in place, the teams are aligned, and the city is ready for the next push. With a few decisive changes, we can lock in resilience and make the gains irreversible.",
-    context: 'completion',
-    phase: 'final'
-  },
-  {
-    id: 'medium_ending_4',
-    text: "Let's return to the unresolved systems, bring communities into the process, and finish what we started. If we keep going, we can turn today's partial recovery into tomorrow's lasting future.",
+    text: "Your choices keep collapsing at bay, but renewal is not yet secured. Humanity stands at a crossroads. What you began here will decide what comes next.",
     context: 'completion',
     phase: 'final'
   },
