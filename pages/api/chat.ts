@@ -189,61 +189,6 @@ function cleanIncompleteResponse(response: string): string {
   return cleanedResponse;
 }
 
-/**
- * Detects if an NPC has revealed their opinion in Round 2
- */
-function detectNPCOpinion(response: string, npc: NPCInfo): { opinion: string; reasoning: string } | null {
-  const responseLower = response.toLowerCase();
-  const sustainableOption = npc.options.sustainable.toLowerCase();
-  const unsustainableOption = npc.options.unsustainable.toLowerCase();
-  
-  const opinionIndicators = [
-    'i support', 'i prefer', 'i recommend', 'i believe', 'i think we should',
-    'i would choose', 'i favor', 'i advocate for', 'i suggest', 'i recommend we',
-    'we should go with', 'the better option is', 'the best choice is',
-    'i would go with', 'i lean toward', 'i\'m in favor of', 'i\'m for',
-    'i\'m supporting', 'i\'m choosing', 'i\'m recommending', 'my choice is',
-    'my recommendation is', 'i vote for', 'i pick', 'proposal a', 'proposal b'
-  ];
-  
-  const hasOpinionIndicator = opinionIndicators.some(indicator => 
-    responseLower.includes(indicator)
-  );
-  
-  // Also check for direct option mentions in the context of a recommendation
-  const supportsSustainable = responseLower.includes(sustainableOption);
-  const supportsUnsustainable = responseLower.includes(unsustainableOption);
-  
-  // Log for debugging
-  console.log(`Opinion detection for ${npc.name}:`, {
-    response: response.substring(0, 200) + '...',
-    sustainableOption,
-    unsustainableOption,
-    hasOpinionIndicator,
-    supportsSustainable,
-    supportsUnsustainable
-  });
-  
-  if (hasOpinionIndicator || supportsSustainable || supportsUnsustainable) {
-    if (supportsSustainable && !supportsUnsustainable) {
-      console.log(`Detected sustainable opinion for ${npc.name}: ${npc.options.sustainable}`);
-      return {
-        opinion: npc.options.sustainable,
-        reasoning: response
-      };
-    } else if (supportsUnsustainable && !supportsSustainable) {
-      console.log(`Detected unsustainable opinion for ${npc.name}: ${npc.options.unsustainable}`);
-      return {
-        opinion: npc.options.unsustainable,
-        reasoning: response
-      };
-    }
-  }
-  
-  console.log(`No clear opinion detected for ${npc.name}`);
-  return null;
-}
-
 // ============================================================================
 // CONVERSATION ANALYSIS FUNCTIONS
 // ============================================================================
@@ -567,9 +512,6 @@ async function handleRegularNPCConversation(
   const originalResponse = aiResponse;
   aiResponse = cleanIncompleteResponse(aiResponse);
 
-  let detectedOpinion = null;
-  detectedOpinion = detectNPCOpinion(aiResponse, npc);
-
   const responseId = `${npcId}_${round}_${Date.now()}_response`;
   await vectorStore.storeMemory(responseId, aiResponse, {
     npcId: npcId.toString(),
@@ -590,29 +532,8 @@ async function handleRegularNPCConversation(
   const finalHistory = await upstashStore.getConversationHistory(npcId, round, sessionId);
   let conversationAnalysis = await analyzeConversationCompleteness(finalHistory, npc, round);
 
-  // If we detected a clear recommendation but the analysis
-  // incorrectly marked it as incomplete, override to COMPLETE.
-  if (detectedOpinion && !conversationAnalysis.isComplete) {
-    conversationAnalysis = {
-      isComplete: true,
-      reason: `NPC clearly recommended ${detectedOpinion.opinion}`
-    };
-  }
-  
-  // If conversation is complete but no opinion was detected,
-  // use the cached NPC preference
-  if (!detectedOpinion && conversationAnalysis.isComplete && npcPreference) {
-    const preferredOption = npcPreference === 'sustainable' ? npc.options.sustainable : npc.options.unsustainable;
-    console.log(`Using cached preference for ${npc.name}: ${preferredOption} (${npcPreference})`);
-    detectedOpinion = {
-      opinion: preferredOption,
-      reasoning: `NPC completed conversation and has stated their preference for ${preferredOption}`
-    };
-  }
-
   return {
     response: aiResponse,
-    detectedOpinion: detectedOpinion,
     conversationAnalysis: conversationAnalysis
   };
 }

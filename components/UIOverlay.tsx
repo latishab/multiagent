@@ -404,6 +404,12 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       return;
     }
     
+    // Only mark as spoken if conversation is actually complete
+    if (conversationAnalysis && !conversationAnalysis.isComplete) {
+      console.log(`Conversation with NPC ${npcId} not complete yet:`, conversationAnalysis.reason);
+      return;
+    }
+    
     // Only mark as spoken if they haven't been spoken to yet
     if (!spokenNPCs.has(npcId)) {
       setSpokenNPCs(prev => {
@@ -419,40 +425,43 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       });
     }
 
-    const newEntry: BallotEntry = {
-      npcId: npcId,
-      npcName: NPCNames[npcId],
-      system: NPCSystems[npcId],
-      round: round,
-      sustainableOption: NPCOptions[npcId].sustainable,
-      unsustainableOption: NPCOptions[npcId].unsustainable,
-      timestamp: Date.now()
-    }
-
-    setBallotEntries(prev => {
-      // Check if there's already an entry for this NPC
-      const existingIndex = prev.findIndex(entry => entry.npcId === npcId);
-      
-      if (existingIndex !== -1) {
-        const updated = [...prev];
-        updated[existingIndex] = newEntry;
-        return updated; // Update existing entry
-      } else {
-        return [...prev, newEntry]; // Add new entry
+    // Only create ballot entries and record opinions if conversation is complete
+    if (conversationAnalysis && conversationAnalysis.isComplete) {
+      const newEntry: BallotEntry = {
+        npcId: npcId,
+        npcName: NPCNames[npcId],
+        system: NPCSystems[npcId],
+        round: round,
+        sustainableOption: NPCOptions[npcId].sustainable,
+        unsustainableOption: NPCOptions[npcId].unsustainable,
+        timestamp: Date.now()
       }
-    });
 
-    // Record detected opinion as A (sustainable) or B (unsustainable)
-    if (detectedOpinion && npcId >= 1 && npcId <= 6) {
-      const sustainable = NPCOptions[npcId].sustainable;
-      const unsustainable = NPCOptions[npcId].unsustainable;
-      const normalized = detectedOpinion.opinion === sustainable
-        ? 'A'
-        : detectedOpinion.opinion === unsustainable
-        ? 'B'
-        : null;
-      if (normalized) {
-        setNpcOpinions(prev => ({ ...prev, [npcId]: normalized }));
+      setBallotEntries(prev => {
+        // Check if there's already an entry for this NPC
+        const existingIndex = prev.findIndex(entry => entry.npcId === npcId);
+        
+        if (existingIndex !== -1) {
+          const updated = [...prev];
+          updated[existingIndex] = newEntry;
+          return updated; // Update existing entry
+        } else {
+          return [...prev, newEntry]; // Add new entry
+        }
+      });
+
+      // Record detected opinion as A (sustainable) or B (unsustainable)
+      if (detectedOpinion && npcId >= 1 && npcId <= 6) {
+        const sustainable = NPCOptions[npcId].sustainable;
+        const unsustainable = NPCOptions[npcId].unsustainable;
+        const normalized = detectedOpinion.opinion === sustainable
+          ? 'A'
+          : detectedOpinion.opinion === unsustainable
+          ? 'B'
+          : null;
+        if (normalized) {
+          setNpcOpinions(prev => ({ ...prev, [npcId]: normalized }));
+        }
       }
     }
 
