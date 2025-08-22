@@ -299,7 +299,7 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                                               recommendation === 'sustainable' 
                                                 ? NPCOptions[npcId].sustainable 
                                                 : NPCOptions[npcId].unsustainable
-                                            }
+                                            } (Proposal {recommendation === 'sustainable' ? 'A' : 'B'})
                                           </div>
                                         </div>
                                         <p>{specialistRecommendations[npcId] || 'Detailed reasoning will be available after speaking with them.'}</p>
