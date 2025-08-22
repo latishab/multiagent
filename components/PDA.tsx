@@ -8,9 +8,11 @@ interface PDADecision {
   npcName: string;
   systemName: string;
   choice: 'sustainable' | 'unsustainable';
-  chosenOption: string;
-  rejectedOption: string;
+  playerChosenOption: string;
+  playerRejectedOption: string;
   timestamp: number;
+  npcPreference: 'sustainable' | 'unsustainable'; 
+  playerChoiceType: string; // "sustainable" or "unsustainable"
 }
 
 interface BallotEntry {
@@ -74,19 +76,28 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
       const sessionId = await sessionManager.getSessionId();
       const participantId = sessionManager.getSessionInfo().participantId;
       
+      // Get NPC preferences based on participant ID
+      const npcPreferences = participantId ? generateNPCPreferences(participantId) : {};
+      
+      // Count total pro-sustainable choices made by player
+      const totalProSustainableChoices = Object.values(decisions).filter(choice => choice === 'sustainable').length;
+      
       // Convert decisions object to array format with full details
       const decisionsArray: PDADecision[] = Object.entries(decisions).map(([npcId, choice]) => {
         const npcIdNum = parseInt(npcId);
         const isSustainable = choice === 'sustainable';
+        const npcPreference = npcPreferences[npcIdNum] || 'sustainable'; // Default to sustainable if no preference found
         
         return {
           npcId: npcIdNum,
           npcName: NPCNames[npcIdNum],
           systemName: NPCSystems[npcIdNum],
           choice,
-          chosenOption: isSustainable ? NPCOptions[npcIdNum].sustainable : NPCOptions[npcIdNum].unsustainable,
-          rejectedOption: isSustainable ? NPCOptions[npcIdNum].unsustainable : NPCOptions[npcIdNum].sustainable,
-          timestamp: Date.now()
+          playerChosenOption: isSustainable ? NPCOptions[npcIdNum].sustainable : NPCOptions[npcIdNum].unsustainable,
+          playerRejectedOption: isSustainable ? NPCOptions[npcIdNum].unsustainable : NPCOptions[npcIdNum].sustainable,
+          timestamp: Date.now(),
+          npcPreference, // What the NPC supports (pro/anti sustainable)
+          playerChoiceType: isSustainable ? 'sustainable' : 'unsustainable' // Whether player choice is sustainable or unsustainable
         };
       });
 
@@ -98,7 +109,8 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
         body: JSON.stringify({
           sessionId,
           decisions: decisionsArray,
-          participantId
+          participantId,
+          totalProSustainableChoices
         }),
       });
 

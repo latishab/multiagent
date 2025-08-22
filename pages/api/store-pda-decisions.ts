@@ -6,15 +6,18 @@ export interface PDADecision {
   npcName: string;
   systemName: string;
   choice: 'sustainable' | 'unsustainable';
-  chosenOption: string;
-  rejectedOption: string;
+  playerChosenOption: string;
+  playerRejectedOption: string;
   timestamp: number;
+  npcPreference: 'sustainable' | 'unsustainable'; // What the NPC supports (pro/anti sustainable)
+  playerChoiceType: string; // "sustainable" or "unsustainable"
 }
 
 export interface PDADecisionsData {
   sessionId: string;
   decisions: PDADecision[];
   participantId?: string;
+  totalProSustainableChoices?: number; // Count of how many pro-sustainable choices player made
 }
 
 export default async function handler(
@@ -34,7 +37,7 @@ export default async function handler(
   }
 
   try {
-    const { sessionId, decisions, participantId } = req.body as PDADecisionsData;
+    const { sessionId, decisions, participantId, totalProSustainableChoices } = req.body as PDADecisionsData;
 
     if (!sessionId || !decisions || !Array.isArray(decisions)) {
       return res.status(400).json({ message: 'Missing required fields' });
@@ -49,11 +52,15 @@ export default async function handler(
     for (const decision of decisions) {
       if (!decision.npcId || !decision.choice || !decision.timestamp || 
           !decision.npcName || !decision.systemName || 
-          !decision.chosenOption || !decision.rejectedOption) {
+          !decision.playerChosenOption || !decision.playerRejectedOption ||
+          !decision.npcPreference || !decision.playerChoiceType) {
         return res.status(400).json({ message: 'Invalid decision format' });
       }
       if (!['sustainable', 'unsustainable'].includes(decision.choice)) {
         return res.status(400).json({ message: 'Invalid choice value' });
+      }
+      if (!['sustainable', 'unsustainable'].includes(decision.npcPreference)) {
+        return res.status(400).json({ message: 'Invalid NPC preference value' });
       }
       if (decision.npcId < 1 || decision.npcId > 6) {
         return res.status(400).json({ message: 'Invalid NPC ID' });
@@ -76,6 +83,7 @@ export default async function handler(
         session_id: sessionId,
         participant_id: participantId || null,
         decisions: decisions,
+        total_pro_sustainable_choices: totalProSustainableChoices || 0,
         created_at: new Date().toISOString()
       });
 
