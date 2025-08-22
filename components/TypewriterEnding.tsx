@@ -16,9 +16,9 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
   
   // Fixed display durations per message group (no audio)
   const displayDurations = useMemo(() => ({
-    good: [3000, 3000, 3000],
-    medium: [3000, 3000, 3000],
-    bad: [3000, 3000, 3000]
+    good: [4000, 4000, 4000],
+    medium: [4000, 4000, 4000],
+    bad: [4000, 4000, 4000]
   }), []);
 
   const getEndingMessages = useCallback(() => {
