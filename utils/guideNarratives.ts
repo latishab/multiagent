@@ -27,7 +27,7 @@ export const guideNarratives: GuideNarrative[] = [
   },
   {
     id: 'expert_perspectives',
-    text: "Keep in mind that these experts have different priorities. Some experts prioritize resources(RP) while others prefer to consider the economics of the situations. You'll need to weigh these different perspectives as you make your final choices.",
+    text: "Keep in mind that these experts have two different priorities: Economic Plan(EP) and Resource Plan(RP). Some experts prioritize resources(RP) while others prefer to consider the economics(EP) of the situation. You'll need to listen to their opinions when you make your final choices.",
     context: 'initial',
     phase: 'start'
   },
@@ -63,7 +63,7 @@ export const guideNarratives: GuideNarrative[] = [
   // Good ending (6 sustainable selections)
   {
     id: 'good_ending_1',
-    text: "Congratulations. You've made bold, thoughtful decisions and your efforts have paid off. By choosing sustainable solutions in most key systems, you've laid the foundation for a city that can thrive long into the future.",
+    text: "Congratulations. By choosing sustainable solutions in all key systems, you've laid the foundation for a city that can thrive long into the future.",
     context: 'completion',
     phase: 'final'
   },
@@ -89,19 +89,19 @@ export const guideNarratives: GuideNarrative[] = [
   // Medium ending (4–5 sustainable selections)
   {
     id: 'medium_ending_1',
-    text: "You have brought the city to a fragile balance. Some systems recovered, but others remained unstable. Progress is real, yet incomplete.",
+    text: "You have brought the city to a fragile balance. We did some good things, made some sustainable choices, but more remains to be done.",
     context: 'completion',
     phase: 'final'
   },
   {
     id: 'medium_ending_2',
-    text: "Green shoots appear, but parts of the soil are still barren. Energy grids flicker between light and shadow. The future hangs in between.",
+    text: "Some systems recovered, but others remained unstable. Progress is real, yet incomplete.",
     context: 'completion',
     phase: 'final'
   },
   {
     id: 'medium_ending_3',
-    text: "Your choices keep collapsing at bay, but renewal is not yet secured. Humanity stands at a crossroads. What you began here will decide what comes next.",
+    text: "The game is finished, but the future is still uncertain. You can make more sustainable choices in the future, make the earth better.",
     context: 'completion',
     phase: 'final'
   },
@@ -109,7 +109,7 @@ export const guideNarratives: GuideNarrative[] = [
   // Bad ending (1–3 sustainable selections)
   {
     id: 'bad_ending_1',
-    text: "It's over. The final systems have collapsed. The city is no longer salvageable. Despite your efforts, the choices made didn't provide the resilience we needed. Short-term fixes gave way to long-term failures.",
+    text: "It's over. The final systems have collapsed. The city is no longer salvageable. You focus too much on the resource plan, while ignoring the environment of the earth.",
     context: 'completion',
     phase: 'final'
   },
@@ -121,7 +121,7 @@ export const guideNarratives: GuideNarrative[] = [
   },
   {
     id: 'bad_ending_3',
-    text: "This isn't just the end of a city. It's the consequence of choices made when we had a chance to change course, and didn't. Thank you for trying.",
+    text: "This isn't just the end of a city. The game is finished, but the future is still uncertain. You can make more sustainable choices in the future, and make the earth better.",
     context: 'completion',
     phase: 'final'
   },
