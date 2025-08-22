@@ -26,6 +26,12 @@ export const guideNarratives: GuideNarrative[] = [
     phase: 'start'
   },
   {
+    id: 'expert_perspectives',
+    text: "Keep in mind that these experts have different priorities. Some experts prioritize resources while others prefer to consider the economics of the situations. You'll need to weigh these different perspectives as you make your final choices.",
+    context: 'initial',
+    phase: 'start'
+  },
+  {
     id: 'initial_start',
     text: "Let's get started. Earth is waiting.",
     context: 'initial',
