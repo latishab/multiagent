@@ -7,7 +7,6 @@ interface PDADecision {
   npcId: number;
   npcName: string;
   systemName: string;
-  choice: 'sustainable' | 'unsustainable';
   playerChosenOption: string;
   playerRejectedOption: string;
   timestamp: number;
@@ -92,7 +91,6 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
           npcId: npcIdNum,
           npcName: NPCNames[npcIdNum],
           systemName: NPCSystems[npcIdNum],
-          choice,
           playerChosenOption: isSustainable ? NPCOptions[npcIdNum].sustainable : NPCOptions[npcIdNum].unsustainable,
           playerRejectedOption: isSustainable ? NPCOptions[npcIdNum].unsustainable : NPCOptions[npcIdNum].sustainable,
           timestamp: Date.now(),
@@ -250,8 +248,10 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                                     const preferences = participantId ? generateNPCPreferences(participantId) : null;
                                     const recommendation = preferences ? preferences[npcId] : null;
                                     
-                                    // Only show specialist choice if player has spoken to this NPC in Round 2
-                                    const hasSpokenToNPC = spokenNPCs?.round2?.has(npcId) || false;
+                                    // Show specialist choice if player has spoken to this NPC (any round)
+                                    const hasSpokenR1 = spokenNPCs?.round1?.has(npcId) || false;
+                                    const hasSpokenR2 = spokenNPCs?.round2?.has(npcId) || false;
+                                    const hasSpokenToNPC = hasSpokenR1 || hasSpokenR2;
                                     const shouldShowChoice = recommendation && hasSpokenToNPC;
                                     
                                     return (
@@ -280,21 +280,49 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                                 </div>
                               </div>
                               
-                              {currentRound === 2 && hasSpokenToNPC && (
-                                <div className="opinion-section">
-                                  <h4>Specialist's Choice:</h4>
-                                  <div className="opinion-content">
-                                    <p>{specialistRecommendations[npcId] || 'No recommendation available yet.'}</p>
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {currentRound === 1 || (currentRound === 2 && !hasSpokenToNPC) && (
-                                <div className="no-opinion-message">
-                                  <p>No specialist opinion collected yet.</p>
-                                  <p>Talk to {NPCNames[npcId]} in Round 2 to get their recommendation.</p>
-                                </div>
-                              )}
+                              {(() => {
+                                const participantId = sessionManager.getSessionInfo().participantId;
+                                const preferences = participantId ? generateNPCPreferences(participantId) : null;
+                                const recommendation = preferences ? preferences[npcId] : null;
+                                const hasSpokenR1 = spokenNPCs?.round1?.has(npcId) || false;
+                                const hasSpokenR2 = spokenNPCs?.round2?.has(npcId) || false;
+                                const hasSpokenToNPC = hasSpokenR1 || hasSpokenR2;
+                                
+                                if (hasSpokenToNPC && recommendation) {
+                                  return (
+                                    <div className="opinion-section">
+                                      <h4>Specialist's Choice:</h4>
+                                      <div className="opinion-content">
+                                        <div className={`recommendation-badge ${recommendation}`}>
+                                          <div className="recommendation-header">
+                                            <span className="recommendation-icon">
+                                              {recommendation === 'sustainable' ? '🌱' : '💼'}
+                                            </span>
+                                            <span className="recommendation-label">
+                                              {recommendation === 'sustainable' ? 'Pro-Sustainable' : 'Pro-Economic'}
+                                            </span>
+                                          </div>
+                                          <div className="recommendation-option">
+                                            <strong>{NPCNames[npcId]} recommends:</strong> {
+                                              recommendation === 'sustainable' 
+                                                ? NPCOptions[npcId].sustainable 
+                                                : NPCOptions[npcId].unsustainable
+                                            }
+                                          </div>
+                                        </div>
+                                        <p>{specialistRecommendations[npcId] || 'Detailed reasoning will be available after speaking with them.'}</p>
+                                      </div>
+                                    </div>
+                                  );
+                                } else {
+                                  return (
+                                    <div className="no-opinion-message">
+                                      <p>No specialist recommendation collected yet.</p>
+                                      <p>Talk to {NPCNames[npcId]} to get their professional recommendation.</p>
+                                    </div>
+                                  );
+                                }
+                              })()}
                             </>
                           ) : (
                             <div className="no-info-message">

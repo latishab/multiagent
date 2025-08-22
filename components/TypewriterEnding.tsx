@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { getCompletionMessages } from '../utils/guideNarratives';
 
 interface TypewriterEndingProps {
@@ -14,6 +14,7 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
   const [showGameTitle, setShowGameTitle] = useState(false);
   const [fadeOutEnding, setFadeOutEnding] = useState(false);
   const [waitingForInput, setWaitingForInput] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const getEndingMessages = useCallback(() => {
     const completionMessages = getCompletionMessages();
@@ -28,6 +29,13 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
 
   const messages = useMemo(() => getEndingMessages(), [getEndingMessages]);
   const currentMessage = messages[currentMessageIndex];
+
+  // Focus the container when component mounts
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.focus();
+    }
+  }, []);
 
   // Show first message immediately, then wait for input
   useEffect(() => {
@@ -91,7 +99,30 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
   };
 
   return (
-    <div className="typewriter-ending">
+    <div 
+      ref={containerRef}
+      className="typewriter-ending"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        console.log('Key pressed:', e.key, 'waitingForInput:', waitingForInput, 'isSequenceFinished:', isSequenceFinished);
+        if (e.key === 'Enter' && waitingForInput && !isSequenceFinished) {
+          console.log('Processing Enter key');
+          e.preventDefault();
+          e.stopPropagation();
+          setWaitingForInput(false);
+          setIsVisible(false);
+          
+          setTimeout(() => {
+            if (currentMessageIndex < messages.length - 1) {
+              setCurrentMessageIndex(prev => prev + 1);
+            } else {
+              setIsSequenceFinished(true);
+            }
+          }, 500);
+        }
+      }}
+      style={{ outline: 'none' }}
+    >
       {/* Ending scene content with crossfade */}
       <div className={`ending-content ${fadeOutEnding ? 'fade-out-ending' : ''}`}>
         <img 
@@ -105,8 +136,25 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
             {currentMessage?.text || ''}
           </div>
           {waitingForInput && !isSequenceFinished && (
-            <div className="continue-hint">
-              Press <span className="key-hint">Enter</span> to continue
+            <div 
+              className="continue-hint"
+              onClick={() => {
+                if (waitingForInput && !isSequenceFinished) {
+                  setWaitingForInput(false);
+                  setIsVisible(false);
+                  
+                  setTimeout(() => {
+                    if (currentMessageIndex < messages.length - 1) {
+                      setCurrentMessageIndex(prev => prev + 1);
+                    } else {
+                      setIsSequenceFinished(true);
+                    }
+                  }, 500);
+                }
+              }}
+              style={{ cursor: 'pointer' }}
+            >
+              Press <span className="key-hint">Enter</span> to continue (or click here)
             </div>
           )}
         </div>

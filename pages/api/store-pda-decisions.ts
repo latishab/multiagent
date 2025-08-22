@@ -5,7 +5,6 @@ export interface PDADecision {
   npcId: number;
   npcName: string;
   systemName: string;
-  choice: 'sustainable' | 'unsustainable';
   playerChosenOption: string;
   playerRejectedOption: string;
   timestamp: number;
@@ -50,17 +49,17 @@ export default async function handler(
 
     // Validate each decision
     for (const decision of decisions) {
-      if (!decision.npcId || !decision.choice || !decision.timestamp || 
+      if (!decision.npcId || !decision.timestamp || 
           !decision.npcName || !decision.systemName || 
           !decision.playerChosenOption || !decision.playerRejectedOption ||
           !decision.npcPreference || !decision.playerChoiceType) {
         return res.status(400).json({ message: 'Invalid decision format' });
       }
-      if (!['sustainable', 'unsustainable'].includes(decision.choice)) {
-        return res.status(400).json({ message: 'Invalid choice value' });
-      }
       if (!['sustainable', 'unsustainable'].includes(decision.npcPreference)) {
         return res.status(400).json({ message: 'Invalid NPC preference value' });
+      }
+      if (!['sustainable', 'unsustainable'].includes(decision.playerChoiceType)) {
+        return res.status(400).json({ message: 'Invalid player choice type value' });
       }
       if (decision.npcId < 1 || decision.npcId > 6) {
         return res.status(400).json({ message: 'Invalid NPC ID' });
