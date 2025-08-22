@@ -13,13 +13,7 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
   const [isSequenceFinished, setIsSequenceFinished] = useState(false);
   const [showGameTitle, setShowGameTitle] = useState(false);
   const [fadeOutEnding, setFadeOutEnding] = useState(false);
-  
-  // Fixed display durations per message group (no audio)
-  const displayDurations = useMemo(() => ({
-    good: [4000, 4000, 4000],
-    medium: [4000, 4000, 4000],
-    bad: [4000, 4000, 4000]
-  }), []);
+  const [waitingForInput, setWaitingForInput] = useState(false);
 
   const getEndingMessages = useCallback(() => {
     const completionMessages = getCompletionMessages();
@@ -34,31 +28,41 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
 
   const messages = useMemo(() => getEndingMessages(), [getEndingMessages]);
   const currentMessage = messages[currentMessageIndex];
-  const currentDurations = useMemo(() => displayDurations[activeEndingType], [displayDurations, activeEndingType]);
 
-  // Main effect for playing the message sequence (no audio)
+  // Show first message immediately, then wait for input
   useEffect(() => {
     if (!currentMessage || isSequenceFinished) return;
 
+    setWaitingForInput(false); // Reset waiting state
     setIsVisible(true);
+    // After message appears, wait for input
+    setTimeout(() => {
+      setWaitingForInput(true);
+    }, 500);
+  }, [currentMessageIndex, activeEndingType, messages.length, currentMessage, isSequenceFinished]);
 
-    const duration = currentDurations[currentMessageIndex] || 3000;
-    const timeoutId = setTimeout(() => {
-      setIsVisible(false);
-      
-      setTimeout(() => {
-        if (currentMessageIndex < messages.length - 1) {
-          setCurrentMessageIndex(prev => prev + 1);
-        } else {
-          setIsSequenceFinished(true);
-        }
-      }, 500);
-    }, duration);
-
-    return () => {
-      clearTimeout(timeoutId);
+  // Handle keyboard input
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.key === 'Enter' && waitingForInput && !isSequenceFinished) {
+        setWaitingForInput(false);
+        setIsVisible(false);
+        
+        setTimeout(() => {
+          if (currentMessageIndex < messages.length - 1) {
+            setCurrentMessageIndex(prev => prev + 1);
+          } else {
+            setIsSequenceFinished(true);
+          }
+        }, 500);
+      }
     };
-  }, [currentMessageIndex, activeEndingType, messages.length, currentMessage, isSequenceFinished, currentDurations]);
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [waitingForInput, currentMessageIndex, messages.length, isSequenceFinished]);
 
   // Handle crossfade transition when sequence finishes
   useEffect(() => {
@@ -100,6 +104,11 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
           <div className={`dialogue-content ${isVisible ? 'fade-in' : 'fade-out'}`}>
             {currentMessage?.text || ''}
           </div>
+          {waitingForInput && !isSequenceFinished && (
+            <div className="continue-hint">
+              Press <span className="key-hint">Enter</span> to continue
+            </div>
+          )}
         </div>
       </div>
 
@@ -191,6 +200,34 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
 
         .dialogue-content.fade-out {
           opacity: 0;
+        }
+
+        .continue-hint {
+          position: absolute;
+          bottom: 1rem;
+          right: 1rem;
+          color: rgba(255, 255, 255, 0.8);
+          font-size: clamp(0.75rem, 2vw, 0.875rem);
+          animation: pulseHint 2s ease-in-out infinite;
+          background: rgba(0, 0, 0, 0.6);
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .key-hint {
+          background: rgba(255, 255, 255, 0.2);
+          padding: 0.25rem 0.5rem;
+          border-radius: 4px;
+          font-weight: bold;
+          color: #ffffff;
+          margin: 0 0.25rem;
+          border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        @keyframes pulseHint {
+          0%, 100% { opacity: 0.8; }
+          50% { opacity: 1; }
         }
 
         .game-title-section {
@@ -332,6 +369,18 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
 
           .game-title-section {
             top: 45%;
+          }
+
+          .continue-hint {
+            bottom: 0.5rem;
+            right: 0.5rem;
+            font-size: clamp(0.625rem, 2.5vw, 0.75rem);
+            padding: 0.375rem 0.75rem;
+          }
+
+          .key-hint {
+            padding: 0.125rem 0.375rem;
+            margin: 0 0.125rem;
           }
         }
       `}</style>
