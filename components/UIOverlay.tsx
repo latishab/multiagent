@@ -820,10 +820,17 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       setNpcOpinions({});
     }
 
+    // Add ending trigger function for testing
+    ;(window as any).triggerEnding = (type: 'good' | 'medium' | 'bad') => {
+      setEndingType(type);
+      setShowEnding(true);
+    }
+
     return () => {
       delete (window as any).completeAllNPCs
       delete (window as any).resetGame
       delete (window as any).createTestBallot
+      delete (window as any).triggerEnding
     }
   }, [])
 

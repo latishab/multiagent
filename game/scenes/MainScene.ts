@@ -303,6 +303,8 @@ export default class MainScene extends Scene {
     }
   }
 
+
+
   private trackClarity(eventName: string, tags?: Record<string, string | number | boolean | undefined | null>) {
     if (typeof window === 'undefined') return
     const w = window as any

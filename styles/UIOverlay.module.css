@@ -506,14 +506,28 @@
   max-height: calc(100vh - 260px); 
   overflow-y: auto;
   padding-bottom: 6px;
+  padding-right: 4px;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: thin; /* Firefox - show thin scrollbar */
+  scrollbar-color: rgba(148, 163, 184, 0.6) rgba(51, 65, 85, 0.3); /* Firefox */
 }
 
 .npcSidebar::-webkit-scrollbar { /* Chrome/Safari */
-  width: 0;
-  height: 0;
+  width: 6px;
+}
+
+.npcSidebar::-webkit-scrollbar-track {
+  background: rgba(51, 65, 85, 0.3);
+  border-radius: 3px;
+}
+
+.npcSidebar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.6);
+  border-radius: 3px;
+}
+
+.npcSidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.8);
 }
 
 .npcSidebarItem {
