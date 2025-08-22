@@ -294,14 +294,6 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                                       <h4>Specialist's Choice:</h4>
                                       <div className="opinion-content">
                                         <div className={`recommendation-badge ${recommendation}`}>
-                                          <div className="recommendation-header">
-                                            <span className="recommendation-icon">
-                                              {recommendation === 'sustainable' ? '🌱' : '💼'}
-                                            </span>
-                                            <span className="recommendation-label">
-                                              {recommendation === 'sustainable' ? 'Pro-Sustainable' : 'Pro-Economic'}
-                                            </span>
-                                          </div>
                                           <div className="recommendation-option">
                                             <strong>{NPCNames[npcId]} recommends:</strong> {
                                               recommendation === 'sustainable' 
