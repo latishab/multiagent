@@ -27,7 +27,7 @@ export const guideNarratives: GuideNarrative[] = [
   },
   {
     id: 'expert_perspectives',
-    text: "Keep in mind that these experts have different priorities. Some experts prioritize resources while others prefer to consider the economics of the situations. You'll need to weigh these different perspectives as you make your final choices.",
+    text: "Keep in mind that these experts have different priorities. Some experts prioritize resources(RP) while others prefer to consider the economics of the situations. You'll need to weigh these different perspectives as you make your final choices.",
     context: 'initial',
     phase: 'start'
   },
