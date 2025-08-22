@@ -472,8 +472,10 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
   }
 
   // Function to calculate and show ending
-  const calculateAndShowEnding = () => {
-    const sustainableCount = Object.values(finalDecisions).filter(decision => decision === 'sustainable').length;
+  const calculateAndShowEnding = (decisions?: { [npcId: number]: 'sustainable' | 'unsustainable' }) => {
+    // Use passed decisions or fallback to state
+    const decisionsToUse = decisions || finalDecisions;
+    const sustainableCount = Object.values(decisionsToUse).filter(decision => decision === 'sustainable').length;
     
     let ending: 'good' | 'medium' | 'bad';
     if (sustainableCount === 6) {
@@ -495,9 +497,9 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     setDecisionsFinalized(true);
     setGamePhase(GamePhase.Completed);
     
-    // Calculate and show ending
+    // Calculate and show ending - pass decisions directly to avoid state timing issues
     setTimeout(() => {
-      calculateAndShowEnding();
+      calculateAndShowEnding(decisions);
     }, 500); // Small delay for smooth transition
   }
 
@@ -513,7 +515,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     if (Object.keys(newDecisions).length === 6) {
       // All decisions made, calculate ending
       setTimeout(() => {
-        calculateAndShowEnding();
+        calculateAndShowEnding(newDecisions);
       }, 1000); // Small delay for better UX
     }
   }
@@ -829,17 +831,46 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       setNpcOpinions({});
     }
 
-    // Add ending trigger function for testing
+    // MARK: - trigger function for testing
     ;(window as any).triggerEnding = (type: 'good' | 'medium' | 'bad') => {
       setEndingType(type);
       setShowEnding(true);
     }
+
+    // MARK: - trigger decision phase with specific choices
+    ;(window as any).testDecisions = (sustainableChoices: number = 4) => {
+      // Create test decisions object
+      const testDecisions: { [npcId: number]: 'sustainable' | 'unsustainable' } = {};
+      
+      // Fill first sustainableChoices NPCs with 'sustainable', rest with 'unsustainable'
+      for (let i = 1; i <= 6; i++) {
+        testDecisions[i] = i <= sustainableChoices ? 'sustainable' : 'unsustainable';
+      }
+      
+      // Set up the game state for decision phase
+      setSpokenNPCs(new Set([1, 2, 3, 4, 5, 6]));
+      setHasTalkedToGuide(true);
+      setShowDecisionMode(true);
+      setGamePhase(GamePhase.Completed);
+      
+      // Trigger the decision completion
+      handleDecisionsComplete(testDecisions);
+    }
+
+    // Quick test functions for specific endings
+    ;(window as any).testGoodEnding = () => (window as any).testDecisions(6);
+    ;(window as any).testMediumEnding = () => (window as any).testDecisions(4);
+    ;(window as any).testBadEnding = () => (window as any).testDecisions(2);
 
     return () => {
       delete (window as any).completeAllNPCs
       delete (window as any).resetGame
       delete (window as any).createTestBallot
       delete (window as any).triggerEnding
+      delete (window as any).testDecisions
+      delete (window as any).testGoodEnding
+      delete (window as any).testMediumEnding
+      delete (window as any).testBadEnding
     }
   }, [])
 
