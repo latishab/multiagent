@@ -476,12 +476,12 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
     const sustainableCount = Object.values(finalDecisions).filter(decision => decision === 'sustainable').length;
     
     let ending: 'good' | 'medium' | 'bad';
-    if (sustainableCount >= 6) {
-      ending = 'good';
+    if (sustainableCount === 6) {
+      ending = 'good';        // Exactly 6 pro-sustainable choices
     } else if (sustainableCount >= 4) {
-      ending = 'medium';
+      ending = 'medium';      // 4-5 pro-sustainable choices
     } else {
-      ending = 'bad';
+      ending = 'bad';         // 0-3 pro-sustainable choices
     }
     
     setEndingType(ending);

@@ -268,8 +268,8 @@ export default class MainScene extends Scene {
 
   private createMinimap() {
     // Calculate position for bottom-left corner
-    const minimapWidth = 250
-    const minimapHeight = 180
+    const minimapWidth = 220
+    const minimapHeight = 160
     const padding = 15
     const x = padding
     const y = this.cameras.main.height - minimapHeight - padding
