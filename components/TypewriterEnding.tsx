@@ -104,9 +104,7 @@ export default function TypewriterEnding({ endingType, onComplete }: TypewriterE
       className="typewriter-ending"
       tabIndex={0}
       onKeyDown={(e) => {
-        console.log('Key pressed:', e.key, 'waitingForInput:', waitingForInput, 'isSequenceFinished:', isSequenceFinished);
         if (e.key === 'Enter' && waitingForInput && !isSequenceFinished) {
-          console.log('Processing Enter key');
           e.preventDefault();
           e.stopPropagation();
           setWaitingForInput(false);
