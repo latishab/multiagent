@@ -137,8 +137,10 @@ class SessionManager {
   // Clear all data (for complete reset)
   public clearAll(): void {
     this.participantId = null;
+    this.sessionId = null;
     if (typeof window !== 'undefined' && window.localStorage) {
       localStorage.removeItem('multiagent_participant_id');
+      localStorage.removeItem('multiagent_session_id');
     }
   }
 

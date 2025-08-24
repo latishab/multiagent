@@ -6,7 +6,7 @@ import GameMenu from './GameMenu'
 import ProgressIndicator from './ProgressIndicator'
 import PDA from './PDA'
 import EndingOverlay from './EndingOverlay'
-import { NPCNames, NPCSystems, NPCOptions, getNPCImage } from '../utils/npcData'
+import { NPCNames, NPCSystems, NPCOptions, getNPCImage, generateNPCPreferences } from '../utils/npcData'
 import { sessionManager } from '../utils/sessionManager'
 import { soundEffects } from '../utils/soundEffects'
 
@@ -889,6 +889,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       const decisionModeKey = participantId ? `multiagent-show-decision-mode-${participantId}` : 'multiagent-show-decision-mode';
       const decisionsFinalizedKey = participantId ? `multiagent-decisions-finalized-${participantId}` : 'multiagent-decisions-finalized';
       const finalDecisionsKey = participantId ? `multiagent-final-decisions-${participantId}` : 'multiagent-final-decisions';
+      const npcOpinionsKey = participantId ? `multiagent-npc-opinions-${participantId}` : 'multiagent-npc-opinions';
       
       localStorage.removeItem(spokenNPCsKey);
       localStorage.removeItem(ballotEntriesKey);
@@ -898,6 +899,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       localStorage.removeItem(decisionModeKey);
       localStorage.removeItem(decisionsFinalizedKey);
       localStorage.removeItem(finalDecisionsKey);
+      localStorage.removeItem(npcOpinionsKey);
       
       // Clear and reset welcome state for this participant
       const welcomeKey = participantId ? `multiagent-show-welcome-${participantId}` : 'multiagent-show-welcome';
@@ -924,6 +926,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       const decisionModeKey = participantId ? `multiagent-show-decision-mode-${participantId}` : 'multiagent-show-decision-mode';
       const decisionsFinalizedKey = participantId ? `multiagent-decisions-finalized-${participantId}` : 'multiagent-decisions-finalized';
       const finalDecisionsKey = participantId ? `multiagent-final-decisions-${participantId}` : 'multiagent-final-decisions';
+      const npcOpinionsKey = participantId ? `multiagent-npc-opinions-${participantId}` : 'multiagent-npc-opinions';
       
       localStorage.removeItem(spokenNPCsKey);
       localStorage.removeItem(ballotEntriesKey);
@@ -933,6 +936,7 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       localStorage.removeItem(decisionModeKey);
       localStorage.removeItem(decisionsFinalizedKey);
       localStorage.removeItem(finalDecisionsKey);
+      localStorage.removeItem(npcOpinionsKey);
       
       // Clear and reset welcome state for this participant
       const welcomeKey = participantId ? `multiagent-show-welcome-${participantId}` : 'multiagent-show-welcome';
@@ -1025,7 +1029,17 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
         >
           {[1, 2, 3, 4, 5, 6].map((id) => {
             const hasSpoken = spokenNPCs.has(id);
-            const opinion = npcOpinions[id];
+            // Use the same logic as ProgressIndicator to get NPC opinion
+            let opinion = npcOpinions[id]; // Fallback to stored opinion
+            if (hasSpoken && !opinion) {
+              // If spoken but no stored opinion, generate it from participant preferences
+              const participantId = sessionManager.getSessionInfo().participantId;
+              if (participantId) {
+                const preferences = generateNPCPreferences(participantId);
+                const choice = preferences[id];
+                opinion = choice === 'sustainable' ? 'A' : 'B';
+              }
+            }
             return (
               <div 
                 key={id} 

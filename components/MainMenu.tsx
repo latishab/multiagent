@@ -61,7 +61,7 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
       // Generate a new session ID for this participant
       await sessionManager.getSessionId();
       
-      // Start the game
+      // Start the game (React key will handle component reset)
       onStartGame(participantId.trim());
     } catch (error) {
       console.error('Error starting game:', error);
@@ -103,6 +103,60 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
       setExistingParticipantId('');
       setParticipantId('');
       setError('');
+    }
+  };
+
+  const handleChangeParticipantId = async () => {
+    soundEffects.playClick();
+    
+    if (confirm('Are you sure you want to change your participant ID? This will clear all current progress and start fresh.')) {
+      // Clear all localStorage data for the current participant
+      if (typeof window !== 'undefined' && existingParticipantId) {
+        const participantId = existingParticipantId;
+        const spokenNPCsKey = `multiagent-spoken-npcs-${participantId}`;
+        const ballotEntriesKey = `multiagent-ballot-entries-${participantId}`;
+        const hasTalkedToGuideKey = `multiagent-has-talked-to-guide-${participantId}`;
+        const chatStateKey = `multiagent-chat-state-${participantId}`;
+        const gamePhaseKey = `multiagent-game-phase-${participantId}`;
+        const decisionModeKey = `multiagent-show-decision-mode-${participantId}`;
+        const decisionsFinalizedKey = `multiagent-decisions-finalized-${participantId}`;
+        const finalDecisionsKey = `multiagent-final-decisions-${participantId}`;
+        const welcomeKey = `multiagent-show-welcome-${participantId}`;
+        const npcOpinionsKey = `multiagent-npc-opinions-${participantId}`;
+        
+        localStorage.removeItem(spokenNPCsKey);
+        localStorage.removeItem(ballotEntriesKey);
+        localStorage.removeItem(hasTalkedToGuideKey);
+        localStorage.removeItem(chatStateKey);
+        localStorage.removeItem(gamePhaseKey);
+        localStorage.removeItem(decisionModeKey);
+        localStorage.removeItem(decisionsFinalizedKey);
+        localStorage.removeItem(finalDecisionsKey);
+        localStorage.removeItem(welcomeKey);
+        localStorage.removeItem(npcOpinionsKey);
+        
+        // Also clear fallback keys (keys without participant ID suffix)
+        localStorage.removeItem('multiagent-spoken-npcs');
+        localStorage.removeItem('multiagent-ballot-entries');
+        localStorage.removeItem('multiagent-has-talked-to-guide');
+        localStorage.removeItem('multiagent-chat-state');
+        localStorage.removeItem('multiagent-game-phase');
+        localStorage.removeItem('multiagent-show-decision-mode');
+        localStorage.removeItem('multiagent-decisions-finalized');
+        localStorage.removeItem('multiagent-final-decisions');
+        localStorage.removeItem('multiagent-show-welcome');
+        localStorage.removeItem('multiagent-npc-opinions');
+      }
+      
+      // Clear the session manager
+      await sessionManager.clearAll();
+      setHasExistingSession(false);
+      setExistingParticipantId('');
+      setParticipantId('');
+      setError('');
+      
+      // Navigate to participant ID entry
+      setCurrentMenu('participant');
     }
   };
 
@@ -243,12 +297,9 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
           <span>{hasExistingSession ? 'Active' : 'No active session'}</span>
         </div>
         <div className={styles.settingItem}>
-                  <button className={styles.menuButton} onClick={() => {
-          soundEffects.playClick();
-          setCurrentMenu('participant');
-        }}>
-          Change Participant ID
-        </button>
+          <button className={styles.menuButton} onClick={handleChangeParticipantId}>
+            Change Participant ID
+          </button>
         </div>
       </div>
     </div>

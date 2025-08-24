@@ -94,12 +94,12 @@ export default function Home() {
         <>
           {/* Game Canvas Container */}
           <div className="absolute inset-0" style={{ zIndex: 0 }}>
-            <GameComponent />
+            <GameComponent key={participantId} />
           </div>
 
           {/* UI Layer */}
           <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 100 }}>
-            <UIOverlay gameInstance={null} />
+            <UIOverlay key={participantId} gameInstance={null} />
           </div>
         </>
       )}
