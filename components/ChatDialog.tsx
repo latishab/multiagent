@@ -434,13 +434,14 @@ export default function ChatDialog({
       <style jsx>{`
         .chat-dialog {
           position: fixed;
-          bottom: 100px;
+          top: 50%;
           left: 50%;
-          transform: translateX(-50%);
-          width: 800px;
-          height: 700px;
+          transform: translate(-50%, -50%);
+          width: min(800px, 95vw);
+          height: min(700px, 90vh);
           z-index: 1000;
           pointer-events: auto;
+          max-height: 90vh;
         }
 
         .chat-container {
@@ -540,6 +541,54 @@ export default function ChatDialog({
         .chat-header .close-button:hover {
           color: #e5e7eb;
           background-color: rgba(55, 65, 81, 0.5);
+        }
+
+        /* Responsive breakpoints for smaller screens */
+        @media (max-height: 768px) {
+          .chat-dialog {
+            height: min(600px, 85vh);
+            max-height: 85vh;
+          }
+        }
+
+        @media (max-height: 600px) {
+          .chat-dialog {
+            height: min(500px, 80vh);
+            max-height: 80vh;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .chat-dialog {
+            width: min(90vw, 600px);
+          }
+        }
+
+        @media (max-width: 480px) {
+          .chat-dialog {
+            width: 95vw;
+            height: min(400px, 75vh);
+            max-height: 75vh;
+          }
+          
+          .chat-header {
+            padding: 12px 16px;
+          }
+          
+          .profile-picture {
+            width: 40px;
+            height: 40px;
+          }
+          
+          .npc-info h2 {
+            font-size: 16px;
+          }
+          
+          .chat-header .close-button {
+            width: 32px;
+            height: 32px;
+            font-size: 18px;
+          }
         }
 
         .messages-container {

@@ -483,9 +483,10 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
           background: linear-gradient(135deg, #1f2937, #111827);
           border: 3px solid #374151;
           border-radius: 20px;
-          width: 90vw;
-          max-width: 1200px;
-          height: 80vh;
+          width: min(90vw, 1200px);
+          height: min(80vh, 800px);
+          max-height: 90vh;
+          max-width: 95vw;
           display: flex;
           flex-direction: column;
           overflow: hidden;
@@ -1099,10 +1100,34 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
           font-size: 0.9rem;
         }
 
+        /* Responsive breakpoints for smaller screens */
+        @media (max-height: 768px) {
+          .pda-container {
+            height: min(75vh, 700px);
+            max-height: 85vh;
+          }
+        }
+
+        @media (max-height: 600px) {
+          .pda-container {
+            height: min(70vh, 600px);
+            max-height: 80vh;
+          }
+          
+          .pda-header {
+            padding: 0.75rem 1rem;
+          }
+          
+          .pda-title h1 {
+            font-size: 1.25rem;
+          }
+        }
+
         @media (max-width: 768px) {
           .pda-container {
             width: 95vw;
-            height: 90vh;
+            height: min(85vh, 750px);
+            max-height: 90vh;
           }
 
           .systems-grid,
@@ -1112,6 +1137,67 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
 
           .pda-title h1 {
             font-size: 1.2rem;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .pda-container {
+            width: 98vw;
+            height: min(80vh, 650px);
+            max-height: 85vh;
+            border-radius: 12px;
+          }
+          
+          .pda-header {
+            padding: 0.75rem 1rem;
+          }
+          
+          .pda-title {
+            gap: 0.5rem;
+          }
+          
+          .pda-title h1 {
+            font-size: 1.1rem;
+          }
+          
+          .pda-icon {
+            font-size: 1.25rem;
+          }
+          
+          .pda-close {
+            padding: 0.375rem;
+            font-size: 1.25rem;
+          }
+          
+          .nav-tab {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+          }
+        }
+
+        @media (max-width: 360px) {
+          .pda-container {
+            width: 99vw;
+            height: min(75vh, 600px);
+            max-height: 80vh;
+            border-radius: 8px;
+          }
+          
+          .pda-header {
+            padding: 0.5rem 0.75rem;
+          }
+          
+          .pda-title h1 {
+            font-size: 1rem;
+          }
+          
+          .pda-nav {
+            padding: 0.375rem 0.75rem;
+          }
+          
+          .nav-tab {
+            padding: 0.375rem 0.5rem;
+            font-size: 0.8rem;
           }
         }
       `}</style>
