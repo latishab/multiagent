@@ -308,13 +308,9 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       setGuideDialogOpen(true);
       setGuideDialogManuallyClosed(false); // Reset the manual close flag
     }
-    
-    // Also auto-open when all NPCs are spoken to and ready for final decisions
-    // But only if the user hasn't manually closed it
-    if (!showWelcome && gamePhase === GamePhase.AwaitGuideToFinalize && !guideDialogOpen && !guideDialogManuallyClosed) {
-      setGuideDialogOpen(true);
-    }
-  }, [showWelcome, gamePhase, hasTalkedToGuide, guideDialogOpen, guideDialogManuallyClosed]);
+    // For AwaitGuideToFinalize, do NOT auto-open here. We defer to the chatClosed listener
+    // so that Michael only opens after the player closes the last NPC's dialog.
+  }, [showWelcome, gamePhase, hasTalkedToGuide, guideDialogOpen]);
 
   // Persist npcOpinions per participant
   useEffect(() => {
@@ -324,8 +320,6 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       localStorage.setItem(storageKey, JSON.stringify(npcOpinions));
     }
   }, [npcOpinions]);
-
-  // (removed) sidebar hint persistence
 
   // Function to play tablet ding sound
   const playTabletDing = () => {
@@ -619,6 +613,30 @@ export default function UIOverlay({ gameInstance: initialGameInstance }: UIOverl
       delete (window as any).shouldShowGuideAlert
     }
   }, [gamePhase, hasTalkedToGuide, spokenNPCs.size, chatState.round])
+
+  // After speaking to the last NPC, auto-open the Guide once the player closes that chat
+  useEffect(() => {
+    const handleChatClosed = (event: Event) => {
+      const custom = event as CustomEvent
+      const closedNpcId = custom.detail?.npcId
+      // Only react to regular NPC closures, not the Guide itself
+      if (closedNpcId && closedNpcId !== 'main') {
+        // When awaiting guide to finalize, open the guide dialog if not already open and not manually closed
+        if (gamePhase === GamePhase.AwaitGuideToFinalize && !guideDialogOpen && !guideDialogManuallyClosed) {
+          setGuideDialogOpen(true)
+        }
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('chatClosed', handleChatClosed as EventListener)
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('chatClosed', handleChatClosed as EventListener)
+      }
+    }
+  }, [gamePhase, guideDialogOpen, guideDialogManuallyClosed])
 
   // Expose the triggerEndingPhase function to the window object
   useEffect(() => {
