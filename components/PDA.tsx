@@ -390,7 +390,7 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                                         <button
                                           className={`decision-button sustainable ${decisions[npcId] === 'sustainable' ? 'selected' : ''}`}
                                       onClick={() => handleDecision(npcId, 'sustainable')}
-                                      disabled={isSystemComplete(npcId) || decisionsFinalized}
+                                      disabled={decisionsFinalized}
                                     >
                                       <span className="option-icon">📋</span>
                                       <div className="option-content">
@@ -402,7 +402,7 @@ export default function PDA({ isOpen, onClose, ballotEntries, onDecisionsComplet
                                         <button
                                           className={`decision-button unsustainable ${decisions[npcId] === 'unsustainable' ? 'selected' : ''}`}
                                       onClick={() => handleDecision(npcId, 'unsustainable')}
-                                      disabled={isSystemComplete(npcId) || decisionsFinalized}
+                                      disabled={decisionsFinalized}
                                     >
                                       <span className="option-icon">📄</span>
                                       <div className="option-content">
